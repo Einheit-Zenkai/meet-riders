@@ -4,11 +4,15 @@
 package dbms;
 
 public class App {
-    public String getGreeting() {
-        return "Hello World!";
-    }
-
     public static void main(String[] args) {
-        System.out.println(new App().getGreeting());
+        int[] arr = { 1, 2, 3,4,5,6};
+        for (int i = 0; i < 6; i++) {
+            if (i % 2 == 0) {
+                arr[i] = 0;
+            }
+        }
+        for(int i: arr)
+        {System.out.print(i+", ");}
+        System.err.println();
     }
 }
