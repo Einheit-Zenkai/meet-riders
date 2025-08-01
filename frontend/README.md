@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## How to Run This Frontend Website App
 
-## Getting Started
+### Step 1: Download the Project
 
-First, run the development server:
+**Option A: Use Git (if installed)**
+1. Open **Git Bash** or **Command Prompt**.
+2. Run:
+    ```bash
+    cd Downloads
+    git clone https://github.com/vercel/next.js.git
+    ```
 
+**OR IF YOU DONT HAVE GIT INSTALLED:**
+
+**Option B: Download ZIP**
+1. Go to the [GitHub repository](https://github.com/vercel/next.js) (or your project link).
+2. Click the green **Code** button, then **Download ZIP**.
+3. Find the ZIP file in your Downloads folder.
+4. Right-click the ZIP file and choose **Extract All**. Pick a folder to unzip.
+
+---
+
+### Step 2: Open the Frontend Folder in VS Code
+
+1. Open **Visual Studio Code**.
+2. Click **File > Open Folder**.
+3. Select the **frontend** folder inside the project directory you just unzipped or cloned.
+
+---
+
+### Step 3: Install Project Dependencies
+
+In the VS Code terminal, run:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Step 4: Start the App
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+In the VS Code terminal, run:
+```bash
+pnpm dev
+```
+If asked about firewall, click **Allow Access**.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+### Step 5: View the App
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open your browser and go to:  
+[http://localhost:3000](http://localhost:3000)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+### Edit the App
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Change files in `app/page.tsx` to update the page. Save changes and see them automatically.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+### Learn More
+
+- [Next.js Docs](https://nextjs.org/docs)
+- [Vercel Deployment](https://nextjs.org/docs/app/building-your-application/deploying)
+- [Next.js GitHub](https://github.com/vercel/next.js)
+
+---
+
+### Common Issues
+
+- **pnpm not found:** If you see an error about `pnpm` not being found, install it by running:
+    ```bash
+    npm install -g pnpm
+    ```
+    (Requires [Node.js](https://nodejs.org/) to be installed.)
+- **Port in use:** Close other apps using port 3000.
+- **Folder not found:** Double-check you opened the **frontend** folder in VS Code.
+
