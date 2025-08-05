@@ -12,17 +12,17 @@ export default function PartyCard() {
     return (<div className="max-w-lg basis-90">
         <Card>
         <CardHeader>
-            <CardTitle>Card Title</CardTitle>
-            <CardDescription>Card Description</CardDescription>
-            <CardAction>Card Action</CardAction>
+            <CardTitle>Roll no's Party (or nickname for mutuals)</CardTitle>
+            <CardDescription>Number of members: </CardDescription>
+            <CardAction></CardAction>
         </CardHeader>
         <CardContent>
-            <p>Card Content</p>
-            <Button variant="outline">Button</Button>
+            <p>Rough location</p>
+            
         </CardContent>
         
         <CardFooter>
-            <p>Card Footer</p>
+            <Button variant="outline">Join Party</Button>
         </CardFooter>
     </Card>
     </div>);
