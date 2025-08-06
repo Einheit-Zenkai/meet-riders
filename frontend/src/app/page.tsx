@@ -10,10 +10,11 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-indigo-50 p-5">
       <Navbar></Navbar>
-      <h1>Welcome to meetriders!</h1>
-
+      <div className="flex justify-evenly w-[100%] ">
+      <h1 className="text-6xl text-rose-600">Welcome to meetriders!</h1>
+</div>
       <div className="flex flex-row justify-evenly w-[100%]  items-center">
-        <div className="flex flex-row justify-around gap-6 bg-rose-500 h-[80vh] w-full rounded-xl w-[1200px] p-12 ">
+        <div className="flex flex-row justify-around gap-6 bg-500 h-[80vh] w-full rounded-xl w-[1200px] p-12 ">
           <PartyCard />
           <PartyCard />
           <PartyCard />
