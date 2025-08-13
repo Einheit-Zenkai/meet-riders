@@ -5,7 +5,7 @@ export default function HostButton() {
   return (
     <div className="fixed bottom-10 right-10 group z-50">
       <Link
-        href="/host-ride"
+        href="/hostparty"
         className="flex items-center justify-center w-16 h-16 bg-black rounded-full shadow-lg hover:bg-gray-800 transition-colors duration-300"
       >
         <Plus className="w-8 h-8 text-white" />

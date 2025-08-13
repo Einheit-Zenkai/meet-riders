@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
-
-import Sidebar from "@/components/sidebar";
-import HostButton from "@/components/ui/hostbutton";
+import Sidebar from "@/components/sidebar"; // This is YOUR component, preserved.
+import HostButton from "@/components/ui/hostbutton"; // This is YOUR component, preserved.
+import { PartyProvider } from "@/context/PartyContext"; // This is the ONLY addition.
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,14 +21,18 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} bg-gray-50`}>
+        {/* We wrap your existing components with the PartyProvider */}
+        <PartyProvider>
         
-        <Sidebar />
-        <HostButton />
+          {/* YOUR COMPONENTS ARE STILL HERE AND UNTOUCHED */}
+          <Sidebar />
+          <HostButton />
 
-        <main className="ml-16">
-          {children}
-        </main>
-        
+          <main className="ml-16">
+            {children}
+          </main>
+          
+        </PartyProvider>
       </body>
     </html>
   );
