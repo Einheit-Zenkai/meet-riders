@@ -115,146 +115,151 @@ export default function UserCreatePage() {
   const unselectedModes = transportModes.filter(mode => preferences[mode.id] === PREFERENCE_LEVELS.UNSELECTED);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-6xl lg:ml-64 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Left Section - Profile Picture (UNCHANGED) */}
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader className="text-center">
-              <CardTitle>Profile Picture</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center justify-center">
-              <p className="text-sm text-gray-500 mb-4 text-center">
-                For Students: Use your Roll Number. <br /> Others: Use your Username.
-              </p>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <button type="button" className="cursor-pointer">
-                    <Avatar className="w-32 h-32 text-gray-400 border-2 border-dashed">
-                      <AvatarImage src={imagePreview || ''} alt="User profile" />
-                      <AvatarFallback className="flex flex-col items-center justify-center">
-                        <User className="h-12 w-12" />
-                        <span>Upload</span>
-                      </AvatarFallback>
-                    </Avatar>
-                  </button>
-                </DialogTrigger>
-                {imagePreview && (
-                  <DialogContent className="max-w-md p-0">
-                    <img src={imagePreview} alt="Selected preview" className="w-full h-full object-contain rounded-lg" />
-                  </DialogContent>
-                )}
-              </Dialog>
-              <Button variant="outline" className="mt-4" onClick={handleAvatarClick}>
-                {imagePreview ? "Change Image" : "Select Image"}
-              </Button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleImageChange} 
-                className="hidden" 
-                accept="image/*"
-              />
-            </CardContent>
-          </Card>
-        </div>
+    <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      {/* Left Section - Profile Picture (UNCHANGED) */}
+      <div className="lg:col-span-1 flex flex-col items-center">
+        <Card className="w-full">
+        <CardHeader className="text-center">
+          <CardTitle>Profile Picture</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center">
+          <p className="text-sm text-muted-foreground mb-4 text-center">
+          For Students: Use your Roll Number. <br /> Others: Use your Username.
+          </p>
+          <Dialog>
+          <DialogTrigger asChild>
+            <button type="button" className="cursor-pointer">
+            <Avatar className="w-32 h-32 text-muted-foreground border-2 border-dashed">
+              <AvatarImage src={imagePreview || ''} alt="User profile" />
+              <AvatarFallback className="flex flex-col items-center justify-center">
+              <User className="h-12 w-12" />
+              <span>Upload</span>
+              </AvatarFallback>
+            </Avatar>
+            </button>
+          </DialogTrigger>
+          {imagePreview && (
+            <DialogContent className="max-w-md p-0">
+            <img src={imagePreview} alt="Selected preview" className="w-full h-full object-contain rounded-lg" />
+            </DialogContent>
+          )}
+          </Dialog>
+          <Button variant="outline" className="mt-4" onClick={handleAvatarClick}>
+          {imagePreview ? "Change Image" : "Select Image"}
+          </Button>
+          <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleImageChange} 
+          className="hidden" 
+          accept="image/*"
+          />
+        </CardContent>
+        </Card>
+      </div>
 
-        {/* Right Section - User Details */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Tell us about yourself</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Nickname Field (UNCHANGED) */}
-              <div className="space-y-2">
-                <Label htmlFor="nickname">Nickname</Label>
-                <Input id="nickname" placeholder="e.g. awesome_user.123" value={nickname} onChange={handleNicknameChange} />
-              </div>
+      {/* Right Section - User Details */}
+      <div className="lg:col-span-2 flex flex-col justify-center">
+        <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Tell us about yourself</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Nickname Field (UNCHANGED) */}
+          <div className="space-y-2">
+          <Label htmlFor="nickname">Nickname</Label>
+          <Input id="nickname" placeholder="e.g. awesome_user.123" value={nickname} onChange={handleNicknameChange} />
+          </div>
 
-              {/* Bio Field (UNCHANGED) */}
-              <div className="space-y-2">
-                <Label htmlFor="bio">Bio / About Me</Label>
-                <Textarea id="bio" placeholder="e.g. 3rd year CS student, friendly and loves music!" value={bio} onChange={handleBioChange} className="min-h-[80px]" />
-              </div>
+          {/* Bio Field (UNCHANGED) */}
+          <div className="space-y-2">
+          <Label htmlFor="bio">Bio / About Me</Label>
+          <Textarea id="bio" placeholder="e.g. 3rd year CS student, friendly and loves music!" value={bio} onChange={handleBioChange} className="min-h-[80px]" />
+          </div>
 
-              {/* Punctuality Field (UNCHANGED) */}
-              <div className="space-y-2">
-                <Label>Punctuality</Label>
-                <ToggleGroup type="single" variant="outline" defaultValue="on-time" className="flex flex-wrap justify-start gap-2">
-                  <ToggleGroupItem value="on-time" aria-label="Select always on time">Always on time</ToggleGroupItem>
-                  <ToggleGroupItem value="usually-on-time" aria-label="Select usually on time">Usually on time</ToggleGroupItem>
-                  <ToggleGroupItem value="flexible" aria-label="Select flexible">Flexible</ToggleGroupItem>
-                </ToggleGroup>
-              </div>
+          {/* Punctuality Field (UNCHANGED) */}
+          <div className="space-y-2">
+          <Label>Punctuality</Label>
+          <ToggleGroup type="single" variant="outline" defaultValue="on-time" className="flex flex-wrap justify-start">
+            <ToggleGroupItem value="on-time" aria-label="Select always on time">Always on time</ToggleGroupItem>
+            <ToggleGroupItem value="usually-on-time" aria-label="Select usually on time">Usually on time</ToggleGroupItem>
+            <ToggleGroupItem value="flexible" aria-label="Select flexible">Flexible</ToggleGroupItem>
+          </ToggleGroup>
+          </div>
 
-              {/* Gender Field (UNCHANGED) */}
-              <div className="space-y-2">
-                <Label>Gender</Label>
-                <ToggleGroup type="single" variant="outline" defaultValue="they" className="flex flex-wrap justify-start gap-2">
-                  <ToggleGroupItem value="male" aria-label="Select male">♂ Male</ToggleGroupItem>
-                  <ToggleGroupItem value="female" aria-label="Select female">♀ Female</ToggleGroupItem>
-                  <ToggleGroupItem value="they" aria-label="Select they/them">👤 They/Them</ToggleGroupItem>
-                </ToggleGroup>
-              </div>
-              
-              {/* --- START OF REPLACEMENT: New Travel Preferences Section --- */}
-              <div className="space-y-2">
-                <Label>Travel Preferences (Click to rank 1, 2, 3 or mark as disliked)</Label>
-                <div className="flex flex-wrap justify-start gap-2">
-                  {transportModes.map((mode) => (
-                    <button
-                      key={mode.id}
-                      type="button"
-                      onClick={() => handlePreferenceClick(mode.id)}
-                      className={cn(
-                        "inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border h-10 px-4 py-2",
-                        getPreferenceStyle(preferences[mode.id])
-                      )}
-                    >
-                      {mode.icon} {mode.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {unselectedModes.length > 0 && (
-                <div className="space-y-2 border-t pt-4">
-                  <Label className="text-sm text-muted-foreground">Not Preferred Modes (Click to mark red)</Label>
-                  <div className="flex flex-wrap justify-start gap-2">
-                    {unselectedModes.map((mode) => (
-                      <button
-                        key={mode.id}
-                        type="button"
-                        onClick={() => handleDislikeClick(mode.id)}
-                        className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-transparent hover:bg-red-100 hover:border-red-500 h-10 px-4 py-2"
-                      >
-                        {mode.icon} {mode.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+          {/* Gender Field (UNCHANGED) */}
+          <div className="space-y-2">
+          <Label>Gender</Label>
+          <ToggleGroup type="single" variant="outline" defaultValue="they" className="flex flex-wrap justify-start ">
+            <ToggleGroupItem value="male" aria-label="Select male">♂ Male</ToggleGroupItem>
+            <ToggleGroupItem value="female" aria-label="Select female">♀ Female</ToggleGroupItem>
+            <ToggleGroupItem value="they" aria-label="Select they/them">👤 They/Them</ToggleGroupItem>
+          </ToggleGroup>
+          </div>
+          
+          {/* --- START OF REPLACEMENT: New Travel Preferences Section --- */}
+          <div className="space-y-2">
+          <Label>Travel Preferences (Click to rank 1, 2, 3 or mark as disliked)</Label>
+          <div className="flex flex-wrap gap-3">
+            {transportModes.map((mode) => (
+            <button
+              key={mode.id}
+              type="button"
+              onClick={() => handlePreferenceClick(mode.id)}
+              className={cn(
+              "inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border h-10 px-4 py-2",
+              // Use global CSS variables for color
+              preferences[mode.id] === PREFERENCE_LEVELS.PRIMARY && "bg-primary text-primary-foreground border-primary hover:bg-primary/90",
+              preferences[mode.id] === PREFERENCE_LEVELS.SECONDARY && "bg-secondary text-secondary-foreground border-secondary hover:bg-secondary/80",
+              preferences[mode.id] === PREFERENCE_LEVELS.TERTIARY && "bg-yellow-100 text-yellow-900 border-yellow-300 hover:bg-yellow-200",
+              preferences[mode.id] === PREFERENCE_LEVELS.DISLIKED && "bg-destructive text-destructive-foreground border-destructive hover:bg-destructive/90 line-through",
+              preferences[mode.id] === PREFERENCE_LEVELS.UNSELECTED && "bg-background hover:bg-accent hover:text-accent-foreground"
               )}
-              {/* --- END OF REPLACEMENT --- */}
+            >
+              {mode.icon} {mode.label}
+            </button>
+            ))}
+          </div>
+          </div>
 
-              {/* Location Field (UNCHANGED) */}
-              <div className="space-y-2">
-                <Label htmlFor="location">Ideal Pickup/Drop-off Location</Label>
-                <Input id="location" placeholder="e.g. Main College Gate" />
-              </div>
+          {unselectedModes.length > 0 && (
+          <div className="space-y-2 border-t pt-4">
+            <Label className="text-sm text-muted-foreground">Not Preferred Modes (Click to mark red)</Label>
+            <div className="flex flex-wrap gap-3">
+            {unselectedModes.map((mode) => (
+              <button
+              key={mode.id}
+              type="button"
+              onClick={() => handleDislikeClick(mode.id)}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-destructive/10 hover:border-destructive h-10 px-4 py-2"
+              >
+              {mode.icon} {mode.label}
+              </button>
+            ))}
+            </div>
+          </div>
+          )}
+          {/* --- END OF REPLACEMENT --- */}
 
-              {/* Time Field (UNCHANGED) */}
-              <div className="space-y-2">
-                <Label htmlFor="time">Ideal time of leaving college</Label>
-                <Input id="time" type="time" />
-              </div>
+          {/* Location Field (UNCHANGED) */}
+          <div className="space-y-2">
+          <Label htmlFor="location">Ideal Pickup/Drop-off Location</Label>
+          <Input id="location" placeholder="e.g. Main College Gate" />
+          </div>
 
-              {/* Create Profile Button (UNCHANGED) */}
-              <Button className="w-full">Create Profile</Button>
-            </CardContent>
-          </Card>
-        </div>
+          {/* Time Field (UNCHANGED) */}
+          <div className="space-y-2">
+          <Label htmlFor="time">Ideal time of leaving college</Label>
+          <Input id="time" type="time" />
+          </div>
+
+          {/* Create Profile Button (UNCHANGED) */}
+          <Button className="w-full">Create Profile</Button>
+        </CardContent>
+        </Card>
+      </div>
       </div>
     </div>
   );

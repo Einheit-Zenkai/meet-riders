@@ -2,31 +2,40 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button'; 
-import { Input } from '@/components/ui/input'; 
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleMicrosoftLogin = () => {
-   
+
     alert('Sign in with Microsoft coming soon!');
   };
 
   return (
     <div className="flex h-screen">
-      
+
       <div className="hidden lg:flex flex-col items-center justify-center w-1/2 bg-red-600 text-white p-12">
         <h1 className="text-5xl font-bold mb-4">Meetriders</h1>
         <p className="text-xl text-center">Your carpooling community. Share rides, save money and make new friends.</p>
       </div>
 
-      
+
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          <h2 className="text-3xl font-bold mb-6 text-center">Login</h2>
-          
+          <div className="flex gap-2">
+            <Button asChild variant="outline">
+              <Link href="/">Home</Link>
+            </Button>
+            <h2 className="text-3xl font-bold mb-6 text-center">Login</h2>
+
+            <Button asChild variant="outline">
+              <Link href="/dashboard">Dashboard</Link>
+            </Button>
+          </div>
+
           <form>
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
@@ -76,6 +85,7 @@ export default function LoginPage() {
               Sign up
             </Link>
           </p>
+
         </div>
       </div>
     </div>

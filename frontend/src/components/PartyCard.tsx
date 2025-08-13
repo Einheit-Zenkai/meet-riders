@@ -36,67 +36,61 @@ export default function PartyCard({ party }: PartyCardProps) {
     if (timeLeft <= 0) return null; 
 
     return (
-        <Card className="flex flex-col justify-between w-full shadow-md border border-gray-200 rounded-xl overflow-hidden">
-            <div> {/* This wrapper makes sure the footer is always at the bottom */}
-                <CardHeader className="pb-4">
-                    <div className="flex justify-between items-start">
-                        <CardTitle className="text-3xl font-bold text-gray-800">{party.meetupPoint}</CardTitle>
-                        <p className="text-sm text-gray-500 mt-1 ml-4 flex-shrink-0">Hosted by: {party.host}</p>
-                    </div>
-                </CardHeader>
+        <Card className="flex flex-col justify-between w-full shadow-md border rounded-xl overflow-hidden">
+            <div>
+            <CardHeader className="pb-4">
+                <div className="flex justify-between items-start">
+                <CardTitle className="text-3xl font-bold">{party.meetupPoint}</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1 ml-4 flex-shrink-0">Hosted by: {party.host}</p>
+                </div>
+            </CardHeader>
 
-                <CardContent className="pt-0">
-                    {/* The new, prominent Drop Off location */}
-                    <div className="mb-6 flex items-center text-lg text-gray-700">
-                        <MapPin className="w-5 h-5 mr-3 text-gray-400"/>
-                        <span className="font-semibold">{party.dropOff}</span>
-                    </div>
+            <CardContent className="pt-0">
+                <div className="mb-6 flex items-center text-lg">
+                <MapPin className="w-5 h-5 mr-3"/>
+                <span className="font-semibold">{party.dropOff}</span>
+                </div>
 
-                    {/* New two-column grid for details */}
-                    <div className="grid grid-cols-2 gap-x-6 items-center">
-                        {/* Left Column */}
-                        <div className="flex flex-col space-y-3 justify-center">
-                            <div className="flex items-center">
-                                <Users className="w-6 h-6 mr-3 text-rose-500"/>
-                                <span className="text-base font-medium text-gray-800">
-                                    {party.partySize} {party.partySize === 1 ? 'person' : 'people'} needed
-                                </span>
-                            </div>
-                             <div className="flex items-center gap-2 flex-wrap">
-                               {party.isFriendsOnly && (
-                                   <span className="flex items-center text-xs font-semibold bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full">
-                                       <UserIcon className="w-4 h-4 mr-1.5"/>Friends
-                                   </span>
-                               )}
-                               {party.isGenderOnly && (
-                                   <span className="flex items-center text-xs font-semibold bg-pink-100 text-pink-800 px-3 py-1.5 rounded-full">
-                                       <Shield className="w-4 h-4 mr-1.5"/>Same Gender
-                                   </span>
-                               )}
-                            </div>
-                        </div>
-
-                        {/* Right Column (Timer) */}
-                        <div className="flex items-center justify-center bg-red-50 text-red-600 rounded-lg p-4 h-full">
-                             <Clock className="w-6 h-6 mr-3"/>
-                             <span className="text-2xl font-mono font-bold tracking-wider">{formatTimeLeft(timeLeft)}</span>
-                        </div>
+                <div className="grid grid-cols-2 gap-x-6 items-center">
+                <div className="flex flex-col space-y-3 justify-center">
+                    <div className="flex items-center">
+                    <Users className="w-6 h-6 mr-3"/>
+                    <span className="text-base font-medium">
+                        {party.partySize} {party.partySize === 1 ? 'person' : 'people'} needed
+                    </span>
                     </div>
-                </CardContent>
+                    <div className="flex items-center gap-2 flex-wrap">
+                    {party.isFriendsOnly && (
+                        <span className="flex items-center text-xs font-semibold bg-secondary px-3 py-1.5 rounded-full">
+                        <UserIcon className="w-4 h-4 mr-1.5"/>Friends
+                        </span>
+                    )}
+                    {party.isGenderOnly && (
+                        <span className="flex items-center text-xs font-semibold bg-secondary px-3 py-1.5 rounded-full">
+                        <Shield className="w-4 h-4 mr-1.5"/>Same Gender
+                        </span>
+                    )}
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-center bg-destructive/10 text-destructive rounded-lg p-4 h-full">
+                    <Clock className="w-6 h-6 mr-3"/>
+                    <span className="text-2xl font-mono font-bold tracking-wider">{formatTimeLeft(timeLeft)}</span>
+                </div>
+                </div>
+            </CardContent>
             </div>
             
-            {/* The Footer */}
-            <CardFooter className="flex justify-end p-4 bg-gray-50/70 border-t mt-6">
-                 {isHost ? (
-                    // This assumes your <Button> can take a "destructive" variant for red color
-                    <Button variant="destructive" onClick={() => cancelParty(party.id)}>
-                        Cancel Party
-                    </Button>
-                ) : (
-                    <Button className="bg-green-600 hover:bg-green-700 text-white font-semibold">
-                        Join Now
-                    </Button>
-                )}
+            <CardFooter className="flex justify-end bg-muted/70 border-t mt-6">
+            {isHost ? (
+                <Button variant="destructive" onClick={() => cancelParty(party.id)}>
+                Cancel Party
+                </Button>
+            ) : (
+                <Button>
+                Join Now
+                </Button>
+            )}
             </CardFooter>
         </Card>
     );

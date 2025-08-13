@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-
-import Sidebar from "@/components/sidebar"; // This is YOUR component, preserved.
-import HostButton from "@/components/ui/hostbutton"; // This is YOUR component, preserved.
-import { PartyProvider } from "@/context/PartyContext"; // This is the ONLY addition.
-
+import { PartyProvider } from "@/context/PartyContext";
+import { ThemeProvider } from "@/components/theme-provider"
+import { ModeToggle } from "@/components/ModeToggle";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -19,19 +17,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} bg-gray-50`}>
-        {/* We wrap your existing components with the PartyProvider */}
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.className}`}>
         <PartyProvider>
-        
-          {/* YOUR COMPONENTS ARE STILL HERE AND UNTOUCHED */}
-          <Sidebar />
-          <HostButton />
-
-          <main className="ml-16">
-            {children}
-          </main>
-          
+          <ThemeProvider>
+            {/* Global floating controls */}
+            <div className="fixed top-4 right-4 z-50">
+              <ModeToggle />
+            </div>
+            <main className="min-h-screen">
+              {children}
+            </main>
+          </ThemeProvider>
         </PartyProvider>
       </body>
     </html>
