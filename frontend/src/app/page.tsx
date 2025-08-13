@@ -1,28 +1,32 @@
-import Link from "next/link";
-import { User, Settings, Home, Users } from "lucide-react"; // install via: npm install lucide-react
+import Link from 'next/link';
 
-export default function Sidebar() {
+export default function HomePage() {
   return (
-    <div className="fixed left-0 top-0 h-full w-16 bg-gray-900 text-white flex flex-col items-center py-4 space-y-6 shadow-lg">
-      {/* Logo / Home */}
-      <Link href="/" className="hover:text-orange-500">
-        <Home size={24} />
-      </Link>
+    
+    <div className="p-8">
+      
+      <h1 className="text-4xl font-bold text-gray-800 mb-8">
+        MeetRiders
+      </h1>
 
-      {/* Profile */}
-      <Link href="/profile" className="hover:text-orange-500">
-        <User size={24} />
-      </Link>
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-2xl font-semibold text-gray-700 mb-4">Available Rides</h2>
+        
+        <div className="text-center py-10 border-2 border-dashed border-gray-300 rounded-lg">
+          <p className="text-gray-500 mb-4">
+            No rides are available at the moment.
+          </p>
+          
+          {/* 3. Rose-colored button */}
+          <Link 
+            href="/hostparty"
+            className="px-6 py-2 bg-rose-500 text-white font-semibold rounded-lg hover:bg-rose-600 transition-colors duration-300 shadow"
+          >
+            Host a Ride
+          </Link>
+        </div>
+      </div>
 
-      {/* Parties */}
-      <Link href="/my-parties" className="hover:text-orange-500">
-        <Users size={24} />
-      </Link>
-
-      {/* Settings */}
-      <Link href="/settings" className="hover:text-orange-500 mt-auto mb-4">
-        <Settings size={24} />
-      </Link>
     </div>
   );
 }
