@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meet-Riders ER Diagram</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+</head>
+<body>
+    <h1>Meet-Riders Entity Relationship Diagram</h1>
+    <div class="mermaid">
+        erDiagram
+            USER {
+                int id PK
+                string name
+                string email
+                string photo
+                string major
+                string bio
+            }
+            PARTY {
+                int id PK
+                string mode_of_transport
+                string destination
+                int host_id FK
+                int ideal_party_size
+                string schedule
+                
+                boolean is_friends_only
+                boolean is_gender_only
+                string status
+            }
+            PARTY_MEMBER {
+                int id PK
+                int party_id FK
+                int user_id FK
+                string role
+                float rating
+                string review
+            }
+            MESSAGE {
+                int id PK
+                int party_id FK
+                int sender_id FK
+                string content
+                datetime timestamp
+            }
+
+            USER ||--o{ PARTY : hosts
+            USER ||--o{ PARTY_MEMBER : joins
+            PARTY ||--o{ PARTY_MEMBER : has
+            PARTY ||--o{ MESSAGE : includes
+            USER ||--o{ MESSAGE : sends
+    </div>
+</body>
+</html>
