@@ -27,7 +27,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <div className="flex gap-2">
             <Button asChild variant="outline">
-              <Link href="/">Home</Link>
+              <Link href="/">go back</Link>
             </Button>
             <h2 className="text-3xl font-bold mb-6 text-center">Login</h2>
 
