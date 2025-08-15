@@ -10,31 +10,28 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
 
   const handleMicrosoftLogin = () => {
-
     alert('Sign in with Microsoft coming soon!');
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen relative bg-gray-50">
 
-      <div className="hidden lg:flex flex-col items-center justify-center w-1/2 bg-red-600 text-white p-12">
-        <h1 className="text-5xl font-bold mb-4">Meetriders</h1>
-        <p className="text-xl text-center">Your carpooling community. Share rides, save money and make new friends.</p>
+      {/* Top Buttons */}
+      <div className="absolute top-4 left-4">
+        <Button asChild variant="outline">
+          <Link href="/">Go Back</Link>
+        </Button>
+      </div>
+      <div className="absolute top-4 right-16">
+        <Button asChild variant="outline">
+          <Link href="/dashboard">Dashboard</Link>
+        </Button>
       </div>
 
-
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-        <div className="w-full max-w-md">
-          <div className="flex gap-2">
-            <Button asChild variant="outline">
-              <Link href="/">go back</Link>
-            </Button>
-            <h2 className="text-3xl font-bold mb-6 text-center">Login</h2>
-
-            <Button asChild variant="outline">
-              <Link href="/dashboard">Dashboard</Link>
-            </Button>
-          </div>
+      {/* Centered Login Form */}
+      <div className="flex items-center justify-center w-full">
+        <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
+          <h2 className="text-3xl font-bold mb-6 text-center">Login</h2>
 
           <form>
             <div className="mb-4">
@@ -49,6 +46,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
+
             <div className="mb-6">
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
                 Password
@@ -61,11 +59,13 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
+
             <Button className="w-full" type="submit">
               Login
             </Button>
           </form>
 
+          {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-300"></div>
@@ -75,6 +75,7 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {/* Microsoft Login */}
           <Button variant="outline" className="w-full mb-4" onClick={handleMicrosoftLogin}>
             Sign in with Microsoft
           </Button>
@@ -85,7 +86,6 @@ export default function LoginPage() {
               Sign up
             </Link>
           </p>
-
         </div>
       </div>
     </div>
