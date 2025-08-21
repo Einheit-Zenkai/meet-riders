@@ -14,7 +14,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex h-screen relative bg-gray-50">
+    <div className="flex h-screen relative">
 
       {/* Top Buttons */}
       <div className="absolute top-4 left-4">
@@ -30,12 +30,12 @@ export default function LoginPage() {
 
       {/* Centered Login Form */}
       <div className="flex items-center justify-center w-full">
-        <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
-          <h2 className="text-3xl font-bold mb-6 text-center">Login</h2>
+        <div className="w-full max-w-md bg-card p-8 rounded-xl shadow-lg border">
+          <h2 className="text-3xl font-bold mb-6 text-center text-foreground">Login</h2>
 
           <form>
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
+              <label className="block text-foreground text-sm font-bold mb-2" htmlFor="email">
                 Email Address
               </label>
               <Input
@@ -48,7 +48,7 @@ export default function LoginPage() {
             </div>
 
             <div className="mb-6">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
+              <label className="block text-foreground text-sm font-bold mb-2" htmlFor="password">
                 Password
               </label>
               <Input
@@ -60,18 +60,18 @@ export default function LoginPage() {
               />
             </div>
 
-            <Button className="w-full" type="submit">
-              Login
+            <Button className="w-full hover:cursor-pointer" type="submit">
+              Login (placeholder)
             </Button>
           </form>
 
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-2 text-gray-500">Or continue with</span>
+              <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
             </div>
           </div>
 
@@ -80,9 +80,9 @@ export default function LoginPage() {
             Sign in with Microsoft
           </Button>
 
-          <p className="text-center text-sm text-gray-600">
+          <p className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{' '}
-            <Link href="/signup" className="font-semibold text-red-600 hover:text-red-500">
+            <Link href="/signup" className="font-semibold text-primary hover:text-primary/80">
               Sign up
             </Link>
           </p>

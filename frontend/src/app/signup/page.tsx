@@ -1,16 +1,14 @@
-// PASTE THIS ENTIRE CODE INTO: frontend/src/app/signup/page.tsx
-
 'use client';
-
 import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { createClient } from '@/utils/supabase/client'
 
 
-import { supabase } from '@/lib/supabaseClient'; 
 
 export default function SignupPage() {
+  const supabase = createClient()
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -32,7 +30,7 @@ export default function SignupPage() {
       setError('Passwords do not match.');
       return;
     }
-    
+
     // This is the important part: Call Supabase to sign up the user
     const { error: signUpError } = await supabase.auth.signUp({
       email: email,
@@ -43,13 +41,12 @@ export default function SignupPage() {
     if (signUpError) {
       setError(signUpError.message);
     } else {
-      // If no error, the user was created successfully
       setMessage('Account created successfully! Please check your email for a verification link.');
     }
   };
 
   return (
-    <div className="relative flex h-screen items-center justify-center bg-gray-50">
+    <div className="relative flex h-screen items-center justify-center bg-background">
 
       {/* Go Back button */}
       <div className="absolute top-4 left-4">
@@ -59,14 +56,14 @@ export default function SignupPage() {
       </div>
 
       {/* Signup box */}
-      <div className="w-full max-w-md p-8 border rounded-2xl shadow-lg bg-white">
-        <h2 className="text-3xl font-bold text-center mb-6">Sign Up</h2>
+      <div className="w-full max-w-md p-8 border rounded-2xl shadow-lg bg-card">
+        <h2 className="text-3xl font-bold text-center mb-6 text-foreground">Sign Up</h2>
 
         {/* Form */}
         <form onSubmit={handleSubmit}>
           {/* Email Input */}
           <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
+            <label className="block text-foreground text-sm font-bold mb-2" htmlFor="email">
               Email Address
             </label>
             <Input
@@ -81,7 +78,7 @@ export default function SignupPage() {
 
           {/* Password Input */}
           <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
+            <label className="block text-foreground text-sm font-bold mb-2" htmlFor="password">
               Password
             </label>
             <Input
@@ -96,7 +93,7 @@ export default function SignupPage() {
 
           {/* Confirm Password Input */}
           <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="confirmPassword">
+            <label className="block text-foreground text-sm font-bold mb-2" htmlFor="confirmPassword">
               Confirm Password
             </label>
             <Input
@@ -110,17 +107,17 @@ export default function SignupPage() {
           </div>
 
           {/* STEP 3: Display success or error messages to the user */}
-          {error && <p className="text-red-500 text-center text-sm mb-4">{error}</p>}
-          {message && <p className="text-green-500 text-center text-sm mb-4">{message}</p>}
+          {error && <p className="text-destructive text-center text-sm mb-4">{error}</p>}
+          {message && <p className="text-green-600 text-center text-sm mb-4">{message}</p>}
 
-          <Button className="w-full" type="submit">
+          <Button className="w-full hover:cursor-pointer" type="submit">
             Create Account
           </Button>
         </form>
 
-        <p className="text-center text-sm text-gray-600 mt-6">
+        <p className="text-center text-sm text-muted-foreground mt-6">
           Already have an account?{' '}
-          <Link href="/login" className="font-semibold text-red-600 hover:text-red-500">
+          <Link href="/login" className="font-semibold text-primary hover:text-primary/80">
             Login
           </Link>
         </p>
