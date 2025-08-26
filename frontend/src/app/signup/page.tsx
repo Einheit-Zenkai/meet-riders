@@ -5,8 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/utils/supabase/client'
 
-
-
 export default function SignupPage() {
   const supabase = createClient()
   const [email, setEmail] = useState('');
