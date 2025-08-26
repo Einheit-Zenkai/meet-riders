@@ -1,66 +1,48 @@
 "use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-
-import { createClient } from '@/utils/supabase/client';
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { supabase } from "@/lib/supabaseClient"; // adjust if needed
 
 export default function LoginPage() {
-
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
 
   // 🔑 Email/Password Login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
+    setLoading(false);
+
     if (error) {
       alert(error.message);
     } else {
-      alert("✅ Logged in!");
-      router.push("/dashboard");
+      // ✅ Don’t wait for getSession, redirect immediately
+      router.replace("/dashboard");
     }
   };
 
   // 🔐 Microsoft OAuth Login
   const handleMicrosoftLogin = async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "azure",
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+      },
     });
 
-    if (error) {
-      alert(error.message);
-    }
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password,
-    });
-
-    if (signInError) {
-      setError(signInError.message);
-    } else {
-      router.push('/dashboard');
-      router.refresh();
-    }
+    if (error) alert(error.message);
   };
 
   return (
@@ -77,13 +59,13 @@ export default function LoginPage() {
         </Button>
       </div>
 
+      {/* Centered Login Form */}
       <div className="flex items-center justify-center w-full">
         <div className="w-full max-w-md bg-card p-8 rounded-xl shadow-lg border">
           <h2 className="text-3xl font-bold mb-6 text-center text-foreground">
             Login
           </h2>
 
-       
           <form onSubmit={handleLogin}>
             <div className="mb-4">
               <label
@@ -98,7 +80,6 @@ export default function LoginPage() {
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required // It's good practice to make these required
               />
             </div>
 
@@ -115,19 +96,19 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required 
               />
             </div>
 
-            
-            {error && <p className="text-destructive text-center text-sm mb-4">{error}</p>}
-
-            <Button className="w-full hover:cursor-pointer" type="submit">
-              Login
+            <Button
+              className="w-full hover:cursor-pointer"
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Logging in..." : "Login"}
             </Button>
           </form>
 
-        
+          {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-border"></div>
@@ -139,7 +120,12 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <Button variant="outline" className="w-full mb-4" onClick={handleMicrosoftLogin}>
+          {/* Microsoft Login */}
+          <Button
+            variant="outline"
+            className="w-full mb-4"
+            onClick={handleMicrosoftLogin}
+          >
             Sign in with Microsoft
           </Button>
 

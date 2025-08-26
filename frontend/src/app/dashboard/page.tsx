@@ -1,61 +1,33 @@
-// src/app/dashboard/page.tsx
-'use client';
+"use client";
 
-// --- ADDED IMPORTS FOR THE REDIRECT LOGIC ---
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+// 👈 use our new context
 
-// --- YOUR EXISTING IMPORTS (UNTOUCHED) ---
-import Link from 'next/link';
-import { useParties } from '@/context/PartyContext';
-import PartyCard from '@/components/PartyCard';
+import Link from "next/link";
+import { useParties } from "@/context/PartyContext";
+import PartyCard from "@/components/PartyCard";
 import Sidebar from "@/components/sidebar";
 import HostButton from "@/components/ui/hostbutton";
+import { useAuth } from "@/context/Authcontext";
 
 export default function HomePage() {
-  // --- YOUR EXISTING HOOK (UNTOUCHED) ---
   const { parties } = useParties();
-
-  // --- ADDED LOGIC FOR PROFILE CHECK & REDIRECT ---
+  const { user, loading } = useAuth(); // 👈 get user state globally
   const router = useRouter();
-  const supabase = createClient();
-  // We add a loading state to prevent the dashboard from flashing before the check is done
-  const [isLoading, setIsLoading] = useState(true); 
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // This function will run as soon as the component loads
-    const checkProfileAndRedirect = async () => {
-      // Get the current user from Supabase
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (user) {
-        // If a user is logged in, check their profile in our 'profiles' table
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('nickname') // We only need one field to check if it's been filled out
-          .eq('id', user.id)
-          .single();
-        
-        // **THE CORE LOGIC:** If a profile exists but the nickname is null (empty)...
-        if (profile && profile.nickname === null) {
-          // ...they are a new user. Force them to the create profile page.
-          router.push('/user-create');
-        } else {
-          // Otherwise, they are a returning user. Show them the dashboard.
-          setIsLoading(false);
-        }
+    if (!loading) {
+      if (!user) {
+        router.push("/login");
       } else {
-        // If no one is logged in at all, send them to the login page.
-        router.push('/login');
+        setIsChecking(false);
       }
-    };
+    }
+  }, [user, loading, router]);
 
-    checkProfileAndRedirect();
-  }, [router, supabase]); // This tells the effect to run again if the router or supabase client changes (good practice)
-
-  // While the check is running, we show a simple loading message.
-  if (isLoading) {
+  if (loading || isChecking) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-xl">Loading your dashboard...</p>
@@ -63,15 +35,11 @@ export default function HomePage() {
     );
   }
 
-  // --- YOUR EXISTING DASHBOARD UI (100% UNTOUCHED) ---
-  // This code will only be shown AFTER the check is complete and the user is confirmed to be an existing user.
   return (
     <div className="ml-16 p-6">
       <Sidebar />
       <HostButton />
-      <h1 className="text-4xl font-bold text-foreground mb-8">
-        Meet Riders
-      </h1>
+      <h1 className="text-4xl font-bold text-foreground mb-8">Meet Riders</h1>
 
       <div className="bg-card p-6 rounded-lg shadow-md">
         <h2 className="text-2xl font-semibold text-card-foreground mb-4">Available Rides</h2>
@@ -90,7 +58,7 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {parties.map(party => (
+            {parties.map((party) => (
               <PartyCard key={party.id} party={party} />
             ))}
           </div>
