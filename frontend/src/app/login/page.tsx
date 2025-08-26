@@ -1,21 +1,47 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { supabase } from "@/lib/supabaseClient"; // adjust path to where your friend set it up
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const router = useRouter();
 
-  const handleMicrosoftLogin = () => {
-    alert('Sign in with Microsoft coming soon!');
+  // 🔑 Email/Password Login
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      alert(error.message);
+    } else {
+      alert("✅ Logged in!");
+      router.push("/dashboard");
+    }
+  };
+
+  // 🔐 Microsoft OAuth Login
+  const handleMicrosoftLogin = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "azure",
+    });
+
+    if (error) {
+      alert(error.message);
+    }
   };
 
   return (
     <div className="flex h-screen relative">
-
       {/* Top Buttons */}
       <div className="absolute top-4 left-4">
         <Button asChild variant="outline">
@@ -31,11 +57,16 @@ export default function LoginPage() {
       {/* Centered Login Form */}
       <div className="flex items-center justify-center w-full">
         <div className="w-full max-w-md bg-card p-8 rounded-xl shadow-lg border">
-          <h2 className="text-3xl font-bold mb-6 text-center text-foreground">Login</h2>
+          <h2 className="text-3xl font-bold mb-6 text-center text-foreground">
+            Login
+          </h2>
 
-          <form>
+          <form onSubmit={handleLogin}>
             <div className="mb-4">
-              <label className="block text-foreground text-sm font-bold mb-2" htmlFor="email">
+              <label
+                className="block text-foreground text-sm font-bold mb-2"
+                htmlFor="email"
+              >
                 Email Address
               </label>
               <Input
@@ -48,7 +79,10 @@ export default function LoginPage() {
             </div>
 
             <div className="mb-6">
-              <label className="block text-foreground text-sm font-bold mb-2" htmlFor="password">
+              <label
+                className="block text-foreground text-sm font-bold mb-2"
+                htmlFor="password"
+              >
                 Password
               </label>
               <Input
@@ -61,7 +95,7 @@ export default function LoginPage() {
             </div>
 
             <Button className="w-full hover:cursor-pointer" type="submit">
-              Login (placeholder)
+              Login
             </Button>
           </form>
 
@@ -71,18 +105,27 @@ export default function LoginPage() {
               <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+              <span className="bg-card px-2 text-muted-foreground">
+                Or continue with
+              </span>
             </div>
           </div>
 
           {/* Microsoft Login */}
-          <Button variant="outline" className="w-full mb-4" onClick={handleMicrosoftLogin}>
+          <Button
+            variant="outline"
+            className="w-full mb-4"
+            onClick={handleMicrosoftLogin}
+          >
             Sign in with Microsoft
           </Button>
 
           <p className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" className="font-semibold text-primary hover:text-primary/80">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/signup"
+              className="font-semibold text-primary hover:text-primary/80"
+            >
               Sign up
             </Link>
           </p>
