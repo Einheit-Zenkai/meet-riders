@@ -2,9 +2,9 @@
 
 ## About
 
-Meet-Riders is a mobile application designed exclusively for university students, transforming the daily commute into a social and collaborative experience. More than just a carpooling app, Meet-Riders is a travel-sharing platform that allows students to connect with peers heading in the same direction, regardless of their mode of transport. Whether you're driving, taking the bus, riding your bike, or even walking, you can create or join a "party" to travel together.
+Meet-Riders is a mobile application (currently) designed exclusively for university students, transforming the daily commute into a social and collaborative experience. More than just a carpooling app, Meet-Riders is a travel-sharing platform that allows students to connect with peers heading in the same direction, regardless of their mode of transport. Whether you're driving, taking the bus, riding your bike, or even walking, you can create or join a "party" to travel together.
 
-The core idea is to create a trusted community where students can easily find and vet fellow travelers, making their journeys to and from campus, or anywhere else, safer, more enjoyable, and more economical. By leveraging the power of community, Meet-Riders aims to reduce traffic congestion, promote eco-friendly travel options, and foster new friendships within the university ecosystem.
+The core idea is to create a trusted community where students can easily find and vet fellow travelers, making their journeys to and from campus, or anywhere else, safer, more enjoyable, and more economical. By leveraging the power of community, Meet-Riders aims to reduce traffic congestion, promote eco-friendly travel options, save money and foster new friendships within the university ecosystem.
 
 ## Features
 
@@ -19,41 +19,30 @@ Meet-Riders is packed with features designed to provide a seamless and secure tr
 
 *   **Flexible Travel Options:**
     *   **Not Just for Cars:** Unlike traditional carpooling apps, Meet-Riders supports a variety of transportation methods, making it inclusive for all students.
-    *   **One-Time & Recurring Trips:** Schedule a one-time trip for a specific event or set up recurring parties for your daily commute.
 
 ### User Profiles & Verification
 
 *   **Student-Verified Community:** To ensure a safe and trusted environment, users are required to sign up and verify their accounts using their official university email address (.edu).
-*   **Detailed Profiles:** Get to know your fellow riders through profiles that include their name, photo, major, and ratings from previous trips. Users can also add a short bio to share their interests.
-*   **Ratings and Reviews:** After each trip, both hosts and party members can rate and review each other, building a transparent and reliable community.
+*   **Detailed Profiles:** Get to know your fellow riders through profiles that include their name, major, and a short bio of them.
 
 ### Group & Communication
 
-*   **In-App Chat:** Communicate with your party members through a dedicated in-app group chat to coordinate meet-up points, and timing, and share any last-minute updates without sharing personal contact information.
+*   **(Planned) In-App Chat:** Communicate with your party members through a dedicated in-app group chat to coordinate meet-up points, and timing, and share any last-minute updates without sharing personal contact information.
 *   **Party Management:** The party host has control over accepting or declining requests to join, ensuring they feel comfortable with their travel companions.
-
-### Safety & Security
-
-*   **Real-Time Trip Tracking:** Once a party is on the move, its location can be tracked in real-time on the app's map, providing an extra layer of security and peace of mind for both the travelers and their friends or family.
-*   **Emergency Contact/Panic Button:** In case of an emergency, users can quickly contact emergency services or a pre-defined emergency contact through a panic button within the app.
-*   **Share Your Trip Status:** For added safety, users can share their live trip status with friends or family outside the app.
 
 ### Cost Sharing & Payments
 
-*   **Automated Cost Splitting:** For carpooling parties, the app automatically calculates and splits the cost of gas and tolls among the passengers, eliminating awkward conversations about money.
-*   **Secure In-App Payments:** Passengers can securely pay their share to the driver through the app's integrated payment system.
+*   **Automated Cost Splitting:** For carpooling parties, the app can automatically calculate and split the cost of gas and tolls among the passengers, eliminating awkward conversations about money.
 
 ## Getting Started
 The app is still in development, but you can set up the dev server to see how it works.
-The frontend is built with Next.js and the backend is built with Java Spring Framework.
-You must run both the frontend and backend servers to try out the app.
+The frontend is built with Next.js and the backend is built with Supabase.
+You must run frontend and have a supabase backend with simmilar schema to test it out.
 
 Make sure you have the following installed:
 - [Git](https://git-scm.com/) (optional, for cloning the repo)
 - [Node.js](https://nodejs.org/) (v18 or later)
-- [pnpm](https://pnpm.io/) (v8 or later)
-- [Java](https://www.java.com/en/download/) (v11 or later)
-- [Gradle](https://gradle.org/install/) (v7 or later)
+- [pnpm](https://pnpm.io/) (v8 or later) 
 - [Visual Studio Code](https://code.visualstudio.com/)
 
 ### Step 1: Clone or Download the Project
@@ -88,12 +77,4 @@ Make sure you have the following installed:
 3. Start the frontend server:
     ```bash
     pnpm dev
-    ```
-4. Open another terminal window, navigate to the `backend` directory:
-    ```bash
-    cd backend
-    ```
-5. Assuming you have Java and Gradle installed, run the backend server:
-    ```bash
-    ./gradlew bootRun
     ```
