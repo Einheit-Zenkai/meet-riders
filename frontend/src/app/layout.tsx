@@ -5,6 +5,7 @@ import { PartyProvider } from "@/context/PartyContext";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ModeToggle } from "@/components/ModeToggle";
 import { AuthProvider } from "@/context/Authcontext";
+import Sidebar from "@/components/sidebar";
 
 
 
@@ -31,7 +32,11 @@ export default function RootLayout({
               <div className="fixed top-4 right-4 z-50">
                 <ModeToggle />
               </div>
-              <main className="min-h-screen">{children}</main>
+              <div className="min-h-screen pl-16">
+                {/* Fixed left sidebar */}
+                <Sidebar />
+                <main>{children}</main>
+              </div>
             </ThemeProvider>
           </PartyProvider>
         </AuthProvider>
