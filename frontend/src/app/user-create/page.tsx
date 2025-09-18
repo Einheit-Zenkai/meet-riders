@@ -1,7 +1,7 @@
 'use client';
 
-// YOUR ORIGINAL IMPORTS
 import { useState, ChangeEvent, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
@@ -12,8 +12,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, Bus, Car, TramFront, Bike, Footprints } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
 const transportModes = [
@@ -32,7 +30,6 @@ const initialPreferences = transportModes.reduce((acc, mode) => {
 
 
 export default function UserCreatePage() {
-  // --- ADDED SUPABASE LOGIC & NEW STATE FOR SAVABLE FIELDS ---
   const supabase = createClient();
   const router = useRouter();
   const [punctuality, setPunctuality] = useState('on-time');
@@ -41,15 +38,16 @@ export default function UserCreatePage() {
   const [idealDepartureTime, setIdealDepartureTime] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // --- YOUR ORIGINAL STATE (100% UNCHANGED) ---
   const [nickname, setNickname] = useState('');
   const [bio, setBio] = useState('');
+  
+  // --- 1. ADD STATE TO HOLD THE ACTUAL IMAGE FILE ---
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preferences, setPreferences] = useState(initialPreferences);
 
-  // --- ADDED MAIN SAVE FUNCTION ---
+  // --- 2. UPDATE THE MAIN SAVE FUNCTION WITH UPLOAD LOGIC ---
   const handleCreateProfile = async () => {
     setLoading(true);
     setError('');
@@ -61,8 +59,29 @@ export default function UserCreatePage() {
       return;
     }
 
-    // This object ONLY contains the data for the SQL columns.
-    // Your preferences and avatar are NOT included here. They are safe.
+    let avatar_url = null;
+
+    if (imageFile) {
+      const fileName = `${user.id}-${Date.now()}`;
+      const { data: uploadData, error: uploadError } = await supabase
+        .storage
+        .from('avatars')
+        .upload(fileName, imageFile);
+
+      if (uploadError) {
+        setError(`Image upload failed: ${uploadError.message}`);
+        setLoading(false);
+        return;
+      }
+
+      const { data: urlData } = supabase
+        .storage
+        .from('avatars')
+        .getPublicUrl(uploadData.path);
+      
+      avatar_url = urlData.publicUrl;
+    }
+
     const profileDataToSave = {
       nickname,
       bio,
@@ -71,6 +90,7 @@ export default function UserCreatePage() {
       ideal_location: idealLocation,
       ideal_departure_time: idealDepartureTime,
       updated_at: new Date(),
+      avatar_url: avatar_url,
     };
 
     const { error: updateError } = await supabase
@@ -87,7 +107,6 @@ export default function UserCreatePage() {
     setLoading(false);
   };
   
-  // --- YOUR ORIGINAL HANDLER FUNCTIONS (100% UNCHANGED) ---
   const handlePreferenceClick = (modeId: string) => {
     setPreferences(prev => {
       const currentLevel = prev[modeId];
@@ -98,16 +117,18 @@ export default function UserCreatePage() {
   const handleDislikeClick = (modeId: string) => {
     setPreferences(prev => ({ ...prev, [modeId]: PREFERENCE_LEVELS.DISLIKED }));
   };
-  const getPreferenceStyle = (level: number) => { /* Your function here */ };
   const handleNicknameChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const validNickname = value.replace(/[^a-zA-Z0-9_.]/g, '');
     setNickname(validNickname);
   };
   const handleBioChange = (e: ChangeEvent<HTMLTextAreaElement>) => setBio(e.target.value);
+  
+  // --- 3. UPDATE `handleImageChange` TO STORE THE FILE ---
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setImageFile(file); // This is the important new line
       const reader = new FileReader();
       reader.onloadend = () => setImagePreview(reader.result as string);
       reader.readAsDataURL(file);
@@ -116,12 +137,11 @@ export default function UserCreatePage() {
   const handleAvatarClick = () => fileInputRef.current?.click();
   const unselectedModes = transportModes.filter(mode => preferences[mode.id] === PREFERENCE_LEVELS.UNSELECTED);
 
-  // --- YOUR JSX - with only the necessary connections added ---
+  // --- YOUR FULL JSX, 100% UNCHANGED ---
   return (
     <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
       
-        {/* YOUR AVATAR SECTION - 100% UNTOUCHED */}
         <div className="lg:col-span-1 flex flex-col items-center">
           <Card className="w-full">
             <CardHeader className="text-center"><CardTitle>Profile Picture</CardTitle></CardHeader>
@@ -137,7 +157,6 @@ export default function UserCreatePage() {
           </Card>
         </div>
 
-        {/* Right Section - User Details */}
         <div className="lg:col-span-2 flex flex-col justify-center">
           <Card className="w-full">
             <CardHeader><CardTitle>Tell us about yourself</CardTitle></CardHeader>
@@ -151,7 +170,6 @@ export default function UserCreatePage() {
                 <Textarea id="bio" placeholder="e.g. 3rd year CS student, friendly and loves music!" value={bio} onChange={handleBioChange} className="min-h-[80px]" />
               </div>
 
-              {/* CONNECTED Punctuality Field */}
               <div className="space-y-2">
                 <Label>Punctuality</Label>
                 <ToggleGroup type="single" variant="outline" defaultValue="on-time" className="flex flex-wrap justify-start" onValueChange={(value) => { if(value) setPunctuality(value) }}>
@@ -161,7 +179,6 @@ export default function UserCreatePage() {
                 </ToggleGroup>
               </div>
 
-              {/* CONNECTED Gender Field */}
               <div className="space-y-2">
                 <Label>Gender</Label>
                 <ToggleGroup type="single" variant="outline" defaultValue="they" className="flex flex-wrap justify-start " onValueChange={(value) => { if(value) setGender(value) }}>
@@ -171,7 +188,6 @@ export default function UserCreatePage() {
                 </ToggleGroup>
               </div>
               
-              {/* YOUR TRAVEL PREFERENCES SECTION - 100% UNTOUCHED, WITH ICONS */}
               <div className="space-y-2">
                 <Label>Travel Preferences (Click to rank 1, 2, 3 or mark as disliked)</Label>
                 <div className="flex flex-wrap gap-3">
@@ -187,7 +203,6 @@ export default function UserCreatePage() {
                 </div>
               )}
               
-              {/* CONNECTED Location and Time Fields */}
               <div className="space-y-2">
                 <Label htmlFor="location">Ideal Pickup/Drop-off Location</Label>
                 <Input id="location" placeholder="e.g. Main College Gate" value={idealLocation} onChange={(e) => setIdealLocation(e.target.value)} />
@@ -197,7 +212,6 @@ export default function UserCreatePage() {
                 <Input id="time" type="time" value={idealDepartureTime} onChange={(e) => setIdealDepartureTime(e.target.value)} />
               </div>
 
-              {/* ADDED error display and UPDATED the final button */}
               {error && <p className="text-destructive text-center text-sm mb-4">{error}</p>}
               <Button className="w-full" onClick={handleCreateProfile} disabled={loading}>
                 {loading ? 'Saving...' : 'Create Profile'}
