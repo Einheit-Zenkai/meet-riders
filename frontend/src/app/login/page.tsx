@@ -80,6 +80,11 @@ export default function LoginPage() {
               </label>
               <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
+            <div className="text-right mb-4">
+              <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+                Forgot Password?
+              </Link>
+            </div>
             <Button className="w-full hover:cursor-pointer" type="submit" disabled={loading}>
               {loading ? "Logging in..." : "Login"}
             </Button>
