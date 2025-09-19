@@ -215,7 +215,7 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-        {/* Left: Avatar */}
+        {/* Top-left: Avatar */}
         <div className="lg:col-span-1 flex flex-col items-center">
           <Card className="w-full">
             <CardHeader className="text-center"><CardTitle>Profile Picture</CardTitle></CardHeader>
@@ -245,8 +245,30 @@ export default function SettingsPage() {
           </Card>
         </div>
 
-        {/* Right: Details */}
-        <div className="lg:col-span-2 flex flex-col justify-center">
+        {/* Top-right: Change Password */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Change Password</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+              </div>
+              {passwordErr && <p className="text-sm text-destructive">{passwordErr}</p>}
+              {passwordMsg && <p className="text-sm text-green-600">{passwordMsg}</p>}
+              <Button onClick={handlePasswordChange}>Update Password</Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Full-width: Settings form */}
+        <div className="lg:col-span-3 flex flex-col justify-center">
           <Card className="w-full">
             <CardHeader><CardTitle>Settings</CardTitle></CardHeader>
             <CardContent className="space-y-6">
@@ -335,28 +357,7 @@ export default function SettingsPage() {
           </Card>
         </div>
       </div>
-
-      {/* Password change card */}
-      <div className="max-w-3xl mx-auto mt-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Change Password</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="newPassword">New Password</Label>
-              <Input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-            </div>
-            {passwordErr && <p className="text-sm text-destructive">{passwordErr}</p>}
-            {passwordMsg && <p className="text-sm text-green-600">{passwordMsg}</p>}
-            <Button onClick={handlePasswordChange}>Update Password</Button>
-          </CardContent>
-        </Card>
-      </div>
+      
     </div>
   );
 }
