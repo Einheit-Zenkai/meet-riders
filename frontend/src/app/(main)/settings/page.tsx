@@ -13,6 +13,7 @@ import { User, Bus, Car, TramFront, Bike, Footprints } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/utils/supabase/client';
+import { useAuth } from '@/context/Authcontext';
 
 const transportModes = [
   { id: 'walking', label: 'Walking', icon: <Footprints className="h-4 w-4 mr-2"/> },
@@ -29,6 +30,7 @@ type Preferences = Record<string, number>;
 export default function SettingsPage() {
   const supabase = createClient();
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth(); // Get user and loading state from auth context
 
   const [loading, setLoading] = useState(true);
   const [saveLoading, setSaveLoading] = useState(false);
@@ -61,13 +63,10 @@ export default function SettingsPage() {
 
   useEffect(() => {
     (async () => {
+      if (!user) return; // Wait for auth context to provide user
+      
       setLoading(true);
       setError('');
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.replace('/login');
-        return;
-      }
 
       // Load profile row
       const { data: profile, error } = await supabase
@@ -91,8 +90,7 @@ export default function SettingsPage() {
       }
       setLoading(false);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user, supabase]); // Add user as dependency
 
   const handlePreferenceClick = (modeId: string) => {
     setPreferences(prev => {
@@ -127,16 +125,11 @@ export default function SettingsPage() {
   const unselectedModes = transportModes.filter(mode => preferences[mode.id] === PREFERENCE_LEVELS.UNSELECTED);
 
   const handleSave = async () => {
+    if (!user) return; // Safety check
+    
     setSaveLoading(true);
     setError('');
     setMessage('');
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setError('Not logged in');
-      setSaveLoading(false);
-      return;
-    }
 
     let avatar_url: string | null = null;
     // If a new image was selected, upload it and get public URL
@@ -181,6 +174,10 @@ export default function SettingsPage() {
       setError(updateError.message);
     } else {
       setMessage('Settings saved');
+      // Redirect to dashboard after successful save
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1000); // Small delay to show the success message
     }
     setSaveLoading(false);
   };
@@ -203,7 +200,7 @@ export default function SettingsPage() {
     setConfirmPassword('');
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <p className="text-muted-foreground">Loading settings…</p>

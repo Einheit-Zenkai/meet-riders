@@ -14,7 +14,11 @@ export const metadata: Metadata = {
   description: "Meet and ride together",
 };
 
-export default function RootLayout({children}: any): any {
+export default function RootLayout({
+    children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className}`}>
@@ -24,7 +28,7 @@ export default function RootLayout({children}: any): any {
               <div className="fixed top-4 right-4 z-50">
                 <ModeToggle />
               </div>
-              <div className="min-h-screen pl-16">
+              <div className="min-h-screen">
                 <main>{children}</main>
               <Toaster />
               </div>

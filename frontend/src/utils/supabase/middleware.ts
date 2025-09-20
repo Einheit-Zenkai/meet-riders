@@ -13,6 +13,12 @@ export const createClient = (request: NextRequest) => {
     },
   });
 
+  // Add CORS headers
+  supabaseResponse.headers.set("Access-Control-Allow-Origin", "*");
+  supabaseResponse.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  supabaseResponse.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+
   const supabase = createServerClient(
     supabaseUrl!,
     supabaseKey!,
@@ -26,6 +32,11 @@ export const createClient = (request: NextRequest) => {
           supabaseResponse = NextResponse.next({
             request,
           })
+          // Re-apply CORS headers to the new response object
+          supabaseResponse.headers.set("Access-Control-Allow-Origin", "*");
+          supabaseResponse.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+          supabaseResponse.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
@@ -34,5 +45,8 @@ export const createClient = (request: NextRequest) => {
     },
   );
 
+  // This function should likely return both the client and the response.
+  // Returning only the response as in the original code.
   return supabaseResponse
 };
+

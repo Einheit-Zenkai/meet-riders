@@ -16,7 +16,7 @@ export default function HomePage() {
                 </p>
                 <div className="flex flex-col justify-center gap-4 mt-10 sm:flex-row">
                     <Button size="lg" className="font-bold" asChild>
-                        <Link href="/signup">Get Started</Link>
+                        <Link href="/dashboard">Get Started</Link>
                     </Button>
                     <Button size="lg" variant="outline" className="font-bold" asChild>
                         <Link href="/login">Login</Link>

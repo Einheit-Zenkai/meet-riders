@@ -1,55 +1,72 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-// --- THIS IS THE ONLY CHANGE ---
-// Use the correct client from the utils folder, just like your other pages.
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { createClient } from "@/utils/supabase/client";
 
-export default function LoginPage() {
-  // --- Initialize the client correctly ---
+const loginSchema = z.object({
+  email: z.email("Please enter a valid email address."),
+  password: z.string().min(1, "Password is required."),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+
+// Separate component that uses useSearchParams
+function LoginForm() {
   const supabase = createClient();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Your handleLogin function is already perfect.
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const form = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+  const onSubmit = async (data: LoginFormData) => {
+    setIsSubmitting(true);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
     });
 
-    setLoading(false);
+    setIsSubmitting(false);
 
     if (error) {
-      alert(error.message);
+      toast.error("Login Failed", {
+        description: error.message,
+      });
     } else {
-      // This redirect is perfect.
-      router.replace("/dashboard");
+      toast.success("Login Successful!");
+      router.replace(redirectTo);
+      router.refresh();
     }
   };
 
-  // Your handleMicrosoftLogin function is perfect.
   const handleMicrosoftLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "azure",
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`,
-      },
-    });
-
-    if (error) alert(error.message);
+    alert("Work in Progress: Microsoft OAuth Login coming soon!");
   };
 
-  // --- YOUR ENTIRE JSX IS 100% UNCHANGED ---
   return (
     <div className="flex h-screen relative">
       <div className="absolute top-4 left-4">
@@ -63,31 +80,69 @@ export default function LoginPage() {
           <h2 className="text-3xl font-bold mb-6 text-center text-foreground">
             Login
           </h2>
-          <form onSubmit={handleLogin}>
-            <div className="mb-4">
-              <label className="block text-foreground text-sm font-bold mb-2" htmlFor="email">
-                Email Address
-              </label>
-              <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div className="mb-6">
-              <label className="block text-foreground text-sm font-bold mb-2" htmlFor="password">
-                Password
-              </label>
-              <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
-            </div>
-            <div className="text-right mb-4">
-              <Link href="/forgot-password" className="text-sm text-primary hover:underline">
-                Forgot Password?
-              </Link>
-            </div>
-            <Button className="w-full hover:cursor-pointer" type="submit" disabled={loading}>
-              {loading ? "Logging in..." : "Login"}
-            </Button>
-          </form>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Address</FormLabel>
+                    <FormControl>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="you@example.com"
+                        {...field}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex justify-between items-center">
+                      <FormLabel>Password</FormLabel>
+                      <Link
+                        href="/forgot-password"
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Forgot Password?
+                      </Link>
+                    </div>
+                    <FormControl>
+                      <Input
+                        id="password"
+                        type="password"
+                        placeholder="••••••••"
+                        {...field}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button
+                className="w-full"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Logging in..." : "Login"}
+              </Button>
+            </form>
+          </Form>
+
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border"></div>
+              <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="bg-card px-2 text-muted-foreground">
@@ -95,17 +150,62 @@ export default function LoginPage() {
               </span>
             </div>
           </div>
-          <Button variant="outline" className="w-full mb-4" onClick={handleMicrosoftLogin}>
+
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleMicrosoftLogin}
+            disabled={isSubmitting}
+          >
+            <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+              <path
+                fill="currentColor"
+                d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z"
+              />
+            </svg>
             Sign in with Microsoft
           </Button>
-          <p className="text-center text-sm text-muted-foreground">
+
+          <p className="text-center text-sm text-muted-foreground mt-6">
             Don&apos;t have an account?{" "}
-            <Link href="/signup" className="font-semibold text-primary hover:text-primary/80">
+            <Link
+              href="/signup"
+              className="font-semibold text-primary hover:text-primary/80"
+            >
               Sign up
             </Link>
           </p>
         </div>
       </div>
     </div>
+  );
+}
+
+// Loading fallback component
+function LoginLoading() {
+  return (
+    <div className="flex h-screen relative">
+      <div className="absolute top-4 left-4">
+        <Button asChild variant="outline">
+          <Link href="/">Go Back</Link>
+        </Button>
+      </div>
+      <div className="flex items-center justify-center w-full">
+        <div className="w-full max-w-md bg-card p-8 rounded-xl shadow-lg border">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main page component with Suspense wrapper
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginLoading />}>
+      <LoginForm />
+    </Suspense>
   );
 }
