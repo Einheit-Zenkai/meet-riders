@@ -3,7 +3,6 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { PartyProvider } from "@/context/PartyContext";
 import { ThemeProvider } from "@/components/theme-provider";
-import { ModeToggle } from "@/components/ModeToggle";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/Authcontext";
 
@@ -25,9 +24,6 @@ export default function RootLayout({
         <AuthProvider> {/* 👈 wrap entire app with AuthProvider */}
           <PartyProvider>
             <ThemeProvider>
-              <div className="fixed top-4 right-4 z-50">
-                <ModeToggle />
-              </div>
               <div className="min-h-screen">
                 <main>{children}</main>
               <Toaster />

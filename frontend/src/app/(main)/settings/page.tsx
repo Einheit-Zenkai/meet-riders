@@ -389,6 +389,20 @@ export default function SettingsPage() {
                 {saveLoading ? 'Saving…' : 'Save Settings'}
               </Button>
 
+              {/* Sign out button */}
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    router.push('/login');
+                  }}
+                >
+                  Sign out
+                </Button>
+              </div>
+
               {/* Delete Account Section */}
               <div className="border-t pt-6 mt-6">
                 <div className="space-y-4">

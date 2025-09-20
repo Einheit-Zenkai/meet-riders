@@ -1,7 +1,7 @@
 // src/components/Sidebar.tsx
 
 import Link from "next/link";
-import { User, Settings, Home, Users, Trophy, Plus } from "lucide-react";
+import { User, Settings, Home, Users, Trophy, Plus, Map as MapIcon } from "lucide-react";
 
 export default function Sidebar() {
   const menuItems = [
@@ -9,34 +9,36 @@ export default function Sidebar() {
     { href: "/profile", icon: User, label: "Profile" },
     { href: "/hostparty", icon: Plus, label: "Host Party" },
     { href: "/leaderboard", icon: Trophy, label: "Leaderboard" },
+    { href: "/map", icon: MapIcon, label: "Map" },
   ];
 
   return (
-    <div className="fixed left-0 top-0 h-full w-16 bg-sidebar text-foreground flex flex-col items-center py-4 space-y-6 shadow-lg">
-      {menuItems.map(({ href, icon: Icon, label }) => (
+    <div className="fixed left-0 top-0 h-full bg-sidebar text-foreground flex flex-col py-4 shadow-lg group group/sidebar transition-all duration-200 w-16 hover:w-44 z-50 pointer-events-auto">
+      <nav className="flex-1 flex flex-col gap-2 px-2">
+        {menuItems.map(({ href, icon: Icon, label }) => (
+          <Link
+            key={href}
+            href={href}
+            className="flex items-center gap-3 p-3 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+            title={label}
+          >
+            <Icon size={22} className="shrink-0" />
+            <span className="ml-1 text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 group-hover/sidebar:opacity-100 transition-opacity duration-200">
+              {label}
+            </span>
+          </Link>
+        ))}
+      </nav>
+      <div className="mt-auto px-2 pb-4">
         <Link
-          key={href}
-          href={href}
-          className="group relative flex items-center justify-center hover:text-primary"
+          href="/settings"
+          className="flex items-center gap-3 p-3 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+          title="Settings"
         >
-          <Icon size={24} />
-          {/* Circular Tooltip */}
-          <span className="absolute left-10 opacity-0 group-hover:opacity-100 bg-gray-800 text-white text-xs font-medium rounded-full px-3 py-2 transition-opacity duration-200">
-            {label}
-          </span>
+          <Settings size={22} className="shrink-0" />
+          <span className="ml-1 text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 group-hover/sidebar:opacity-100 transition-opacity duration-200">Settings</span>
         </Link>
-      ))}
-
-      {/* Settings at bottom */}
-      <Link
-        href="/settings"
-        className="group relative flex items-center justify-center hover:text-primary mt-auto mb-4"
-      >
-        <Settings size={24} />
-        <span className="absolute left-10 opacity-0 group-hover:opacity-100 bg-gray-800 text-white text-xs font-medium rounded-full px-3 py-2 transition-opacity duration-200">
-          Settings
-        </span>
-      </Link>
+      </div>
     </div>
   );
 }

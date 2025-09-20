@@ -9,11 +9,10 @@ interface MainLayoutProps {
 export default function MainLayout({ children }: MainLayoutProps) {
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Sidebar */}
+      {/* Sidebar overlays content on the left */}
       <Sidebar />
-      
-      {/* Main Content */}
-      <main className="flex-1 ml-16 relative">
+      {/* Main Content; add left padding equal to collapsed width to avoid content underlap */}
+      <main className="flex-1 pl-16 relative">
         <div className="h-full">
           {children}
         </div>
