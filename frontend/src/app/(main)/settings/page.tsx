@@ -42,7 +42,6 @@ export default function SettingsPage() {
   const [nickname, setNickname] = useState('');
   const [bio, setBio] = useState('');
   const [punctuality, setPunctuality] = useState('on-time');
-  const [gender, setGender] = useState('they');
   const [idealLocation, setIdealLocation] = useState('');
   const [idealDepartureTime, setIdealDepartureTime] = useState('');
 
@@ -83,7 +82,7 @@ export default function SettingsPage() {
         setNickname(profile.nickname || '');
         setBio(profile.bio || '');
         setPunctuality(profile.punctuality || 'on-time');
-        setGender(profile.gender || 'they');
+  // gender removed
         setIdealLocation(profile.ideal_location || '');
         setIdealDepartureTime(profile.ideal_departure_time || '');
         if (profile.avatar_url) setImagePreview(profile.avatar_url);
@@ -159,7 +158,6 @@ export default function SettingsPage() {
       nickname,
       bio,
       punctuality,
-      gender,
       ideal_location: idealLocation,
       ideal_departure_time: idealDepartureTime,
       updated_at: new Date(),
@@ -333,14 +331,7 @@ export default function SettingsPage() {
                 </ToggleGroup>
               </div>
 
-              <div className="space-y-2">
-                <Label>Gender</Label>
-                <ToggleGroup type="single" variant="outline" value={gender} className="flex flex-wrap justify-start " onValueChange={(value) => { if(value) setGender(value) }}>
-                  <ToggleGroupItem value="male" aria-label="Select male">♂ Male</ToggleGroupItem>
-                  <ToggleGroupItem value="female" aria-label="Select female">♀ Female</ToggleGroupItem>
-                  <ToggleGroupItem value="they" aria-label="Select they/them">👤 They/Them</ToggleGroupItem>
-                </ToggleGroup>
-              </div>
+              {/* Gender selection removed for safety */}
               
               <div className="space-y-2">
                 <Label>Travel Preferences (Click to rank 1, 2, 3 or mark as disliked)</Label>

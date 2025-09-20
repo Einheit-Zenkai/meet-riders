@@ -33,7 +33,6 @@ export default function UserCreatePage() {
   const supabase = createClient();
   const router = useRouter();
   const [punctuality, setPunctuality] = useState('on-time');
-  const [gender, setGender] = useState('they');
   const [idealLocation, setIdealLocation] = useState('');
   const [idealDepartureTime, setIdealDepartureTime] = useState('');
   const [loading, setLoading] = useState(false);
@@ -86,7 +85,6 @@ export default function UserCreatePage() {
       nickname,
       bio,
       punctuality,
-      gender,
       ideal_location: idealLocation,
       ideal_departure_time: idealDepartureTime,
       updated_at: new Date(),
@@ -179,14 +177,7 @@ export default function UserCreatePage() {
                 </ToggleGroup>
               </div>
 
-              <div className="space-y-2">
-                <Label>Gender</Label>
-                <ToggleGroup type="single" variant="outline" defaultValue="they" className="flex flex-wrap justify-start " onValueChange={(value) => { if(value) setGender(value) }}>
-                  <ToggleGroupItem value="male" aria-label="Select male">♂ Male</ToggleGroupItem>
-                  <ToggleGroupItem value="female" aria-label="Select female">♀ Female</ToggleGroupItem>
-                  <ToggleGroupItem value="they" aria-label="Select they/them">👤 They/Them</ToggleGroupItem>
-                </ToggleGroup>
-              </div>
+              {/* Gender selection removed for safety */}
               
               <div className="space-y-2">
                 <Label>Travel Preferences (Click to rank 1, 2, 3 or mark as disliked)</Label>

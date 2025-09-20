@@ -27,7 +27,7 @@ export default function HostPartyPage() {
   const [meetupPoint, setMeetupPoint] = useState("");
   const [dropOff, setDropOff] = useState("");
   const [isFriendsOnly, setIsFriendsOnly] = useState(false);
-  const [isGenderOnly, setIsGenderOnly] = useState(false);
+  // Removed gender-only option for safety
   const [selectedRides, setSelectedRides] = useState<string[]>([]);
   const [expiresIn, setExpiresIn] = useState("10 min");
 
@@ -92,7 +92,7 @@ export default function HostPartyPage() {
         meetup_point: meetupPoint,
         drop_off: dropOff,
         friends_only: isFriendsOnly,
-        gender_only: isGenderOnly,
+  gender_only: false, // enforced disabled by design
         ride_options: selectedRides,
         expires_in: expiresIn,
         is_active: true,
@@ -191,15 +191,6 @@ export default function HostPartyPage() {
                   onChange={(e) => setIsFriendsOnly(e.target.checked)}
                 />
                 <span className="text-foreground">Friends only (Private Party)</span>
-              </label>
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="h-5 w-5 rounded text-primary focus:ring-ring"
-                  checked={isGenderOnly}
-                  onChange={(e) => setIsGenderOnly(e.target.checked)}
-                />
-                <span className="text-foreground">Your gender only</span>
               </label>
             </div>
           </div>
