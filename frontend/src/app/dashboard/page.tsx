@@ -1,61 +1,63 @@
-// src/app/dashboard/page.tsx
-'use client';
+"use client";
 
-// --- ADDED IMPORTS FOR THE REDIRECT LOGIC ---
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
-
-// --- YOUR EXISTING IMPORTS (UNTOUCHED) ---
-import Link from 'next/link';
-import { useParties } from '@/context/PartyContext';
-import PartyCard from '@/components/PartyCard';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useParties } from "@/context/PartyContext";
+import PartyCard from "@/components/PartyCard";
 import Sidebar from "@/components/sidebar";
 import HostButton from "@/components/ui/hostbutton";
+import { useAuth } from "@/context/Authcontext";
+// --- 1. ADDED IMPORT for the Supabase client ---
+import { createClient } from "@/utils/supabase/client";
 
 export default function HomePage() {
-  // --- YOUR EXISTING HOOK (UNTOUCHED) ---
   const { parties } = useParties();
-
-  // --- ADDED LOGIC FOR PROFILE CHECK & REDIRECT ---
+  const { user, loading } = useAuth(); // Your global user state is perfect.
   const router = useRouter();
-  const supabase = createClient();
-  // We add a loading state to prevent the dashboard from flashing before the check is done
-  const [isLoading, setIsLoading] = useState(true); 
+  
+  // --- 2. ADDED STATE to hold the user's display name ---
+  const [welcomeName, setWelcomeName] = useState<string | null>(null);
+  const [isCheckingProfile, setIsCheckingProfile] = useState(true); // Renamed for clarity
 
+  // --- 3. UPDATED useEffect to check the profile and set the name ---
   useEffect(() => {
-    // This function will run as soon as the component loads
-    const checkProfileAndRedirect = async () => {
-      // Get the current user from Supabase
-      const { data: { user } } = await supabase.auth.getUser();
-
+    // This outer check waits for your useAuth hook to finish loading the user.
+    if (!loading) {
       if (user) {
-        // If a user is logged in, check their profile in our 'profiles' table
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('nickname') // We only need one field to check if it's been filled out
-          .eq('id', user.id)
-          .single();
+        // If a user exists, we then check their profile in our database.
+        const checkProfile = async () => {
+          const supabase = createClient();
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('nickname, full_name') // Get the names we can display
+            .eq('id', user.id)
+            .single();
+
+          // **THE CORE LOGIC:**
+          // Check if the user has filled out their profile yet.
+          if (profile && (profile.nickname || profile.full_name)) {
+            // If they have a name, they are an existing user.
+            const nameToDisplay = profile.nickname || profile.full_name || 'Rider';
+            setWelcomeName(nameToDisplay);
+            setIsCheckingProfile(false); // Stop loading and show the dashboard.
+          } else {
+            // If their profile has no name, they are a new user. Redirect them.
+            router.push('/user-create');
+          }
+        };
         
-        // **THE CORE LOGIC:** If a profile exists but the nickname is null (empty)...
-        if (profile && profile.nickname === null) {
-          // ...they are a new user. Force them to the create profile page.
-          router.push('/user-create');
-        } else {
-          // Otherwise, they are a returning user. Show them the dashboard.
-          setIsLoading(false);
-        }
+        checkProfile();
+
       } else {
-        // If no one is logged in at all, send them to the login page.
-        router.push('/login');
+        // If your useAuth hook confirms there is no user, redirect to login.
+        router.push("/login");
       }
-    };
+    }
+  }, [user, loading, router]);
 
-    checkProfileAndRedirect();
-  }, [router, supabase]); // This tells the effect to run again if the router or supabase client changes (good practice)
-
-  // While the check is running, we show a simple loading message.
-  if (isLoading) {
+  // The loading screen now waits for both the auth check and our profile check.
+  if (loading || isCheckingProfile) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-xl">Loading your dashboard...</p>
@@ -63,14 +65,14 @@ export default function HomePage() {
     );
   }
 
-  // --- YOUR EXISTING DASHBOARD UI (100% UNTOUCHED) ---
-  // This code will only be shown AFTER the check is complete and the user is confirmed to be an existing user.
+  // --- 4. UPDATED JSX to display the welcome message ---
   return (
     <div className="ml-16 p-6">
       <Sidebar />
       <HostButton />
+      {/* This h1 tag is now dynamic! */}
       <h1 className="text-4xl font-bold text-foreground mb-8">
-        Meet Riders
+        {welcomeName ? `Welcome back, ${welcomeName}` : 'Meet Riders'}
       </h1>
 
       <div className="bg-card p-6 rounded-lg shadow-md">
@@ -90,7 +92,7 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {parties.map(party => (
+            {parties.map((party) => (
               <PartyCard key={party.id} party={party} />
             ))}
           </div>
