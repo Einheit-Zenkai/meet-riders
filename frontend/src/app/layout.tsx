@@ -4,6 +4,8 @@ import "./globals.css";
 import { PartyProvider } from "@/context/PartyContext";
 import { ThemeProvider } from "@/components/theme-provider"
 import { ModeToggle } from "@/components/ModeToggle";
+import { Toaster } from "@/components/ui/sonner";
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -28,6 +30,7 @@ export default function RootLayout({
             <main className="min-h-screen">
               {children}
             </main>
+            <Toaster />
           </ThemeProvider>
         </PartyProvider>
       </body>
