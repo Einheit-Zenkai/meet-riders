@@ -1,13 +1,13 @@
 // src/components/Sidebar.tsx
 
 import Link from "next/link";
-import { User, Settings, Home, Users, Trophy } from "lucide-react";
+import { User, Settings, Home, Users, Trophy, Plus } from "lucide-react";
 
 export default function Sidebar() {
   const menuItems = [
-    { href: "/", icon: Home, label: "Home" },
+    { href: "/dashboard", icon: Home, label: "Home" },
     { href: "/profile", icon: User, label: "Profile" },
-    { href: "/my-parties", icon: Users, label: "Parties" },
+    { href: "/hostparty", icon: Plus, label: "Host Party" },
     { href: "/leaderboard", icon: Trophy, label: "Leaderboard" },
   ];
 

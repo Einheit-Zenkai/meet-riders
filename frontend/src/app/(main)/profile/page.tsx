@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { createClient } from "@/utils/supabase/client";
+import { useAuth } from "@/context/Authcontext";
 
 // This defines the shape of the data we'll be working with from our 'profiles' table
 type ProfileData = {
@@ -17,33 +18,27 @@ type ProfileData = {
   bio: string;
   avatar_url: string;
   email: string;
-  // We will add rating and transport preferences later when the data exists
+  // We will add transport preferences later when the data exists
 };
 
 export default function ProfilePage() {
   const supabase = createClient();
   const router = useRouter();
+  const { user, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
   
   // A single state to hold all the profile data for easier management
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
 
-  // Your original state for features we haven't implemented yet (rating)
-  const [avgRating, setAvgRating] = useState<number>(5);
-  
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   // --- 1. RE-WIRED: Fetch data from the 'profiles' table ---
   useEffect(() => {
     const fetchProfile = async () => {
+      if (!user) return; // User guaranteed by middleware
+      
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
 
       const { data, error } = await supabase
         .from("profiles")
@@ -66,10 +61,10 @@ export default function ProfilePage() {
     };
 
     fetchProfile();
-  }, [supabase, router]);
+  }, [user, supabase]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     router.replace("/");
   };
 
@@ -78,16 +73,13 @@ export default function ProfilePage() {
     e.preventDefault();
     setError(null);
     setMessage(null);
-    if (!profileData) return;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!profileData || !user) return;
 
     const dataToUpdate = {
       nickname: profileData.nickname,
       bio: profileData.bio,
       updated_at: new Date(),
-      // Note: We are not saving rating or transport mode yet
+      // Note: We are not saving transport mode yet
     };
 
     const { error: updateError } = await supabase
@@ -109,20 +101,6 @@ export default function ProfilePage() {
     }
   };
 
-  // --- YOUR ORIGINAL STARS COMPONENT (UNTOUCHED) ---
-  const Stars = useMemo(() => {
-    const full = Math.floor(avgRating);
-    const half = avgRating - full >= 0.5;
-    const empty = 5 - full - (half ? 1 : 0);
-    return (
-      <div className="flex items-center gap-1 text-yellow-500 select-none">
-        {Array.from({ length: full }).map((_, i) => (<span key={`f-${i}`}>★</span>))}
-        {half && <span>☆</span>}
-        {Array.from({ length: empty }).map((_, i) => (<span key={`e-${i}`} className="text-muted-foreground">☆</span>))}
-      </div>
-    );
-  }, [avgRating]);
-
   if (loading) {
     return <div className="flex items-center justify-center min-h-[60vh]"><p className="text-muted-foreground">Loading profile…</p></div>;
   }
@@ -135,17 +113,17 @@ export default function ProfilePage() {
   return (
     <div className="container mx-auto p-6 max-w-5xl">
       <div className="mb-4 flex items-center justify-between">
-        <Button asChild variant="outline"><Link href="/">Home</Link></Button>
+        <Button asChild variant="outline"><Link href="/dashboard">← Back</Link></Button>
         <Button variant="secondary" onClick={handleSignOut}>Sign out</Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <Card className="md:col-span-2">
-          <CardContent className="p-6">
+          <CardContent className="py-0">
             <div className="flex items-start gap-4">
               <Avatar className="size-24">
                 <AvatarImage src={profileData.avatar_url} alt={profileData.nickname} />
-                <AvatarFallback className="text-2xl">{(profileData.nickname || "N").slice(0, 1).toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="text-2xl">{(profileData.nickname || "No Nickname").slice(0, 1).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -154,14 +132,16 @@ export default function ProfilePage() {
                     onChange={(e) => handleInputChange('nickname', e.target.value)}
                     className="text-2xl font-bold h-auto p-0 border-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
                   />
-                  <span className="text-muted-foreground">@{profileData.email}</span>
+                  <span className="text-muted-foreground">{profileData.email}</span>
                 </div>
                 <div className="mt-3">
                   <label className="block text-sm text-muted-foreground mb-1">Bio</label>
                   <Textarea
-                    value={profileData.bio}
-                    onChange={(e) => handleInputChange('bio', e.target.value)}
-                    placeholder="Tell people a bit about you…"
+                  value={profileData.bio}
+
+                  onChange={(e) => handleInputChange('bio', e.target.value)}
+                  placeholder="Tell people a bit about you…"
+                  className="resize-none"
                   />
                 </div>
                 <div className="mt-4 flex flex-wrap items-center gap-4">
@@ -173,13 +153,6 @@ export default function ProfilePage() {
                       <ToggleGroupItem value="public">Public</ToggleGroupItem>
                       <ToggleGroupItem value="walk">Walk</ToggleGroupItem>
                     </ToggleGroup>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Avg rating</label>
-                    <div className="flex items-center gap-2">
-                      {Stars}
-                      <Input type="number" step="0.5" min={0} max={5} value={avgRating} onChange={(e) => setAvgRating(Number(e.target.value))} className="w-20" />
-                    </div>
                   </div>
                 </div>
                 <div className="mt-4 flex gap-3">

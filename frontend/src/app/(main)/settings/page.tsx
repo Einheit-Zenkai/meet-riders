@@ -9,10 +9,12 @@ import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, Bus, Car, TramFront, Bike, Footprints } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { User, Bus, Car, TramFront, Bike, Footprints, Trash2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/utils/supabase/client';
+import { useAuth } from '@/context/Authcontext';
 
 const transportModes = [
   { id: 'walking', label: 'Walking', icon: <Footprints className="h-4 w-4 mr-2"/> },
@@ -29,9 +31,11 @@ type Preferences = Record<string, number>;
 export default function SettingsPage() {
   const supabase = createClient();
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth(); // Get user and loading state from auth context
 
   const [loading, setLoading] = useState(true);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
@@ -61,13 +65,10 @@ export default function SettingsPage() {
 
   useEffect(() => {
     (async () => {
+      if (!user) return; // Wait for auth context to provide user
+      
       setLoading(true);
       setError('');
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.replace('/login');
-        return;
-      }
 
       // Load profile row
       const { data: profile, error } = await supabase
@@ -91,8 +92,7 @@ export default function SettingsPage() {
       }
       setLoading(false);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user, supabase]); // Add user as dependency
 
   const handlePreferenceClick = (modeId: string) => {
     setPreferences(prev => {
@@ -127,16 +127,11 @@ export default function SettingsPage() {
   const unselectedModes = transportModes.filter(mode => preferences[mode.id] === PREFERENCE_LEVELS.UNSELECTED);
 
   const handleSave = async () => {
+    if (!user) return; // Safety check
+    
     setSaveLoading(true);
     setError('');
     setMessage('');
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setError('Not logged in');
-      setSaveLoading(false);
-      return;
-    }
 
     let avatar_url: string | null = null;
     // If a new image was selected, upload it and get public URL
@@ -181,6 +176,10 @@ export default function SettingsPage() {
       setError(updateError.message);
     } else {
       setMessage('Settings saved');
+      // Redirect to dashboard after successful save
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1000); // Small delay to show the success message
     }
     setSaveLoading(false);
   };
@@ -203,7 +202,51 @@ export default function SettingsPage() {
     setConfirmPassword('');
   };
 
-  if (loading) {
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    
+    setDeleteLoading(true);
+    setError('');
+    
+    try {
+      // Get the current session to get the access token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error('No valid session found');
+      }
+
+      // Call our API endpoint to delete the account
+      const response = await fetch('/api/delete-account', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete account');
+      }
+
+      // Account successfully deleted
+      setMessage('Account deleted successfully. You will be redirected to the login page.');
+      
+      // Sign out and redirect
+      await supabase.auth.signOut();
+      setTimeout(() => {
+        router.push('/login');
+      }, 2000);
+      
+    } catch (error: any) {
+      setError(`Failed to delete account: ${error.message}`);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <p className="text-muted-foreground">Loading settings…</p>
@@ -350,9 +393,55 @@ export default function SettingsPage() {
 
               {error && <p className="text-destructive text-center text-sm mb-4">{error}</p>}
               {message && <p className="text-green-600 text-center text-sm mb-4">{message}</p>}
+              
               <Button className="w-full" onClick={handleSave} disabled={saveLoading}>
                 {saveLoading ? 'Saving…' : 'Save Settings'}
               </Button>
+
+              {/* Delete Account Section */}
+              <div className="border-t pt-6 mt-6">
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold text-destructive">Danger Zone</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Once you delete your account, there is no going back. Please be certain.
+                    </p>
+                  </div>
+                  
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        variant="destructive" 
+                        className="w-full"
+                        disabled={deleteLoading}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        {deleteLoading ? 'Deleting Account...' : 'Delete Account'}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete your account
+                          and remove all your data from our servers including your profile, preferences,
+                          and any party history.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deleteLoading}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={handleDeleteAccount}
+                          disabled={deleteLoading}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          {deleteLoading ? 'Deleting...' : 'Yes, delete my account'}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

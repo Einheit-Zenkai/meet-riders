@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useParties } from "@/context/PartyContext";
 import PartyCard from "@/components/PartyCard";
-import Sidebar from "@/components/sidebar";
 import HostButton from "@/components/ui/hostbutton";
 import { useAuth } from "@/context/Authcontext";
 // --- 1. ADDED IMPORT for the Supabase client ---
@@ -23,36 +22,33 @@ export default function HomePage() {
   // --- 3. UPDATED useEffect to check the profile and set the name ---
   useEffect(() => {
     // This outer check waits for your useAuth hook to finish loading the user.
-    if (!loading) {
-      if (user) {
-        // If a user exists, we then check their profile in our database.
-        const checkProfile = async () => {
-          const supabase = createClient();
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('nickname, full_name') // Get the names we can display
-            .eq('id', user.id)
-            .single();
+    if (!loading && user) {
+      // User is authenticated (middleware ensures this), check their profile
+      const checkProfile = async () => {
+        const supabase = createClient();
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('nickname, full_name') // Get the names we can display
+          .eq('id', user.id)
+          .single();
 
-          // **THE CORE LOGIC:**
-          // Check if the user has filled out their profile yet.
-          if (profile && (profile.nickname || profile.full_name)) {
-            // If they have a name, they are an existing user.
-            const nameToDisplay = profile.nickname || profile.full_name || 'Rider';
-            setWelcomeName(nameToDisplay);
-            setIsCheckingProfile(false); // Stop loading and show the dashboard.
-          } else {
-            // If their profile has no name, they are a new user. Redirect them.
-            router.push('/user-create');
-          }
-        };
-        
-        checkProfile();
-
-      } else {
-        // If your useAuth hook confirms there is no user, redirect to login.
-        router.push("/login");
-      }
+        // **THE CORE LOGIC:**
+        // Check if the user has filled out their profile yet.
+        if (profile && (profile.nickname || profile.full_name)) {
+          // If they have a name, they are an existing user.
+          const nameToDisplay = profile.nickname || profile.full_name || 'Rider';
+          setWelcomeName(nameToDisplay);
+          setIsCheckingProfile(false); // Stop loading and show the dashboard.
+        } else {
+          // If their profile has no name, they are a new user. Redirect them.
+          router.push('/user-create');
+        }
+      };
+      
+      checkProfile();
+    } else if (!loading && !user) {
+      // This shouldn't happen due to middleware, but as a fallback
+      router.push("/login");
     }
   }, [user, loading, router]);
 
@@ -67,8 +63,7 @@ export default function HomePage() {
 
   // --- 4. UPDATED JSX to display the welcome message ---
   return (
-    <div className="ml-16 p-6">
-      <Sidebar />
+    <div className="p-6">
       <HostButton />
       {/* This h1 tag is now dynamic! */}
       <h1 className="text-4xl font-bold text-foreground mb-8">
