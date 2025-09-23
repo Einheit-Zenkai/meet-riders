@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/context/Authcontext";
+import { Star } from "lucide-react";
 
 // This defines the shape of the data we'll be working with from our 'profiles' table
 type ProfileData = {
@@ -43,16 +44,31 @@ export default function ProfilePage() {
       
       setLoading(true);
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from("profiles")
         .select(`nickname, bio, avatar_url, points, university, show_university`) // points + university
         .eq("id", user.id)
-        .single();
-
-      if (error || !data) {
+        .maybeSingle();
+      if (error) {
         console.error("Error fetching profile:", error);
-        setError("Could not load your profile.");
-      } else {
+      }
+
+      if (!data) {
+        // Bootstrap a minimal profile row if missing (RLS must allow inserting own row)
+        const insert = await supabase
+          .from("profiles")
+          .insert({ id: user.id, nickname: null, bio: null, avatar_url: null })
+          .select("nickname, bio, avatar_url, points, university, show_university")
+          .single();
+        if (insert.data) {
+          data = insert.data as any;
+        } else if (insert.error) {
+          console.error("Error creating profile:", insert.error);
+          setError("Could not load your profile.");
+        }
+      }
+
+      if (data) {
         setProfileData({
           nickname: data.nickname || "",
           bio: data.bio || "",
@@ -85,17 +101,11 @@ export default function ProfilePage() {
     const base = {
       nickname: profileData.nickname,
       bio: profileData.bio,
-      university: profileData.university || null,
       updated_at: new Date(),
     } as any;
-    const withPref = { ...base, show_university: profileData.show_university ?? true };
 
-    let { error: updateError } = await supabase.from("profiles").update(withPref).eq("id", user.id);
-    if (updateError && (updateError.message || "").toLowerCase().includes("show_university")) {
-      // Retry without the preference column
-      const { error: retryError } = await supabase.from("profiles").update(base).eq("id", user.id);
-      updateError = retryError || null;
-    }
+    // Settings-only fields (university/show_university) are NOT updated here.
+    let { error: updateError } = await supabase.from("profiles").update(base).eq("id", user.id);
 
     if (updateError) setError(updateError.message);
     else setMessage("Profile updated successfully!");
@@ -151,26 +161,13 @@ export default function ProfilePage() {
                   className="resize-none"
                   />
                 </div>
-                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-muted-foreground mb-1">University (optional)</label>
-                    <Input
-                      value={profileData.university || ''}
-                      onChange={(e) => handleInputChange('university', e.target.value)}
-                      placeholder="e.g., NIT Surat"
-                    />
+                {/* University is managed in Settings only. Show read-only if set; hide entirely if empty. */}
+                {profileData.university ? (
+                  <div className="mt-3">
+                    <label className="block text-sm text-muted-foreground mb-1">University</label>
+                    <p className="text-sm font-medium">{profileData.university}</p>
                   </div>
-                  <div className="flex items-end">
-                    <label className="inline-flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={profileData.show_university ?? true}
-                        onChange={(e) => handleInputChange('show_university' as any, e.target.checked as any)}
-                      />
-                      Display my university publicly
-                    </label>
-                  </div>
-                </div>
+                ) : null}
                 <div className="mt-4 flex flex-wrap items-center gap-4">
                   <div>
                     <label className="block text-xs text-muted-foreground mb-1">Preferred transport</label>
@@ -222,21 +219,30 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
+      {/* Ratings card replaces the old Account box */}
       <Card>
-        <CardHeader><CardTitle>Account</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="block text-sm text-muted-foreground mb-1">Email</label>
-            <Input value={profileData.email} disabled readOnly />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Nickname</label>
-              <Input value={profileData.nickname} onChange={(e) => handleInputChange('nickname', e.target.value)} />
-            </div>
-          </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          {message && <p className="text-sm text-green-600">{message}</p>}
+        <CardHeader><CardTitle>Ratings</CardTitle></CardHeader>
+        <CardContent>
+          {(() => {
+            const rating = 4.6; // dummy value for now
+            const total = 5;
+            const full = Math.floor(rating);
+            const stars = Array.from({ length: total }, (_, i) => (
+              <Star
+                key={i}
+                className={`w-5 h-5 ${i < full ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+              />
+            ));
+            return (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">{stars}</div>
+                <span className="text-sm text-muted-foreground">{rating.toFixed(1)} / 5.0</span>
+              </div>
+            );
+          })()}
+          <p className="text-xs text-muted-foreground mt-3">Ratings are a placeholder. We’ll calculate real scores from rides and feedback later.</p>
+          {error && <p className="text-sm text-destructive mt-3">{error}</p>}
+          {message && <p className="text-sm text-green-600 mt-3">{message}</p>}
         </CardContent>
       </Card>
     </div>

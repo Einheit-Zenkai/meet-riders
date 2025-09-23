@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ShieldAlert, User } from "lucide-react";
+import { ShieldAlert, User, Star } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/context/Authcontext";
@@ -191,6 +191,33 @@ export default function PublicProfilePage() {
             </div>
           ) : (
             <div className="mt-8 grid gap-6">
+              {/* Ratings card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Ratings</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {(() => {
+                    const rating = 4.6; // placeholder
+                    const total = 5;
+                    const full = Math.floor(rating);
+                    const stars = Array.from({ length: total }, (_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-5 h-5 ${i < full ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+                      />
+                    ));
+                    return (
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">{stars}</div>
+                        <span className="text-sm text-muted-foreground">{rating.toFixed(1)} / 5.0</span>
+                      </div>
+                    );
+                  })()}
+                  <p className="text-xs text-muted-foreground mt-3">This is a placeholder. Real ratings will appear once rides and feedback are enabled.</p>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle>Bio</CardTitle>

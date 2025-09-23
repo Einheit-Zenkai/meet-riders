@@ -44,6 +44,8 @@ export default function SettingsPage() {
   const [punctuality, setPunctuality] = useState('on-time');
   const [idealLocation, setIdealLocation] = useState('');
   const [idealDepartureTime, setIdealDepartureTime] = useState('');
+  const [university, setUniversity] = useState('');
+  const [showUniversity, setShowUniversity] = useState<boolean>(true);
 
   const [preferences, setPreferences] = useState<Preferences>(() => {
     const init: Preferences = {};
@@ -81,11 +83,13 @@ export default function SettingsPage() {
       } else if (profile) {
         setNickname(profile.nickname || '');
         setBio(profile.bio || '');
-        setPunctuality(profile.punctuality || 'on-time');
+  setPunctuality(profile.punctuality || 'on-time');
   // gender removed
         setIdealLocation(profile.ideal_location || '');
         setIdealDepartureTime(profile.ideal_departure_time || '');
         if (profile.avatar_url) setImagePreview(profile.avatar_url);
+  setUniversity(profile.university || '');
+  setShowUniversity(typeof profile.show_university === 'boolean' ? profile.show_university : true);
         // If you later store preferences JSON, initialize from it here
         // if (profile.preferences) setPreferences(profile.preferences);
       }
@@ -162,6 +166,8 @@ export default function SettingsPage() {
       ideal_departure_time: idealDepartureTime,
       updated_at: new Date(),
     };
+    profileDataToSave.university = university || null;
+    if (typeof showUniversity === 'boolean') profileDataToSave.show_university = showUniversity;
     if (avatar_url) profileDataToSave.avatar_url = avatar_url;
     // If you create a column, you can persist preferences: profileDataToSave.preferences = preferences
 
@@ -320,6 +326,15 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label htmlFor="bio">Bio / About Me</Label>
                 <Textarea id="bio" placeholder="e.g. 3rd year CS student, friendly and loves music!" value={bio} onChange={handleBioChange} className="min-h-[80px]" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="university">University (optional)</Label>
+                <Input id="university" placeholder="e.g. NIT Surat" value={university} onChange={(e) => setUniversity(e.target.value)} />
+                <label className="inline-flex items-center gap-2 text-sm mt-1">
+                  <input type="checkbox" checked={showUniversity} onChange={(e) => setShowUniversity(e.target.checked)} />
+                  Display my university publicly
+                </label>
               </div>
 
               <div className="space-y-2">
