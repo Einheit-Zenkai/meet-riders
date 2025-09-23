@@ -16,6 +16,8 @@ type Profile = {
   bio: string | null;
   avatar_url: string | null;
   points: number | null;
+  university?: string | null;
+  show_university?: boolean | null;
 };
 
 type RelationshipStatus = "connected" | "blocked" | null;
@@ -48,7 +50,7 @@ export default function PublicProfilePage() {
       // 1) Fetch the profile being viewed
       const { data: p, error: pErr } = await supabase
         .from("profiles")
-        .select("id, nickname, bio, avatar_url, points")
+        .select("id, nickname, bio, avatar_url, points, university, show_university")
         .eq("id", viewedId)
         .single();
 
@@ -199,6 +201,17 @@ export default function PublicProfilePage() {
                   </p>
                 </CardContent>
               </Card>
+
+              {(profile.show_university ?? true) && profile.university && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>University</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-foreground">{profile.university}</p>
+                  </CardContent>
+                </Card>
+              )}
 
               <Card>
                 <CardHeader>

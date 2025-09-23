@@ -24,6 +24,7 @@ export default function HomePage() {
   const [timeWindowMins, setTimeWindowMins] = useState<string>("any"); // any | 10 | 15 | 30 | 60
   const [sameDepartment, setSameDepartment] = useState(false); // placeholder UI
   const [sameYear, setSameYear] = useState(false); // placeholder UI
+  const [viewerUniversity, setViewerUniversity] = useState<string | null>(null);
 
   // Compute filtered list based on safe filters (must be above any returns to keep hook order stable)
   const filteredParties = useMemo(() => {
@@ -38,6 +39,18 @@ export default function HomePage() {
     });
   }, [parties, destinationQuery, timeWindowMins]);
 
+  // Compute recommended ordering (same university first) — must stay above any early returns
+  const orderedParties = useMemo(() => {
+    if (!viewerUniversity) return filteredParties;
+    const a: typeof filteredParties = [];
+    const b: typeof filteredParties = [];
+    for (const p of filteredParties) {
+      if ((p as any).hostUniversity && (p as any).displayUniversity && (p as any).hostUniversity === viewerUniversity) a.push(p);
+      else b.push(p);
+    }
+    return [...a, ...b];
+  }, [filteredParties, viewerUniversity]);
+
   // --- 3. UPDATED useEffect to check the profile and set the name ---
   useEffect(() => {
     // This outer check waits for your useAuth hook to finish loading the user.
@@ -47,7 +60,7 @@ export default function HomePage() {
         const supabase = createClient();
         const { data: profile } = await supabase
           .from('profiles')
-          .select('nickname, full_name') // Get the names we can display
+          .select('nickname, full_name, university') // Get the names we can display
           .eq('id', user.id)
           .single();
 
@@ -57,6 +70,7 @@ export default function HomePage() {
           // If they have a name, they are an existing user.
           const nameToDisplay = profile.nickname || profile.full_name || 'Rider';
           setWelcomeName(nameToDisplay);
+          setViewerUniversity(profile.university || null);
           setIsCheckingProfile(false); // Stop loading and show the dashboard.
         } else {
           // If their profile has no name, they are a new user. Redirect them.
@@ -211,7 +225,7 @@ export default function HomePage() {
   <div className="bg-card p-6 rounded-lg shadow-md relative z-0">
         <h2 className="text-2xl font-semibold text-card-foreground mb-4">Available Rides</h2>
 
-        {filteredParties.length === 0 ? (
+        {orderedParties.length === 0 ? (
           <div className="text-center py-10 border-2 border-dashed border rounded-lg">
             <p className="text-muted-foreground mb-4">
               No rides match your filters right now.
@@ -225,7 +239,7 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {filteredParties.map((party) => (
+            {orderedParties.map((party) => (
               <PartyCard key={party.id} party={party} />
             ))}
           </div>

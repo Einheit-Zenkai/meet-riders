@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { User, Bus, Car, CarTaxiFront, Footprints, AlertCircle } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/context/Authcontext";
+import { useParties } from "@/context/PartyContext";
 
 const rideOptions = [
   { name: "On Foot", icon: Footprints },
@@ -20,6 +21,7 @@ export default function HostPartyPage() {
   const router = useRouter();
   const { user } = useAuth(); // Get user from auth context
   const supabase = createClient();
+  const { addParty } = useParties();
   const [isAlreadyHosting, setIsAlreadyHosting] = useState(false);
 
   // Form state
@@ -27,6 +29,8 @@ export default function HostPartyPage() {
   const [meetupPoint, setMeetupPoint] = useState("");
   const [dropOff, setDropOff] = useState("");
   const [isFriendsOnly, setIsFriendsOnly] = useState(false);
+  const [displayUniversity, setDisplayUniversity] = useState(false);
+  const [myUniversity, setMyUniversity] = useState<string>("");
   // Removed gender-only option for safety
   const [selectedRides, setSelectedRides] = useState<string[]>([]);
   const [expiresIn, setExpiresIn] = useState("10 min");
@@ -45,6 +49,16 @@ export default function HostPartyPage() {
         .single();
 
       if (data) setIsAlreadyHosting(true);
+
+      // fetch my profile university for display toggle
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('university, show_university')
+        .eq('id', user.id)
+        .single();
+      setMyUniversity(prof?.university || "");
+      // default display state to profile's preference if available
+      setDisplayUniversity((prof as any)?.show_university ?? false);
     };
 
     checkIfHosting();
@@ -85,17 +99,29 @@ export default function HostPartyPage() {
       return;
     }
 
+    const payload: any = {
+      host_id: user.id,
+      party_size: partySize,
+      meetup_point: meetupPoint,
+      drop_off: dropOff,
+      friends_only: isFriendsOnly,
+  gender_only: false, // enforced disabled by design
+      ride_options: selectedRides,
+      expires_in: expiresIn,
+      is_active: true,
+    };
+
+    if (displayUniversity && myUniversity) {
+      payload.display_university = true;
+      payload.host_university = myUniversity;
+    } else {
+      payload.display_university = false;
+      payload.host_university = null;
+    }
+
     const { error } = await supabase.from("parties").insert([
       {
-        host_id: user.id,
-        party_size: partySize,
-        meetup_point: meetupPoint,
-        drop_off: dropOff,
-        friends_only: isFriendsOnly,
-  gender_only: false, // enforced disabled by design
-        ride_options: selectedRides,
-        expires_in: expiresIn,
-        is_active: true,
+        ...payload,
       },
     ]);
 
@@ -103,6 +129,18 @@ export default function HostPartyPage() {
       console.error(error);
       alert(error.message);
     } else {
+      // Also add to local context so it appears immediately
+      addParty({
+        partySize,
+        meetupPoint,
+        dropOff,
+        isFriendsOnly,
+        isGenderOnly: false,
+        rideOptions: selectedRides,
+        expiresIn,
+        displayUniversity: payload.display_university,
+        hostUniversity: payload.host_university || undefined,
+      });
       alert("✅ Party created!");
       router.push("/dashboard");
     }
@@ -191,6 +229,19 @@ export default function HostPartyPage() {
                   onChange={(e) => setIsFriendsOnly(e.target.checked)}
                 />
                 <span className="text-foreground">Friends only (Private Party)</span>
+              </label>
+              <label className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 rounded text-primary focus:ring-ring"
+                  checked={displayUniversity}
+                  onChange={(e) => setDisplayUniversity(e.target.checked)}
+                  disabled={!myUniversity}
+                />
+                <span className="text-foreground">Display my university on this party</span>
+                {!myUniversity && (
+                  <span className="text-xs text-muted-foreground"> (add your university in Profile)</span>
+                )}
               </label>
             </div>
           </div>

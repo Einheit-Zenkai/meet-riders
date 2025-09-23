@@ -15,6 +15,8 @@ export interface Party {
   isGenderOnly: boolean;
   rideOptions: string[];
   expiryTimestamp: number; // The exact time (in milliseconds) the party expires
+  hostUniversity?: string;
+  displayUniversity?: boolean;
 }
 
 // --- 2. UPDATED ContextType ---
@@ -56,6 +58,8 @@ export function PartyProvider({ children }: { children: ReactNode }) {
       host: 'You',
       ...restOfData,
       rideOptions: partyData.rideOptions,
+      hostUniversity: (partyData as any).hostUniversity,
+      displayUniversity: (partyData as any).displayUniversity,
       // Here's the magic: we calculate the exact future time
       expiryTimestamp: Date.now() + parseDuration(expiresIn),
     };

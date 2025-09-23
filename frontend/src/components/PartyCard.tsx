@@ -121,6 +121,11 @@ export default function PartyCard({ party }: PartyCardProps) {
                                             <UserIcon className="w-4 h-4 mr-1"/>Friends
                                         </span>
                                     )}
+                                    {party.displayUniversity && party.hostUniversity && (
+                                        <span className="text-xs font-semibold bg-blue-600/20 text-blue-300 px-2 py-1 rounded-full">
+                                            {party.hostUniversity}
+                                        </span>
+                                    )}
                                     <span className="text-xs font-semibold bg-accent/20 text-accent-foreground px-2 py-1 rounded-full">
                                         Seats left: {seatsLeft}
                                     </span>

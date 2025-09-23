@@ -19,6 +19,8 @@ type ProfileData = {
   avatar_url: string;
   email: string;
   points: number;
+  university?: string;
+  show_university?: boolean; // optional preference; if missing, treat as true
   // We will add transport preferences later when the data exists
 };
 
@@ -43,7 +45,7 @@ export default function ProfilePage() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select(`nickname, bio, avatar_url, points`) // Fetching real data incl. points
+        .select(`nickname, bio, avatar_url, points, university, show_university`) // points + university
         .eq("id", user.id)
         .single();
 
@@ -57,6 +59,8 @@ export default function ProfilePage() {
           avatar_url: data.avatar_url || "",
           email: user.email || "",
           points: typeof data.points === 'number' ? data.points : 0,
+          university: data.university || "",
+          show_university: typeof (data as any).show_university === 'boolean' ? (data as any).show_university : true,
         });
       }
       setLoading(false);
@@ -77,23 +81,24 @@ export default function ProfilePage() {
     setMessage(null);
     if (!profileData || !user) return;
 
-    const dataToUpdate = {
+    // First try updating with show_university; if the column doesn't exist, retry without it
+    const base = {
       nickname: profileData.nickname,
       bio: profileData.bio,
+      university: profileData.university || null,
       updated_at: new Date(),
-      // Note: We are not saving transport mode yet
-    };
+    } as any;
+    const withPref = { ...base, show_university: profileData.show_university ?? true };
 
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update(dataToUpdate)
-      .eq("id", user.id);
-
-    if (updateError) {
-      setError(updateError.message);
-    } else {
-      setMessage("Profile updated successfully!");
+    let { error: updateError } = await supabase.from("profiles").update(withPref).eq("id", user.id);
+    if (updateError && (updateError.message || "").toLowerCase().includes("show_university")) {
+      // Retry without the preference column
+      const { error: retryError } = await supabase.from("profiles").update(base).eq("id", user.id);
+      updateError = retryError || null;
     }
+
+    if (updateError) setError(updateError.message);
+    else setMessage("Profile updated successfully!");
   };
   
   // Helper function to update the single profile state object
@@ -146,6 +151,26 @@ export default function ProfilePage() {
                   className="resize-none"
                   />
                 </div>
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-muted-foreground mb-1">University (optional)</label>
+                    <Input
+                      value={profileData.university || ''}
+                      onChange={(e) => handleInputChange('university', e.target.value)}
+                      placeholder="e.g., NIT Surat"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <label className="inline-flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={profileData.show_university ?? true}
+                        onChange={(e) => handleInputChange('show_university' as any, e.target.checked as any)}
+                      />
+                      Display my university publicly
+                    </label>
+                  </div>
+                </div>
                 <div className="mt-4 flex flex-wrap items-center gap-4">
                   <div>
                     <label className="block text-xs text-muted-foreground mb-1">Preferred transport</label>
@@ -185,6 +210,17 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Prominent Leaderboard points card */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Leaderboard Points</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-3xl font-bold text-primary">{profileData.points ?? 0}</p>
+          <p className="text-sm text-muted-foreground mt-2">Earn points by hosting rides, joining successfully, and being a great co-traveler.</p>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle>Account</CardTitle></CardHeader>
