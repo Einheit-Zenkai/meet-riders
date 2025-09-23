@@ -17,6 +17,21 @@ export default function UpdatePasswordPage() {
   const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
+    // 1) If redirected from email, Supabase adds tokens in the URL hash: ...#access_token=...&type=recovery
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash || '';
+      if (hash.includes('type=recovery') || hash.includes('access_token')) {
+        setHasSession(true);
+      }
+    }
+
+    // 2) If a valid session already exists, allow updating password too
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) setHasSession(true);
+    })();
+
+    // 3) Fallback: listen for PASSWORD_RECOVERY event
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setHasSession(true);
     });
