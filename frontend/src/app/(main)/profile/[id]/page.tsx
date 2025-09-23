@@ -1,0 +1,217 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ShieldAlert, User } from "lucide-react";
+import Link from "next/link";
+import { createClient } from "@/utils/supabase/client";
+import { useAuth } from "@/context/Authcontext";
+
+type Profile = {
+  id: string;
+  nickname: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+  points: number | null;
+};
+
+type RelationshipStatus = "connected" | "blocked" | null;
+
+export default function PublicProfilePage() {
+  const supabase = createClient();
+  const router = useRouter();
+  const params = useParams();
+  const { user: me } = useAuth();
+
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [status, setStatus] = useState<RelationshipStatus>(null);
+  const [blockedByThem, setBlockedByThem] = useState<boolean>(false);
+  const viewedId = String(params?.id || "");
+
+  const isOwnProfile = useMemo(() => !!me && me.id === viewedId, [me, viewedId]);
+
+  useEffect(() => {
+    const run = async () => {
+      if (!viewedId) return;
+      setLoading(true);
+
+      // If not logged in, send to login (consistent with existing pages)
+      if (!me) {
+        router.replace("/login");
+        return;
+      }
+
+      // 1) Fetch the profile being viewed
+      const { data: p, error: pErr } = await supabase
+        .from("profiles")
+        .select("id, nickname, bio, avatar_url, points")
+        .eq("id", viewedId)
+        .single();
+
+      if (pErr || !p) {
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+      setProfile(p as Profile);
+
+      // 2) Fetch relationship where I am the initiator looking at them
+      if (!isOwnProfile) {
+        const { data: rel } = await supabase
+          .from("user_relationships")
+          .select("status")
+          .eq("initiator_id", me.id)
+          .eq("receiver_id", viewedId)
+          .maybeSingle();
+        setStatus((rel?.status as RelationshipStatus) ?? null);
+
+        // 3) Check if they blocked me (reverse direction)
+        const { data: rev } = await supabase
+          .from("user_relationships")
+          .select("status")
+          .eq("initiator_id", viewedId)
+          .eq("receiver_id", me.id)
+          .maybeSingle();
+        setBlockedByThem(rev?.status === "blocked");
+      }
+
+      setLoading(false);
+    };
+
+    run();
+  }, [me, supabase, viewedId, isOwnProfile, router]);
+
+  const upsertRelationship = async (newStatus: Exclude<RelationshipStatus, null>) => {
+    if (!me || !profile) return;
+    const { error } = await supabase
+      .from("user_relationships")
+      .upsert({ initiator_id: me.id, receiver_id: profile.id, status: newStatus })
+      .select()
+      .single();
+    if (error) {
+      alert(error.message);
+      return;
+    }
+    setStatus(newStatus);
+  };
+
+  const removeRelationship = async () => {
+    if (!me || !profile) return;
+    const { error } = await supabase
+      .from("user_relationships")
+      .delete()
+      .eq("initiator_id", me.id)
+      .eq("receiver_id", profile.id);
+    if (error) {
+      alert(error.message);
+      return;
+    }
+    setStatus(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <p className="text-muted-foreground">Loading profile…</p>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-3">
+          <p className="text-destructive">User not found.</p>
+          <Button asChild variant="outline"><Link href="/dashboard">Back to Dashboard</Link></Button>
+        </div>
+      </div>
+    );
+  }
+
+  const nickname = profile.nickname || "Unnamed";
+  const points = profile.points ?? 0;
+
+  return (
+    <div className="container mx-auto p-6 max-w-3xl">
+      <div className="mb-4 flex items-center justify-between">
+        <Button asChild variant="outline"><Link href="/dashboard">← Back</Link></Button>
+        {isOwnProfile ? (
+          <Button asChild variant="secondary"><Link href="/profile">Edit profile</Link></Button>
+        ) : null}
+      </div>
+
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col items-center text-center">
+            <Avatar className="w-24 h-24 mb-4 border-2 border-primary">
+              <AvatarImage src={profile.avatar_url ?? undefined} alt={nickname} />
+              <AvatarFallback><User className="w-10 h-10" /></AvatarFallback>
+            </Avatar>
+            <h1 className="text-2xl font-bold">{nickname}</h1>
+
+            {!isOwnProfile && !blockedByThem && (
+              <div className="mt-4 flex items-center gap-3">
+                {status !== "connected" && status !== "blocked" && (
+                  <Button onClick={() => upsertRelationship("connected")}>Add Connection</Button>
+                )}
+                {status !== "blocked" && (
+                  <Button variant="outline" onClick={() => {
+                    if (confirm("Are you sure you want to block this user?")) upsertRelationship("blocked");
+                  }}>Block</Button>
+                )}
+                {status === "blocked" && (
+                  <Button variant="secondary" onClick={removeRelationship}>Unblock</Button>
+                )}
+                <Button
+                  variant="destructive"
+                  asChild
+                >
+                  <Link href={`/report?type=user&id=${viewedId}`}>
+                    <ShieldAlert className="w-4 h-4 mr-2" /> Report
+                  </Link>
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Content visibility rules */}
+          {blockedByThem ? (
+            <div className="text-center mt-8 p-6 bg-secondary rounded-lg">
+              <p className="text-muted-foreground">This user has blocked you.</p>
+            </div>
+          ) : status === "blocked" ? (
+            <div className="text-center mt-8 p-6 bg-secondary rounded-lg">
+              <p className="text-muted-foreground">You have blocked this user.</p>
+            </div>
+          ) : (
+            <div className="mt-8 grid gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Bio</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground bg-accent/50 p-4 rounded-md">
+                    {profile.bio || "No bio provided."}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Leaderboard Points</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-primary">{points}</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

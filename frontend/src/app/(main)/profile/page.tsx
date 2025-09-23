@@ -18,6 +18,7 @@ type ProfileData = {
   bio: string;
   avatar_url: string;
   email: string;
+  points: number;
   // We will add transport preferences later when the data exists
 };
 
@@ -42,7 +43,7 @@ export default function ProfilePage() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select(`nickname, bio, avatar_url`) // Fetching the real data
+        .select(`nickname, bio, avatar_url, points`) // Fetching real data incl. points
         .eq("id", user.id)
         .single();
 
@@ -55,6 +56,7 @@ export default function ProfilePage() {
           bio: data.bio || "",
           avatar_url: data.avatar_url || "",
           email: user.email || "",
+          points: typeof data.points === 'number' ? data.points : 0,
         });
       }
       setLoading(false);
@@ -155,9 +157,20 @@ export default function ProfilePage() {
                     </ToggleGroup>
                   </div>
                 </div>
-                <div className="mt-4 flex gap-3">
+                <div className="mt-4 flex flex-wrap items-center gap-3">
                   <Button onClick={handleSave}>Save profile</Button>
                   <Button variant="outline">Add connection</Button>
+                  <Button
+                    variant="destructive"
+                    asChild
+                  >
+                    <Link href={user ? `/report?type=user&id=${user.id}` : "/report"}>Report</Link>
+                  </Button>
+                  {typeof profileData.points === 'number' && (
+                    <span className="ml-auto text-sm text-muted-foreground">
+                      Leaderboard points: <span className="font-semibold text-primary">{profileData.points}</span>
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -184,10 +197,6 @@ export default function ProfilePage() {
             <div>
               <label className="block text-sm text-muted-foreground mb-1">Nickname</label>
               <Input value={profileData.nickname} onChange={(e) => handleInputChange('nickname', e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1">Username</label>
-              <Input value={profileData.email} disabled readOnly />
             </div>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
