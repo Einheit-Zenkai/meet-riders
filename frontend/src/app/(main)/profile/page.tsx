@@ -128,123 +128,135 @@ export default function ProfilePage() {
 
   // --- YOUR ORIGINAL JSX (with data sources re-wired) ---
   return (
-    <div className="container mx-auto p-6 max-w-5xl">
-      <div className="mb-4 flex items-center justify-between">
-        <Button asChild variant="outline"><Link href="/dashboard">← Back</Link></Button>
-        <Button variant="secondary" onClick={handleSignOut}>Sign out</Button>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="container mx-auto p-6 max-w-6xl">
+        {/* Header with glass effect */}
+        <div className="mb-6 flex items-center justify-between p-4 rounded-xl bg-card/60 backdrop-blur-[6.2px] border border-white/10 shadow-lg">
+          <Button asChild variant="outline" className="glass-button">
+            <Link href="/dashboard">← Back to Dashboard</Link>
+          </Button>
+          <Button variant="secondary" onClick={handleSignOut} className="hover:bg-destructive/10 hover:text-destructive transition-colors">
+            Sign out
+          </Button>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <Card className="md:col-span-2">
-          <CardContent className="py-0">
-            <div className="flex items-start gap-4">
-              <Avatar className="size-24">
-                <AvatarImage src={profileData.avatar_url} alt={profileData.nickname} />
-                <AvatarFallback className="text-2xl">{(profileData.nickname || "No Nickname").slice(0, 1).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <Input
-                    value={profileData.nickname}
-                    onChange={(e) => handleInputChange('nickname', e.target.value)}
-                    className="text-2xl font-bold h-auto p-0 border-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
-                  />
-                  <span className="text-muted-foreground">{profileData.email}</span>
-                </div>
-                <div className="mt-3">
-                  <label className="block text-sm text-muted-foreground mb-1">Bio</label>
-                  <Textarea
-                  value={profileData.bio}
-
-                  onChange={(e) => handleInputChange('bio', e.target.value)}
-                  placeholder="Tell people a bit about you…"
-                  className="resize-none"
-                  />
-                </div>
-                {/* University is managed in Settings only. Show read-only if set; hide entirely if empty. */}
-                {profileData.university ? (
-                  <div className="mt-3">
-                    <label className="block text-sm text-muted-foreground mb-1">University</label>
-                    <p className="text-sm font-medium">{profileData.university}</p>
+        {/* Main content with improved layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+          <Card className="lg:col-span-2 bg-card/60 backdrop-blur-[6.2px] border border-white/10 shadow-xl">
+            <CardContent className="p-8">
+              <div className="flex flex-col sm:flex-row items-start gap-6">
+                {/* Enhanced Avatar Section */}
+                <div className="relative group">
+                  <Avatar className="size-32 ring-4 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40">
+                    <AvatarImage src={profileData.avatar_url} alt={profileData.nickname} className="object-cover" />
+                    <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-primary/20 to-primary/10">
+                      {(profileData.nickname || "User").slice(0, 1).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-3">
+                    <span className="text-xs text-white/80 font-medium">Edit Photo</span>
                   </div>
-                ) : null}
-                <div className="mt-4 flex flex-wrap items-center gap-4">
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Preferred transport</label>
-                    <ToggleGroup type="single" defaultValue="auto">
-                      <ToggleGroupItem value="auto">Car</ToggleGroupItem>
-                      <ToggleGroupItem value="bike">Bike</ToggleGroupItem>
-                      <ToggleGroupItem value="public">Public</ToggleGroupItem>
-                      <ToggleGroupItem value="walk">Walk</ToggleGroupItem>
+                </div>
+                
+                <div className="flex-1 space-y-6">
+                  {/* Enhanced Name Section */}
+                  <div className="space-y-2">
+                    <Input
+                      value={profileData.nickname}
+                      onChange={(e) => handleInputChange('nickname', e.target.value)}
+                      className="text-3xl font-bold h-auto p-0 border-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent placeholder:text-muted-foreground/50"
+                      placeholder="Enter your nickname"
+                    />
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">{profileData.email}</span>
+                      {typeof profileData.points === 'number' && (
+                        <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 rounded-full">
+                          <Star className="w-3 h-3 text-primary" />
+                          <span className="text-xs font-medium text-primary">{profileData.points} pts</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {/* Enhanced Bio Section */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-foreground">About Me</label>
+                    <Textarea
+                      value={profileData.bio}
+                      onChange={(e) => handleInputChange('bio', e.target.value)}
+                      placeholder="Tell people a bit about yourself... What do you enjoy? What's your travel style?"
+                      className="resize-none min-h-[100px] bg-background/50 border-border/50 focus:border-primary/50 transition-colors"
+                      rows={4}
+                    />
+                  </div>
+                  {/* Enhanced University Display */}
+                  {profileData.university && (
+                    <div className="p-4 bg-accent/30 rounded-lg border border-accent/50">
+                      <label className="block text-sm font-medium text-foreground mb-1">University</label>
+                      <p className="text-base font-semibold text-primary">{profileData.university}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Visible to other users</p>
+                    </div>
+                  )}
+                  {/* Enhanced Transport Preferences */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-foreground">Preferred Transport</label>
+                    <ToggleGroup type="single" defaultValue="auto" className="justify-start">
+                      <ToggleGroupItem value="auto" className="data-[state=on]:bg-primary/20 data-[state=on]:text-primary">
+                        🚗 Car
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="bike" className="data-[state=on]:bg-primary/20 data-[state=on]:text-primary">
+                        🚲 Bike
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="public" className="data-[state=on]:bg-primary/20 data-[state=on]:text-primary">
+                        🚌 Public
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="walk" className="data-[state=on]:bg-primary/20 data-[state=on]:text-primary">
+                        🚶‍♂️ Walk
+                      </ToggleGroupItem>
                     </ToggleGroup>
                   </div>
-                </div>
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <Button onClick={handleSave}>Save profile</Button>
-                  <Button variant="outline">Add connection</Button>
-                  <Button
-                    variant="destructive"
-                    asChild
-                  >
-                    <Link href={user ? `/report?type=user&id=${user.id}` : "/report"}>Report</Link>
-                  </Button>
-                  {typeof profileData.points === 'number' && (
-                    <span className="ml-auto text-sm text-muted-foreground">
-                      Leaderboard points: <span className="font-semibold text-primary">{profileData.points}</span>
-                    </span>
-                  )}
+                  {/* Enhanced Action Buttons */}
+                  <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-border/50">
+                    <Button onClick={handleSave} className="bg-primary hover:bg-primary/90 font-medium">
+                      💾 Save Profile
+                    </Button>
+                    <Button variant="outline" className="hover:bg-accent/50">
+                      👥 Add Connection
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      asChild
+                      className="ml-auto opacity-70 hover:opacity-100"
+                    >
+                      <Link href={user ? `/report?type=user&id=${user.id}` : "/report"}>
+                        🚨 Report Issue
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader><CardTitle>Mutual connections</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">0 mutual connections</p>
-            <p className="text-xs text-muted-foreground mt-2">This is a placeholder. Wire this up once you have connections data.</p>
-          </CardContent>
-        </Card>
+          {/* Enhanced Connections Card */}
+          <Card className="bg-card/60 backdrop-blur-[6.2px] border border-white/10 shadow-xl">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2">
+                👥 Connections
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/30 flex items-center justify-center">
+                  <span className="text-2xl">🤝</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-2">No connections yet</p>
+                <p className="text-xs text-muted-foreground">Start connecting with fellow riders!</p>
+              </div>
+            </CardContent>
+          </Card>
       </div>
-
-      {/* Prominent Leaderboard points card */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Leaderboard Points</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-3xl font-bold text-primary">{profileData.points ?? 0}</p>
-          <p className="text-sm text-muted-foreground mt-2">Earn points by hosting rides, joining successfully, and being a great co-traveler.</p>
-        </CardContent>
-      </Card>
-
-      {/* Ratings card replaces the old Account box */}
-      <Card>
-        <CardHeader><CardTitle>Ratings</CardTitle></CardHeader>
-        <CardContent>
-          {(() => {
-            const rating = 4.6; // dummy value for now
-            const total = 5;
-            const full = Math.floor(rating);
-            const stars = Array.from({ length: total }, (_, i) => (
-              <Star
-                key={i}
-                className={`w-5 h-5 ${i < full ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
-              />
-            ));
-            return (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1">{stars}</div>
-                <span className="text-sm text-muted-foreground">{rating.toFixed(1)} / 5.0</span>
-              </div>
-            );
-          })()}
-          <p className="text-xs text-muted-foreground mt-3">Ratings are a placeholder. We’ll calculate real scores from rides and feedback later.</p>
-          {error && <p className="text-sm text-destructive mt-3">{error}</p>}
-          {message && <p className="text-sm text-green-600 mt-3">{message}</p>}
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
 }
