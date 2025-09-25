@@ -102,7 +102,7 @@ export default function HomePage() {
       <div className="flex flex-col gap-3 mb-4">
         <div className="flex items-center gap-3">
           {/* Search bar with filters dropdown trigger */}
-          <div className="flex-1 relative">
+          {/* <div className="flex-1 relative">
             <input
               type="text"
               className="w-full p-3 pr-11 border rounded-full bg-white text-black placeholder:text-neutral-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -121,7 +121,6 @@ export default function HomePage() {
             >
               <Filter className="w-4 h-4" />
             </button>
-            {/* Filters popover */}
             <div id="filters-popover" className="hidden absolute z-50 mt-2 w-80 rounded-md border bg-card shadow p-3">
               <div className="space-y-2">
                 <label htmlFor="timeWindow" className="text-sm font-medium text-muted-foreground">Expiring within</label>
@@ -147,7 +146,7 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Notifications with dropdown */}
           <div className="relative">

@@ -58,8 +58,8 @@ export function PartyProvider({ children }: { children: ReactNode }) {
       host: 'You',
       ...restOfData,
       rideOptions: partyData.rideOptions,
-      hostUniversity: (partyData as any).hostUniversity,
-      displayUniversity: (partyData as any).displayUniversity,
+      // hostUniversity: (partyData as any).hostUniversity,
+      // displayUniversity: (partyData as any).displayUniversity,
       // Here's the magic: we calculate the exact future time
       expiryTimestamp: Date.now() + parseDuration(expiresIn),
     };

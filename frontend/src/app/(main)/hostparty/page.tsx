@@ -104,11 +104,17 @@ export default function HostPartyPage() {
       party_size: partySize,
       meetup_point: meetupPoint,
       drop_off: dropOff,
-      friends_only: isFriendsOnly,
-  gender_only: false, // enforced disabled by design
+      is_friends_only: isFriendsOnly,
+      is_gender_only: false, // enforced disabled by design
       ride_options: selectedRides,
       expires_in: expiresIn,
       is_active: true,
+      expiry_timestamp: (() => {
+      const now = new Date();
+      const minutes = parseInt(expiresIn.split(' ')[0], 10);
+      now.setMinutes(now.getMinutes() + minutes);
+      return now.toISOString();
+      })(),
     };
 
     if (displayUniversity && myUniversity) {
@@ -138,8 +144,8 @@ export default function HostPartyPage() {
         isGenderOnly: false,
         rideOptions: selectedRides,
         expiresIn,
-        displayUniversity: payload.display_university,
-        hostUniversity: payload.host_university || undefined,
+        // displayUniversity: payload.display_university,
+        // hostUniversity: payload.host_university || undefined,
       });
       alert("✅ Party created!");
       router.push("/dashboard");
