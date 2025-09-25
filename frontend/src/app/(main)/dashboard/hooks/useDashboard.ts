@@ -52,6 +52,7 @@ export function useDashboard() {
       setPartiesLoading(true);
       const supabase = createClient();
       
+      // First, fetch the parties
       const { data: partiesData, error } = await supabase
         .from('parties')
         .select(`
@@ -78,16 +79,83 @@ export function useDashboard() {
         return;
       }
 
-      // Transform the data to ensure dates are proper Date objects
-      const transformedParties = partiesData?.map(party => ({
+      if (!partiesData || partiesData.length === 0) {
+        setParties([]);
+        return;
+      }
+
+      // Get unique host IDs
+      const hostIds = [...new Set(partiesData.map(party => party.host_id))];
+
+      // Fetch profiles for all hosts
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          nickname,
+          gender,
+          avatar_url,
+          university,
+          points,
+          major,
+          bio
+        `)
+        .in('id', hostIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+      }
+
+      // Create a map of profiles by ID for easy lookup
+      const profilesMap = new Map();
+      profilesData?.forEach(profile => {
+        profilesMap.set(profile.id, profile);
+      });
+
+      // Get party IDs to fetch member counts and user memberships
+      const partyIds = partiesData.map(party => party.id);
+
+      // Fetch member counts for all parties
+      const memberCountPromises = partyIds.map(async (partyId) => {
+        const { data: count } = await supabase
+          .rpc('get_party_member_count', { party_bigint: partyId });
+        return { partyId, count: count || 0 };
+      });
+
+      const memberCounts = await Promise.all(memberCountPromises);
+      const memberCountsMap = new Map();
+      memberCounts.forEach(({ partyId, count }) => {
+        memberCountsMap.set(partyId, count);
+      });
+
+      // Check if current user is a member of any parties
+      const { data: userMemberships } = await supabase
+        .from('party_members')
+        .select('party_id')
+        .eq('user_id', user?.id)
+        .eq('status', 'joined')
+        .in('party_id', partyIds);
+
+      const userMembershipSet = new Set(
+        userMemberships?.map(membership => membership.party_id) || []
+      );
+
+      // Transform the data to ensure dates are proper Date objects and add host profiles
+      const transformedParties = partiesData.map(party => ({
         ...party,
         created_at: new Date(party.created_at),
         expiry_timestamp: new Date(party.expiry_timestamp),
-      })) || [];
+        host_profile: profilesMap.get(party.host_id) || null,
+        current_member_count: memberCountsMap.get(party.id) || 0,
+        user_is_member: userMembershipSet.has(party.id),
+      })) as Party[];
 
       setParties(transformedParties);
     } catch (error) {
       console.error('Failed to fetch parties:', error);
+      // Set empty array on error to prevent UI issues
+      setParties([]);
     } finally {
       setPartiesLoading(false);
     }

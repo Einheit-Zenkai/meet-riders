@@ -48,7 +48,7 @@ export default function SearchAndFilters({
     <div className="flex-1 relative" ref={filtersRef}>
       <input
         type="text"
-        className="w-full p-3 pr-11 border rounded-full bg-white text-black placeholder:text-neutral-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+        className="w-full p-3 pr-11 border border-input rounded-full bg-background text-foreground placeholder:text-muted-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
         placeholder="Search destination (e.g., MG Road, North Gate)"
         value={destinationQuery}
         onChange={(e) => onDestinationQueryChange(e.target.value)}

@@ -15,10 +15,14 @@ export default function RidesList({ parties, isLoading = false, onPartyUpdate }:
     return (
       <div className="bg-card p-6 rounded-lg shadow-md">
         <h2 className="text-2xl font-semibold text-card-foreground mb-4">Available Rides</h2>
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="animate-pulse">
-              <div className="h-32 bg-muted rounded-lg"></div>
+              <div className="h-32 bg-card/60 backdrop-blur-[6.2px] rounded-lg" 
+                   style={{
+                       boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+                       border: '1px solid rgba(255, 255, 255, 0.1)'
+                   }}></div>
             </div>
           ))}
         </div>
@@ -27,13 +31,13 @@ export default function RidesList({ parties, isLoading = false, onPartyUpdate }:
   }
 
   return (
-    <div className="bg-card p-6 rounded-lg shadow-md relative z-0">
+    <div className=" relative z-0">
       <h2 className="text-2xl font-semibold text-card-foreground mb-4">Available Rides</h2>
 
       {parties.length === 0 ? (
         <EmptyRidesState />
       ) : (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
           {parties.map((party) => (
             <DashboardPartyCard 
               key={party.id} 

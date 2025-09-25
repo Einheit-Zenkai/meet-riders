@@ -8,6 +8,8 @@ import { Clock, Users, MapPin, User as UserIcon, Bell, BellOff, Share2, Star } f
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/Authcontext";
 import { createClient } from "@/utils/supabase/client";
+import { partyMemberService } from "../services/partyMemberService";
+import PartyMembersDialog from "./PartyMembersDialog";
 
 // Helper function to format remaining time as MM:SS
 const formatTimeLeft = (ms: number): string => {
@@ -28,6 +30,7 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
     const [timeLeft, setTimeLeft] = useState(party.expiry_timestamp.getTime() - Date.now());
     const [alertOn, setAlertOn] = useState<boolean>(false);
     const [isJoining, setIsJoining] = useState(false);
+    const [isLeaving, setIsLeaving] = useState(false);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -40,17 +43,50 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
     const isExpired = timeLeft <= 0;
 
     const handleJoinParty = async () => {
-        if (!user) return;
+        if (!user || isHost || party.user_is_member) return;
         
         setIsJoining(true);
         try {
-            // Here you would implement the join party logic
-            // For now, just show an alert
-            alert(`Joining party to ${party.drop_off}!`);
+            const result = await partyMemberService.joinParty(party.id);
+            
+            if (result.success) {
+                // Show success message
+                alert(`Successfully joined party to ${party.drop_off}!`);
+                // Trigger refresh of parties data
+                onPartyUpdate?.();
+            } else {
+                alert(result.error || 'Failed to join party');
+            }
         } catch (error) {
             console.error('Error joining party:', error);
+            alert('An unexpected error occurred while joining the party');
         } finally {
             setIsJoining(false);
+        }
+    };
+
+    const handleLeaveParty = async () => {
+        if (!user || !party.user_is_member) return;
+        
+        const confirmed = confirm('Are you sure you want to leave this party?');
+        if (!confirmed) return;
+
+        setIsLeaving(true);
+        try {
+            const result = await partyMemberService.leaveParty(party.id);
+            
+            if (result.success) {
+                alert('Successfully left the party');
+                // Trigger refresh of parties data
+                onPartyUpdate?.();
+            } else {
+                alert(result.error || 'Failed to leave party');
+            }
+        } catch (error) {
+            console.error('Error leaving party:', error);
+            alert('An unexpected error occurred while leaving the party');
+        } finally {
+            setIsLeaving(false);
         }
     };
 
@@ -88,109 +124,211 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
         return party.ride_options.join(', ');
     };
 
+    const getHostDisplayName = () => {
+        if (isHost) {
+            return 'Your Party';
+        }
+        
+        const profile = party.host_profile;
+        if (!profile) {
+            return 'Anonymous Host';
+        }
+        
+        return profile.nickname || profile.full_name || 'Anonymous Host';
+    };
+
+    const getHostInitials = () => {
+        if (isHost) {
+            return 'ME';
+        }
+        
+        const profile = party.host_profile;
+        if (!profile) {
+            return 'H';
+        }
+        
+        const name = profile.nickname || profile.full_name;
+        if (!name) {
+            return 'H';
+        }
+        
+        return name
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase())
+            .slice(0, 2)
+            .join('');
+    };
+
     return (
-        <Card className={`transition-all duration-300 hover:shadow-lg ${isExpired ? 'opacity-60 grayscale' : ''}`}>
-            <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
+        <Card className="transition-all duration-300 hover:shadow-lg relative overflow-hidden bg-card/60 backdrop-blur-[6.2px]" 
+              style={{
+                  boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
+              }}>
+            <div className="p-5">
+                {/* Header Row */}
+                <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                         <Avatar className="w-10 h-10">
-                            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                                {isHost ? 'ME' : 'H'}
-                            </AvatarFallback>
-                        </Avatar>
-                        <div>
-                            <CardTitle className="text-lg">
-                                {isHost ? 'Your Party' : 'Available Party'}
-                            </CardTitle>
-                            {party.host_university && party.display_university && (
-                                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                    <Star className="w-3 h-3" />
-                                    {party.host_university}
-                                </p>
+                            {party.host_profile?.avatar_url ? (
+                                <img 
+                                    src={party.host_profile.avatar_url} 
+                                    alt="Host avatar" 
+                                    className="w-full h-full object-cover rounded-full"
+                                />
+                            ) : (
+                                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+                                    {getHostInitials()}
+                                </AvatarFallback>
                             )}
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-semibold text-base leading-relaxed">
+                                    {getHostDisplayName()}
+                                </h3>
+                                {isExpired && (
+                                    <span className="bg-destructive/10 text-destructive px-2 py-0.5 rounded text-xs font-medium">
+                                        EXPIRED
+                                    </span>
+                                )}
+                            </div>
+                            {/* Host info in one compact line */}
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground leading-relaxed">
+                                {party.host_profile?.gender && (
+                                    <span className="capitalize">{party.host_profile.gender}</span>
+                                )}
+                                {party.host_profile?.points !== null && party.host_profile?.points !== undefined && (
+                                    <>
+                                        {party.host_profile?.gender && <span>•</span>}
+                                        <span className="text-primary font-medium">
+                                            {party.host_profile.points} pts
+                                        </span>
+                                    </>
+                                )}
+                                {party.host_profile?.university && party.display_university && (
+                                    <>
+                                        {(party.host_profile?.gender || party.host_profile?.points !== null) && <span>•</span>}
+                                        <div className="flex items-center gap-1">
+                                            <Star className="w-2.5 h-2.5" />
+                                            <span>{party.host_profile.university}</span>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
                     
-                    <div className="text-right">
-                        <div className={`text-sm font-medium ${isExpired ? 'text-destructive' : 'text-primary'}`}>
-                            {isExpired ? 'EXPIRED' : formatTimeLeft(timeLeft)}
+                    {/* Timer */}
+                    <div className="text-right px-2">
+                        <div className="text-sm font-bold text-primary leading-relaxed">
+                            {isExpired ? '--:--' : formatTimeLeft(timeLeft)}
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                            {isExpired ? 'Party ended' : 'remaining'}
+                        <div className="text-xs text-muted-foreground leading-relaxed">
+                            {isExpired ? 'ended' : 'left'}
                         </div>
-                    </div>
-                </div>
-            </CardHeader>
-
-            <CardContent className="space-y-3">
-                <div className="flex items-center gap-2 text-sm">
-                    <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                        <span className="font-medium">From:</span> {party.meetup_point}
-                    </div>
-                </div>
-                
-                <div className="flex items-center gap-2 text-sm">
-                    <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                        <span className="font-medium">To:</span> {party.drop_off}
                     </div>
                 </div>
 
-                <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-muted-foreground" />
-                        <span>Max {party.party_size} people</span>
+                {/* Route Info - More Compact */}
+                <div className="space-y-2 mb-4 px-1">
+                    <div className="flex items-start gap-3">
+                        <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
+                        <div className="min-w-0 flex-1 text-sm">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="font-medium text-muted-foreground">From:</span>
+                                <span className="truncate leading-relaxed">{party.meetup_point}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-medium text-muted-foreground">To:</span>
+                                <span className="truncate font-medium leading-relaxed">{party.drop_off}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Details Row */}
+                <div className="flex items-center justify-between text-sm mb-4 px-1">
+                    <div className="flex items-center gap-4">
+                        <PartyMembersDialog party={party}>
+                            <button className="flex items-center gap-2 hover:text-primary transition-colors">
+                                <Users className="w-4 h-4 text-muted-foreground" />
+                                <span className="leading-relaxed">
+                                    {(party.current_member_count || 0) + 1}/{party.party_size}
+                                </span>
+                            </button>
+                        </PartyMembersDialog>
+                        <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-xs leading-relaxed">{getRideOptionsDisplay()}</span>
+                        </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-muted-foreground" />
-                        <span>{getRideOptionsDisplay()}</span>
-                    </div>
+                    {party.is_friends_only && (
+                        <div className="bg-accent/70 px-3 py-1.5 rounded text-xs font-medium">
+                            🔒 Friends only
+                        </div>
+                    )}
                 </div>
 
-                {party.is_friends_only && (
-                    <div className="bg-accent/50 px-2 py-1 rounded text-xs">
-                        🔒 Friends only
-                    </div>
-                )}
-            </CardContent>
-
-            <CardFooter className="pt-3 flex gap-2">
-                {isHost ? (
-                    <>
-                        <Button 
-                            variant="destructive" 
-                            size="sm" 
-                            onClick={handleCancelParty}
-                            className="flex-1"
-                        >
-                            Cancel Party
-                        </Button>
-                        <Button variant="outline" size="sm">
-                            <Share2 className="w-4 h-4" />
-                        </Button>
-                    </>
-                ) : (
-                    <>
-                        <Button 
-                            onClick={handleJoinParty}
-                            disabled={isExpired || isJoining}
-                            className="flex-1"
-                            size="sm"
-                        >
-                            {isJoining ? 'Joining...' : isExpired ? 'Expired' : 'Join Party'}
-                        </Button>
-                        <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => setAlertOn(!alertOn)}
-                        >
-                            {alertOn ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
-                        </Button>
-                    </>
-                )}
-            </CardFooter>
+                {/* Action Buttons */}
+                <div className="flex gap-3 px-1">
+                    {isHost ? (
+                        <>
+                            <Button 
+                                variant="destructive" 
+                                size="sm" 
+                                onClick={handleCancelParty}
+                                className="flex-1 h-9 font-medium"
+                            >
+                                Cancel Party
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-9 px-3">
+                                <Share2 className="w-4 h-4" />
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            {party.user_is_member ? (
+                                <Button 
+                                    variant="outline"
+                                    onClick={handleLeaveParty}
+                                    disabled={isLeaving}
+                                    className="flex-1 h-9 font-medium"
+                                    size="sm"
+                                >
+                                    {isLeaving ? 'Leaving...' : 'Leave Party'}
+                                </Button>
+                            ) : (
+                                <Button 
+                                    onClick={handleJoinParty}
+                                    disabled={isExpired || isJoining || (party.current_member_count || 0) >= party.party_size}
+                                    className="flex-1 h-9 font-medium"
+                                    size="sm"
+                                    variant={isExpired || (party.current_member_count || 0) >= party.party_size ? "outline" : "default"}
+                                >
+                                    {isJoining 
+                                        ? 'Joining...' 
+                                        : isExpired 
+                                        ? 'Expired' 
+                                        : (party.current_member_count || 0) >= party.party_size 
+                                        ? 'Full' 
+                                        : 'Join Party'
+                                    }
+                                </Button>
+                            )}
+                            <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setAlertOn(!alertOn)}
+                                className="h-9 px-3"
+                            >
+                                {alertOn ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+                            </Button>
+                        </>
+                    )}
+                </div>
+            </div>
         </Card>
     );
 }

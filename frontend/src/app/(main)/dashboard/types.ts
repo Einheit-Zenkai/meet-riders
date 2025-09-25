@@ -44,4 +44,48 @@ export interface Party {
     host_university: string | null;
     display_university: string | null;
     is_active: boolean | null;
+    // Host profile information (joined from profiles table)
+    host_profile?: Profile;
+    // Members of the party
+    members?: PartyMember[];
+    current_member_count?: number;
+    user_is_member?: boolean;
+}
+
+export interface PartyMember {
+    id: string;
+    party_id: number;
+    user_id: string;
+    status: 'joined' | 'left' | 'kicked' | 'pending';
+    joined_at: Date;
+    left_at?: Date;
+    pickup_notes?: string;
+    contact_shared: boolean;
+    created_at: Date;
+    updated_at: Date;
+    // Profile information (joined from profiles table)
+    profile?: Profile;
+}
+
+export interface Profile {
+    id: string; // same as host_id in Party
+    full_name: string | null;
+    major: string | null;
+    bio: string | null;
+    updated_at: Date | null;
+    gender: string | null;
+    ideal_departure_time: string | null;
+    ideal_location: string | null;
+    nickname: string | null;
+    punctuality: string | null;
+    birth_date: Date | null;
+    location: string | null;
+    avatar_url: string | null;
+    points: number | null;
+    university: string | null;
+    created_at: Date | null;
+    show_university: boolean | null;
+    isGenderOnly: boolean | null;
+    rideOptions: string | null;
+    expiresIn: string | null;
 }

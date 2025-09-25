@@ -76,6 +76,10 @@ Specialized party card component that works with Supabase Party data.
 
 **Features:**
 - **Supabase Integration**: Works with the correct Party interface from Supabase
+- **Host Profile Display**: Shows host's name, gender, points, and university
+- **Avatar Support**: Displays host avatar or initials
+- **Compact Design**: Space-efficient layout without being cramped
+- **Clear Expired State**: Shows "EXPIRED" badge instead of color changes
 - Real-time countdown timer
 - Host vs. participant views
 - Join/Cancel party functionality
@@ -97,6 +101,7 @@ Custom hook that encapsulates all dashboard business logic.
 
 **Features:**
 - **Supabase Integration**: Fetches parties directly from the `parties` table
+- **Host Profile Integration**: Separately fetches host profiles from `profiles` table for efficiency
 - Profile validation and redirection
 - University-based ride ordering
 - Real-time filtering
