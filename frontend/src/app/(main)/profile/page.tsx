@@ -12,6 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/context/Authcontext";
 import { Star } from "lucide-react";
+import { toast } from "sonner";
 
 // This defines the shape of the data we'll be working with from our 'profiles' table
 type ProfileData = {
@@ -107,8 +108,13 @@ export default function ProfilePage() {
     // Settings-only fields (university/show_university) are NOT updated here.
     let { error: updateError } = await supabase.from("profiles").update(base).eq("id", user.id);
 
-    if (updateError) setError(updateError.message);
-    else setMessage("Profile updated successfully!");
+    if (updateError) {
+      setError(updateError.message);
+      toast.error(updateError.message || 'Failed to update profile');
+    } else {
+      setMessage("Profile updated successfully!");
+      toast.success('Profile updated');
+    }
   };
   
   // Helper function to update the single profile state object
@@ -140,7 +146,7 @@ export default function ProfilePage() {
           </Button>
         </div>
 
-        {/* Main content with improved layout */}
+  {/* Main content with improved layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <Card className="lg:col-span-2 bg-card/60 backdrop-blur-[6.2px] border border-white/10 shadow-xl">
             <CardContent className="p-8">
@@ -238,7 +244,7 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Enhanced Connections Card */}
+          {/* Right column cards: Connections + Metrics */}
           <Card className="bg-card/60 backdrop-blur-[6.2px] border border-white/10 shadow-xl">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2">
@@ -253,6 +259,41 @@ export default function ProfilePage() {
                 <p className="text-sm text-muted-foreground mb-2">No connections yet</p>
                 <p className="text-xs text-muted-foreground">Start connecting with fellow riders!</p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Dummy Ratings card (placeholder) */}
+          <Card className="bg-card/60 backdrop-blur-[6.2px] border border-white/10 shadow-xl">
+            <CardHeader className="pb-2">
+              <CardTitle>Ratings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const rating = 4.6; // placeholder
+                const total = 5;
+                const full = Math.floor(rating);
+                const stars = Array.from({ length: total }, (_, i) => (
+                  <Star key={i} className={`w-5 h-5 ${i < full ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
+                ));
+                return (
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">{stars}</div>
+                    <span className="text-sm text-muted-foreground">{rating.toFixed(1)} / 5.0</span>
+                  </div>
+                );
+              })()}
+              <p className="text-xs text-muted-foreground mt-3">This is a placeholder. Real ratings will appear once rides and feedback are enabled.</p>
+            </CardContent>
+          </Card>
+
+          {/* Points card (Leaderboard) */}
+          <Card className="bg-card/60 backdrop-blur-[6.2px] border border-white/10 shadow-xl">
+            <CardHeader className="pb-2">
+              <CardTitle>Leaderboard Points</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold text-primary">{profileData.points}</p>
+              <p className="text-xs text-muted-foreground mt-1">Earn more points by hosting rides and participating.</p>
             </CardContent>
           </Card>
       </div>

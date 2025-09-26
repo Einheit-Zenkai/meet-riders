@@ -121,3 +121,16 @@ export interface SoiMember {
   updated_at?: Date;
   profile?: Profile;
 }
+
+// Expired party types (recently expired within the last 10 minutes)
+export interface ExpiredParty {
+  id: number; // expired record id
+  party_id: number; // original parties.id
+  host_id: string;
+  meetup_point: string;
+  drop_off: string;
+  ride_options?: string[];
+  party_size?: number;
+  expired_at: Date;
+  host_profile?: Profile;
+}

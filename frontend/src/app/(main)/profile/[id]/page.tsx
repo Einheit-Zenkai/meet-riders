@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ShieldAlert, User, Star } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 import { useAuth } from "@/context/Authcontext";
 
 type Profile = {
@@ -95,9 +96,10 @@ export default function PublicProfilePage() {
       .select()
       .single();
     if (error) {
-      alert(error.message);
+      toast.error(error.message || 'Failed to update relationship');
       return;
     }
+    toast.success('Updated');
     setStatus(newStatus);
   };
 
@@ -109,9 +111,10 @@ export default function PublicProfilePage() {
       .eq("initiator_id", me.id)
       .eq("receiver_id", profile.id);
     if (error) {
-      alert(error.message);
+      toast.error(error.message || 'Failed to remove relationship');
       return;
     }
+    toast.success('Removed');
     setStatus(null);
   };
 

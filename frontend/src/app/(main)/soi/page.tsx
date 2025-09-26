@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Bus, Car, CarTaxiFront, Footprints, CalendarClock } from "lucide-react";
+import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/context/Authcontext";
 
@@ -63,18 +64,18 @@ export default function ShowInterestPage() {
       if (selectedRides.length < 2) {
         setSelectedRides([...selectedRides, rideName]);
       } else {
-        alert("You can only select a maximum of 2 ride options.");
+        toast.info("You can only select a maximum of 2 ride options.");
       }
     }
   };
 
   const handleStartSOI = async () => {
     if (!meetupPoint || !dropOff || partySize <= 0 || !startTime) {
-      alert("Please fill out meetup point, destination, party size and start time.");
+      toast.error("Fill meetup, destination, party size and start time");
       return;
     }
     if (!user) {
-      alert("You must be logged in to create a Show of Interest.");
+      toast.error("You must be logged in to create a Show of Interest.");
       return;
     }
 
@@ -116,9 +117,9 @@ export default function ShowInterestPage() {
     const { error } = await supabase.from("soi_parties").insert([payload]);
     if (error) {
       console.error(error);
-      alert(error.message);
+      toast.error(error.message || 'Failed to create SOI');
     } else {
-      alert("✅ Show of Interest created!");
+      toast.success("Show of Interest created");
       router.push("/dashboard");
     }
   };

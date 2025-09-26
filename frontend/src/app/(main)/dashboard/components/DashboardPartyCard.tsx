@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Party } from "../types";
 import { Clock, Users, MapPin, User as UserIcon, Bell, BellOff, Share2, Star } from 'lucide-react';
+import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/Authcontext";
 import { createClient } from "@/utils/supabase/client";
@@ -51,15 +52,15 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
             
             if (result.success) {
                 // Show success message
-                alert(`Successfully joined party to ${party.drop_off}!`);
+                toast.success(`Joined party to ${party.drop_off}`);
                 // Trigger refresh of parties data
                 onPartyUpdate?.();
             } else {
-                alert(result.error || 'Failed to join party');
+                toast.error(result.error || 'Failed to join party');
             }
         } catch (error) {
             console.error('Error joining party:', error);
-            alert('An unexpected error occurred while joining the party');
+            toast.error('Unexpected error while joining the party');
         } finally {
             setIsJoining(false);
         }
@@ -76,15 +77,15 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
             const result = await partyMemberService.leaveParty(party.id);
             
             if (result.success) {
-                alert('Successfully left the party');
+                toast.success('Left the party');
                 // Trigger refresh of parties data
                 onPartyUpdate?.();
             } else {
-                alert(result.error || 'Failed to leave party');
+                toast.error(result.error || 'Failed to leave party');
             }
         } catch (error) {
             console.error('Error leaving party:', error);
-            alert('An unexpected error occurred while leaving the party');
+            toast.error('Unexpected error while leaving the party');
         } finally {
             setIsLeaving(false);
         }
@@ -106,14 +107,14 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
 
             if (error) {
                 console.error('Error canceling party:', error);
-                alert('Failed to cancel party');
+                toast.error('Failed to cancel party');
             } else {
-                alert('Party canceled successfully');
+                toast.success('Party canceled');
                 onPartyUpdate?.();
             }
         } catch (error) {
             console.error('Error canceling party:', error);
-            alert('Failed to cancel party');
+            toast.error('Failed to cancel party');
         }
     };
 

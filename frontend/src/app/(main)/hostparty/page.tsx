@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { User, Bus, Car, CarTaxiFront, Footprints, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/context/Authcontext";
 import { useParties } from "@/context/PartyContext";
@@ -83,19 +84,19 @@ export default function HostPartyPage() {
       if (selectedRides.length < 2) {
         setSelectedRides([...selectedRides, rideName]);
       } else {
-        alert("You can only select a maximum of 2 ride options.");
+  toast.info("You can only select a maximum of 2 ride options.");
       }
     }
   };
 
   const handleStartParty = async () => {
     if (!meetupPoint || !dropOff || partySize === 0) {
-      alert("Please fill out the meetup point, drop-off, and set a party size.");
+      toast.error("Please fill out the meetup point, drop-off, and set a party size.");
       return;
     }
 
     if (!user) {
-      alert("You must be logged in to host a party.");
+      toast.error("You must be logged in to host a party.");
       return;
     }
 
@@ -133,7 +134,7 @@ export default function HostPartyPage() {
 
     if (error) {
       console.error(error);
-      alert(error.message);
+      toast.error(error.message || 'Failed to create party');
     } else {
       // Also add to local context so it appears immediately
       addParty({
@@ -147,7 +148,7 @@ export default function HostPartyPage() {
         // displayUniversity: payload.display_university,
         // hostUniversity: payload.host_university || undefined,
       });
-      alert("✅ Party created!");
+      toast.success("Party created and visible on the dashboard");
       router.push("/dashboard");
     }
   };

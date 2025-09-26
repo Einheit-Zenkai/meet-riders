@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/client";
 import type { SoiParty, SoiMember } from "../types";
 import { soiMemberService } from "../services/soiMemberService";
 import { soiPartyService } from "../services/soiPartyService";
+import { toast } from "sonner";
 
 function formatCountdown(target?: Date | null) {
   if (!target) return "";
@@ -92,7 +93,8 @@ export default function SoiList() {
 
   const handleJoin = async (id: number) => {
     const res = await soiMemberService.join(id);
-    if (!res.success) return alert(res.error);
+  if (!res.success) return toast.error(res.error || 'Failed to join');
+  toast.success('Joined');
     // refresh list
     const idx = items.findIndex(x => x.id === id);
     if (idx >= 0) {
@@ -104,7 +106,8 @@ export default function SoiList() {
 
   const handleLeave = async (id: number) => {
     const res = await soiMemberService.leave(id);
-    if (!res.success) return alert(res.error);
+  if (!res.success) return toast.error(res.error || 'Failed to leave');
+  toast.success('Left');
     const idx = items.findIndex(x => x.id === id);
     if (idx >= 0) {
       const updated = [...items];
@@ -116,7 +119,8 @@ export default function SoiList() {
   const handleCancel = async (id: number) => {
     if (!confirm('Cancel this SOI? This will close it for everyone.')) return;
     const res = await soiPartyService.cancel(id);
-    if (!res.success) return alert(res.error);
+  if (!res.success) return toast.error(res.error || 'Failed to cancel SOI');
+  toast.success('SOI canceled');
     setItems(prev => prev.filter(x => x.id !== id));
   };
 
