@@ -4,6 +4,7 @@ import HostButton from "@/components/ui/hostbutton";
 import DashboardHeader from "./components/DashboardHeader";
 import RidesList from "./components/RidesList";
 import LoadingScreen from "./components/LoadingScreen";
+import SoiList from "./components/SoiList";
 import { useDashboard } from "./hooks/useDashboard";
 
 export default function HomePage() {
@@ -46,6 +47,11 @@ export default function HomePage() {
         parties={orderedParties} 
         onPartyUpdate={refreshParties}
       />
+
+      <div className="mt-10">
+        <h2 className="text-2xl font-semibold text-card-foreground mb-4">Upcoming Rides (SOI)</h2>
+        <SoiList />
+      </div>
     </div>
   );
 }

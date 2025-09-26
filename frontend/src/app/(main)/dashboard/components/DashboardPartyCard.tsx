@@ -165,11 +165,11 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                   boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
                   border: '1px solid rgba(255, 255, 255, 0.1)'
               }}>
-            <div className="p-5">
+            <div className="p-6">
                 {/* Header Row */}
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                        <Avatar className="w-10 h-10">
+                        <Avatar className="w-12 h-12">
                             {party.host_profile?.avatar_url ? (
                                 <img 
                                     src={party.host_profile.avatar_url} 
@@ -184,7 +184,7 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                         </Avatar>
                         <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                                <h3 className="font-semibold text-base leading-relaxed">
+                                <h3 className="font-semibold text-lg leading-relaxed">
                                     {getHostDisplayName()}
                                 </h3>
                                 {isExpired && (
@@ -194,7 +194,7 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                                 )}
                             </div>
                             {/* Host info in one compact line */}
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground leading-relaxed">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground leading-relaxed">
                                 {party.host_profile?.gender && (
                                     <span className="capitalize">{party.host_profile.gender}</span>
                                 )}
@@ -210,7 +210,7 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                                     <>
                                         {(party.host_profile?.gender || party.host_profile?.points !== null) && <span>•</span>}
                                         <div className="flex items-center gap-1">
-                                            <Star className="w-2.5 h-2.5" />
+                                            <Star className="w-3 h-3" />
                                             <span>{party.host_profile.university}</span>
                                         </div>
                                     </>
@@ -221,20 +221,20 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                     
                     {/* Timer */}
                     <div className="text-right px-2">
-                        <div className="text-sm font-bold text-primary leading-relaxed">
+                        <div className="text-base font-bold text-primary leading-relaxed">
                             {isExpired ? '--:--' : formatTimeLeft(timeLeft)}
                         </div>
-                        <div className="text-xs text-muted-foreground leading-relaxed">
+                        <div className="text-sm text-muted-foreground leading-relaxed">
                             {isExpired ? 'ended' : 'left'}
                         </div>
                     </div>
                 </div>
 
                 {/* Route Info - More Compact */}
-                <div className="space-y-2 mb-4 px-1">
+                <div className="space-y-3 mb-5 px-1">
                     <div className="flex items-start gap-3">
-                        <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
-                        <div className="min-w-0 flex-1 text-sm">
+                        <MapPin className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-1" />
+                        <div className="min-w-0 flex-1 text-base">
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="font-medium text-muted-foreground">From:</span>
                                 <span className="truncate leading-relaxed">{party.meetup_point}</span>
@@ -248,19 +248,19 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                 </div>
 
                 {/* Details Row */}
-                <div className="flex items-center justify-between text-sm mb-4 px-1">
+                <div className="flex items-center justify-between text-base mb-5 px-1">
                     <div className="flex items-center gap-4">
                         <PartyMembersDialog party={party}>
                             <button className="flex items-center gap-2 hover:text-primary transition-colors">
-                                <Users className="w-4 h-4 text-muted-foreground" />
+                                <Users className="w-5 h-5 text-muted-foreground" />
                                 <span className="leading-relaxed">
                                     {(party.current_member_count || 0) + 1}/{party.party_size}
                                 </span>
                             </button>
                         </PartyMembersDialog>
                         <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-xs leading-relaxed">{getRideOptionsDisplay()}</span>
+                            <Clock className="w-5 h-5 text-muted-foreground" />
+                            <span className="text-sm leading-relaxed">{getRideOptionsDisplay()}</span>
                         </div>
                     </div>
                     
@@ -279,12 +279,12 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                                 variant="destructive" 
                                 size="sm" 
                                 onClick={handleCancelParty}
-                                className="flex-1 h-9 font-medium"
+                                className="flex-1 h-10 font-medium"
                             >
                                 Cancel Party
                             </Button>
-                            <Button variant="outline" size="sm" className="h-9 px-3">
-                                <Share2 className="w-4 h-4" />
+                            <Button variant="outline" size="sm" className="h-10 px-3">
+                                <Share2 className="w-5 h-5" />
                             </Button>
                         </>
                     ) : (
@@ -294,7 +294,7 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                                     variant="outline"
                                     onClick={handleLeaveParty}
                                     disabled={isLeaving}
-                                    className="flex-1 h-9 font-medium"
+                                    className="flex-1 h-10 font-medium"
                                     size="sm"
                                 >
                                     {isLeaving ? 'Leaving...' : 'Leave Party'}
@@ -303,7 +303,7 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                                 <Button 
                                     onClick={handleJoinParty}
                                     disabled={isExpired || isJoining || (party.current_member_count || 0) >= party.party_size}
-                                    className="flex-1 h-9 font-medium"
+                                    className="flex-1 h-10 font-medium"
                                     size="sm"
                                     variant={isExpired || (party.current_member_count || 0) >= party.party_size ? "outline" : "default"}
                                 >
@@ -321,9 +321,9 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                                 variant="outline" 
                                 size="sm"
                                 onClick={() => setAlertOn(!alertOn)}
-                                className="h-9 px-3"
+                                className="h-10 px-3"
                             >
-                                {alertOn ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+                                {alertOn ? <BellOff className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
                             </Button>
                         </>
                     )}

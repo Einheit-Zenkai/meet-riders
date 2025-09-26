@@ -1,13 +1,14 @@
 // src/components/Sidebar.tsx
 
 import Link from "next/link";
-import { User, Settings, Home, Users, Trophy, Plus, Map as MapIcon } from "lucide-react";
+import { User, Settings, Home, Users, Trophy, Plus, Map as MapIcon, CalendarClock } from "lucide-react";
 
 export default function Sidebar() {
   const menuItems = [
     { href: "/dashboard", icon: Home, label: "Home" },
     { href: "/profile", icon: User, label: "Profile" },
     { href: "/hostparty", icon: Plus, label: "Host Party" },
+    { href: "/soi", icon: CalendarClock, label: "Show of Interest" },
     { href: "/leaderboard", icon: Trophy, label: "Leaderboard" },
     { href: "/map", icon: MapIcon, label: "Map" },
   ];

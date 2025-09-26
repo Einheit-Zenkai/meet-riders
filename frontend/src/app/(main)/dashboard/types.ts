@@ -89,3 +89,35 @@ export interface Profile {
     rideOptions: string | null;
     expiresIn: string | null;
 }
+
+// SOI (Show of Interest) types
+export interface SoiParty {
+  id: number;
+  created_at: Date;
+  host_id: string;
+  party_size: number;
+  meetup_point: string;
+  drop_off: string;
+  ride_options: string[];
+  start_time: Date;
+  expiry_timestamp: Date | null;
+  host_university: string | null;
+  display_university: boolean | null;
+  is_active: boolean | null;
+  host_profile?: Profile;
+  current_member_count?: number;
+  user_is_member?: boolean;
+}
+
+export interface SoiMember {
+  id: string;
+  soi_id: number;
+  user_id: string;
+  status: 'joined' | 'left' | 'kicked' | 'pending';
+  joined_at: Date;
+  left_at?: Date;
+  contact_shared: boolean;
+  created_at?: Date;
+  updated_at?: Date;
+  profile?: Profile;
+}
