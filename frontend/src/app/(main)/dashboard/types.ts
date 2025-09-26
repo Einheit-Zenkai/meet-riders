@@ -85,6 +85,8 @@ export interface Profile {
     university: string | null;
     created_at: Date | null;
     show_university: boolean | null;
+  phone_number?: string | null;
+  show_phone?: boolean | null;
     isGenderOnly: boolean | null;
     rideOptions: string | null;
     expiresIn: string | null;

@@ -48,7 +48,7 @@ export default function ProfilePage() {
 
       let { data, error } = await supabase
         .from("profiles")
-        .select(`nickname, bio, avatar_url, points, university, show_university`) // points + university
+  .select(`nickname, bio, avatar_url, points, university, show_university`) // points + university
         .eq("id", user.id)
         .maybeSingle();
       if (error) {
@@ -203,6 +203,8 @@ export default function ProfilePage() {
                       <p className="text-xs text-muted-foreground mt-1">Visible to other users</p>
                     </div>
                   )}
+
+                  {/* Contact number moved to Settings page */}
                   {/* Enhanced Transport Preferences */}
                   <div className="space-y-3">
                     <label className="block text-sm font-medium text-foreground">Preferred Transport</label>

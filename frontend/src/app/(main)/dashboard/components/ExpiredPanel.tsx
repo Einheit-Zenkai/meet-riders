@@ -45,9 +45,7 @@ export default function ExpiredPanel() {
               : error}
           </div>
         )}
-        {!loading && !error && items.length === 0 && (
-          <div className="text-sm text-muted-foreground">Nothing here in the last 10 minutes.</div>
-        )}
+        {!loading && !error && items.length === 0 && null}
         {items.map(item => (
           <div key={item.id} className="border rounded-lg p-3 bg-card">
             <div className="text-xs text-muted-foreground truncate">{item.host_profile?.nickname || item.host_profile?.full_name || 'Host'}</div>

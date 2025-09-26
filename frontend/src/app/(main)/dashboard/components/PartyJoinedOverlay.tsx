@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Crown, Users, MapPin } from "lucide-react";
+import { X, Crown, Users, MapPin, UserX } from "lucide-react";
 import { Party, PartyMember } from "../types";
 import { partyMemberService } from "../services/partyMemberService";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -18,6 +18,7 @@ export default function PartyJoinedOverlay({ party, onClose, onAfterLeave }: Par
   const [members, setMembers] = useState<PartyMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
+  const isHost = party.host_id === (party.host_profile?.id || "");
 
   useEffect(() => {
     let mounted = true;
@@ -52,6 +53,20 @@ export default function PartyJoinedOverlay({ party, onClose, onAfterLeave }: Par
     setLeaving(false);
     onClose();
     onAfterLeave?.();
+  };
+
+  const handleKick = async (member: PartyMember) => {
+    if (!isHost) return;
+    const ok = confirm(`Kick ${member.profile?.nickname || member.profile?.full_name || 'this user'} from the party?`);
+    if (!ok) return;
+    try {
+      const res = await partyMemberService.kickMember(party.id, member.user_id);
+      if (!res.success) return toast.error(res.error || 'Failed to kick');
+      toast.success('Member removed');
+      setMembers(prev => prev.filter(m => m.user_id !== member.user_id));
+    } catch (e) {
+      toast.error('Failed to kick');
+    }
   };
 
   return (
@@ -104,7 +119,13 @@ export default function PartyJoinedOverlay({ party, onClose, onAfterLeave }: Par
                 </div>
               </div>
 
-              <div className="pt-2">
+              <div className="pt-2 space-y-3">
+                {party.host_profile?.show_phone && party.host_profile?.phone_number && (
+                  <div className="text-sm p-3 rounded-md bg-muted/40">
+                    <div className="text-muted-foreground">Host contact</div>
+                    <div className="font-semibold">{party.host_profile.phone_number}</div>
+                  </div>
+                )}
                 <Button variant="destructive" onClick={handleLeave} disabled={leaving} className="w-full">
                   {leaving ? "Leaving…" : "Leave Party"}
                 </Button>
@@ -128,7 +149,7 @@ export default function PartyJoinedOverlay({ party, onClose, onAfterLeave }: Par
               ) : (
                 <div className="space-y-2 max-h-72 overflow-auto pr-1">
                   {members.map(m => (
-                    <div key={m.id} className="flex items-center gap-3 p-2 rounded hover:bg-muted/40">
+                    <div key={m.id} className="flex items-center gap-3 p-2 rounded hover:bg-muted/40 justify-between">
                       <Avatar className="w-8 h-8">
                         {m.profile?.avatar_url ? (
                           <img src={m.profile.avatar_url} className="w-full h-full object-cover rounded-full" alt="avatar" />
@@ -138,7 +159,16 @@ export default function PartyJoinedOverlay({ party, onClose, onAfterLeave }: Par
                           </AvatarFallback>
                         )}
                       </Avatar>
-                      <div className="truncate text-sm font-medium">{m.profile?.nickname || m.profile?.full_name || "Member"}</div>
+                      <div className="truncate text-sm font-medium flex-1">{m.profile?.nickname || m.profile?.full_name || "Member"}</div>
+                      {isHost && m.user_id !== party.host_id && (
+                        <button
+                          className="inline-flex items-center gap-1 text-xs px-2 py-1 border rounded hover:bg-accent"
+                          onClick={() => handleKick(m)}
+                          title="Kick"
+                        >
+                          <UserX className="w-3 h-3" /> Kick
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>

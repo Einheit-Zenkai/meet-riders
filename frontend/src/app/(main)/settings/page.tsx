@@ -1,17 +1,20 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useAuth } from '@/context/Authcontext';
-import { AvatarSection, PasswordSection, SettingsForm } from './components';
-import { useAvatarUpload } from './hooks/useAvatarUpload';
-import { usePasswordChange } from './hooks/usePasswordChange';
-import { useProfile } from './hooks/useProfile';
+import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { AvatarSection, PasswordSection, SettingsForm } from "./components";
+import { useAuth } from "@/context/Authcontext";
+import { useAvatarUpload } from "./hooks/useAvatarUpload";
+import { usePasswordChange } from "./hooks/usePasswordChange";
+import { useProfile } from "./hooks/useProfile";
 
 export default function SettingsPage() {
-  const { loading: authLoading } = useAuth();
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const { loading: profileLoading, avatarUrl } = useProfile();
-  
-  // Avatar upload hook
+
   const {
     imageFile,
     imagePreview,
@@ -21,7 +24,6 @@ export default function SettingsPage() {
     setInitialImagePreview,
   } = useAvatarUpload();
 
-  // Password change hook
   const {
     newPassword,
     setNewPassword,
@@ -32,29 +34,36 @@ export default function SettingsPage() {
     handlePasswordChange,
   } = usePasswordChange();
 
-  // Set initial avatar preview when profile loads
+  if (!user && !authLoading) {
+    router.replace("/login");
+    return null;
+  }
+
+  // Initialize avatar preview from profile once available
   useEffect(() => {
     if (avatarUrl && !imagePreview) {
       setInitialImagePreview(avatarUrl);
     }
   }, [avatarUrl, imagePreview, setInitialImagePreview]);
 
-  if (authLoading || profileLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <p className="text-muted-foreground">Loading settings…</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="p-6">
+      <div className="mb-6 flex items-center justify-between">
+        <Button asChild variant="outline"><Link href="/dashboard">← Back</Link></Button>
+        <div className="text-lg font-semibold">Settings</div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <AvatarSection
           imagePreview={imagePreview}
           fileInputRef={fileInputRef}
           handleImageChange={handleImageChange}
           handleAvatarClick={handleAvatarClick}
+        />
+
+        <SettingsForm
+          imageFile={imageFile}
+          setInitialImagePreview={setInitialImagePreview}
         />
 
         <PasswordSection
@@ -65,11 +74,6 @@ export default function SettingsPage() {
           passwordErr={passwordErr}
           passwordMsg={passwordMsg}
           handlePasswordChange={handlePasswordChange}
-        />
-
-        <SettingsForm
-          imageFile={imageFile}
-          setInitialImagePreview={setInitialImagePreview}
         />
       </div>
     </div>

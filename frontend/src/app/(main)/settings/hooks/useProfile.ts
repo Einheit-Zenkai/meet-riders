@@ -33,6 +33,8 @@ export const useProfile = () => {
   const [idealDepartureTime, setIdealDepartureTime] = useState('');
   const [university, setUniversity] = useState('');
   const [showUniversity, setShowUniversity] = useState<boolean>(true);
+  const [phone, setPhone] = useState('');
+  const [showPhone, setShowPhone] = useState<boolean>(false);
   
   const [preferences, setPreferences] = useState<Preferences>(() => {
     const init: Preferences = {};
@@ -64,6 +66,8 @@ export const useProfile = () => {
         setUniversity(profile.university || '');
         setShowUniversity(typeof profile.show_university === 'boolean' ? profile.show_university : true);
         setAvatarUrl(profile.avatar_url || null);
+  setPhone(profile.phone_number || '');
+  setShowPhone(!!profile.show_phone);
       }
       setLoading(false);
     };
@@ -105,6 +109,10 @@ export const useProfile = () => {
     setUniversity,
     showUniversity,
     setShowUniversity,
+  phone,
+  setPhone,
+  showPhone,
+  setShowPhone,
     // Preferences
     preferences,
     handlePreferenceClick,

@@ -237,6 +237,22 @@ export class PartyMemberService {
       return { success: false, error: "An unexpected error occurred" };
     }
   }
+
+  /** Host-only: kick a member from a party via RPC */
+  async kickMember(partyId: number, memberUserId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) return { success: false, error: 'Not authenticated' };
+      const { error } = await this.supabase.rpc('kick_party_member', {
+        p_party_id: partyId,
+        p_member_user_id: memberUserId,
+      });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Failed to kick member' };
+    }
+  }
 }
 
 // Export a singleton instance

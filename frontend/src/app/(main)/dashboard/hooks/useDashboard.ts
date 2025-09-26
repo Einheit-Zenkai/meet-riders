@@ -98,6 +98,8 @@ export function useDashboard() {
           avatar_url,
           university,
           points,
+          phone_number,
+          show_phone,
           major,
           bio
         `)
@@ -211,26 +213,32 @@ export function useDashboard() {
     });
   }, [parties, destinationQuery, timeWindowMins]);
 
-  // Ordered parties (same university first)
+  // Ordered parties: friends first, then same university, then others
   const orderedParties = useMemo(() => {
-    if (!viewerUniversity) return filteredParties;
-    
+    // Placeholder: if you have a real friends table, wire it here.
+    // For now, treat party.is_friends_only as "friends-hosted" category.
+    const friends: Party[] = [];
     const sameUniversity: Party[] = [];
-    const otherUniversity: Party[] = [];
-    
+    const others: Party[] = [];
+
     for (const party of filteredParties) {
+      if (party.is_friends_only) {
+        friends.push(party);
+        continue;
+      }
       if (
-        party.host_university && 
-        party.display_university && 
+        viewerUniversity &&
+        party.host_university &&
+        party.display_university &&
         party.host_university === viewerUniversity
       ) {
         sameUniversity.push(party);
       } else {
-        otherUniversity.push(party);
+        others.push(party);
       }
     }
-    
-    return [...sameUniversity, ...otherUniversity];
+
+    return [...friends, ...sameUniversity, ...others];
   }, [filteredParties, viewerUniversity]);
 
   const isLoading = loading || isCheckingProfile || partiesLoading;

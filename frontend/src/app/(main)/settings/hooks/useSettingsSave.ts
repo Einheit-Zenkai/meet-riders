@@ -22,6 +22,8 @@ export const useSettingsSave = () => {
       idealDepartureTime: string;
       university: string;
       showUniversity: boolean;
+      phone: string;
+      showPhone: boolean;
       preferences: Preferences;
     },
     imageFile: File | null,
@@ -76,6 +78,8 @@ export const useSettingsSave = () => {
       punctuality: profileData.punctuality,
       ideal_location: profileData.idealLocation,
       ideal_departure_time: profileData.idealDepartureTime,
+      phone_number: profileData.phone || null,
+      show_phone: !!profileData.showPhone,
       updated_at: new Date(),
     };
     

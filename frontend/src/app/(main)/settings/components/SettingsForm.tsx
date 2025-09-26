@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BasicInfoSection, TravelPreferences, DangerZone } from './index';
+import { BasicInfoSection, TravelPreferences, DangerZone, ContactSection } from './index';
 import { useProfile } from '../hooks/useProfile';
 import { useSettingsSave } from '../hooks/useSettingsSave';
 
@@ -30,6 +30,10 @@ export const SettingsForm = ({ imageFile, setInitialImagePreview }: SettingsForm
     setUniversity,
     showUniversity,
     setShowUniversity,
+    phone,
+    setPhone,
+    showPhone,
+    setShowPhone,
     preferences,
     handlePreferenceClick,
     handleDislikeClick,
@@ -48,6 +52,8 @@ export const SettingsForm = ({ imageFile, setInitialImagePreview }: SettingsForm
         idealDepartureTime,
         university,
         showUniversity,
+        phone,
+        showPhone,
         preferences,
       },
       imageFile,
@@ -93,6 +99,15 @@ export const SettingsForm = ({ imageFile, setInitialImagePreview }: SettingsForm
             handleDislikeClick={handleDislikeClick}
             PREFERENCE_LEVELS={PREFERENCE_LEVELS}
           />
+
+          <div className="pt-2">
+            <ContactSection
+              phone={phone}
+              setPhone={setPhone}
+              showPhone={showPhone}
+              setShowPhone={setShowPhone}
+            />
+          </div>
 
           {error && <p className="text-destructive text-center text-sm mb-4">{error}</p>}
           {message && <p className="text-green-600 text-center text-sm mb-4">{message}</p>}
