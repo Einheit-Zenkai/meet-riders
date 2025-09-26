@@ -13,6 +13,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/context/Authcontext";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
+import HostButton from "@/components/ui/hostbutton";
 
 // This defines the shape of the data we'll be working with from our 'profiles' table
 type ProfileData = {
@@ -297,6 +298,8 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
       </div>
+      {/* Floating Host (+) button */}
+      <HostButton />
       </div>
     </div>
   );

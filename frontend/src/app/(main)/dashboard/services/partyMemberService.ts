@@ -51,13 +51,16 @@ export class PartyMemberService {
             gender,
             points,
             university,
-            show_university
+            show_university,
+            created_at,
+            updated_at,
+            birth_date
           )
         `)
         .single();
 
       if (joinError) {
-        console.error('Error joining party:', joinError);
+        console.error('Error joining party:', joinError?.message || joinError);
         return { success: false, error: "Failed to join party" };
       }
 
@@ -121,44 +124,62 @@ export class PartyMemberService {
    */
   async getPartyMembers(partyId: number): Promise<{ success: boolean; members?: PartyMember[]; error?: string }> {
     try {
-      const { data: members, error } = await this.supabase
+      // 1) Fetch raw members without cross-table joins to avoid RLS/relationship issues
+      const { data: memberRows, error: memberErr } = await this.supabase
         .from('party_members')
-        .select(`
-          *,
-          profile:user_id (
-            id,
-            full_name,
-            nickname,
-            avatar_url,
-            gender,
-            points,
-            university,
-            show_university
-          )
-        `)
+        .select('*')
         .eq('party_id', partyId)
         .eq('status', 'joined')
         .order('joined_at', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching party members:', error);
-        return { success: false, error: "Failed to fetch party members" };
+      if (memberErr) {
+        const errMsg = (memberErr as any)?.message || (memberErr as any)?.hint || JSON.stringify(memberErr);
+        console.error('Error fetching party members (base rows):', errMsg);
+        return { success: false, error: 'Failed to fetch party members' };
       }
 
-      // Transform the data to match our PartyMember type
-      const transformedMembers: PartyMember[] = (members || []).map(member => ({
-        ...member,
-        joined_at: new Date(member.joined_at),
-        left_at: member.left_at ? new Date(member.left_at) : undefined,
-        created_at: new Date(member.created_at),
-        updated_at: new Date(member.updated_at),
-        profile: member.profile ? {
-          ...member.profile,
-          created_at: member.profile.created_at ? new Date(member.profile.created_at) : null,
-          updated_at: member.profile.updated_at ? new Date(member.profile.updated_at) : null,
-          birth_date: member.profile.birth_date ? new Date(member.profile.birth_date) : null,
-        } : undefined
-      }));
+      const members = memberRows || [];
+      const userIds = members.map((m: any) => m.user_id).filter(Boolean);
+
+      // 2) If there are members, fetch their profiles in a second query
+      let profilesById: Record<string, any> = {};
+      if (userIds.length > 0) {
+        const { data: profiles, error: profileErr } = await this.supabase
+          .from('profiles')
+          .select('id, full_name, nickname, avatar_url, gender, points, university, show_university, created_at, updated_at, birth_date')
+          .in('id', userIds);
+
+        if (profileErr) {
+          const errMsg = (profileErr as any)?.message || (profileErr as any)?.hint || JSON.stringify(profileErr);
+          // If profiles are blocked by RLS, we still return members without profile to avoid hard failure
+          console.warn('Profiles fetch blocked or failed; continuing without profile details:', errMsg);
+        } else {
+          profilesById = (profiles || []).reduce((acc: Record<string, any>, p: any) => {
+            acc[p.id] = p;
+            return acc;
+          }, {});
+        }
+      }
+
+      // 3) Transform and attach profiles when available
+      const transformedMembers: PartyMember[] = members.map((member: any) => {
+        const profile = profilesById[member.user_id];
+        return {
+          ...member,
+          joined_at: new Date(member.joined_at),
+          left_at: member.left_at ? new Date(member.left_at) : undefined,
+          created_at: new Date(member.created_at),
+          updated_at: new Date(member.updated_at),
+          profile: profile
+            ? {
+                ...profile,
+                created_at: profile.created_at ? new Date(profile.created_at) : null,
+                updated_at: profile.updated_at ? new Date(profile.updated_at) : null,
+                birth_date: profile.birth_date ? new Date(profile.birth_date) : null,
+              }
+            : undefined,
+        };
+      });
 
       return { success: true, members: transformedMembers };
     } catch (error) {

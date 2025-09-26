@@ -5,7 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Users, Crown } from 'lucide-react';
 import { Party, PartyMember } from "../types";
+import { toast } from "sonner";
 import { partyMemberService } from "../services/partyMemberService";
+import { useAuth } from "@/context/Authcontext";
 
 interface PartyMembersDialogProps {
   party: Party;
@@ -16,18 +18,28 @@ export default function PartyMembersDialog({ party, children }: PartyMembersDial
   const [members, setMembers] = useState<PartyMember[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const { user } = useAuth();
+  const isHost = user?.id === party.host_id;
 
   const fetchMembers = async () => {
     if (!isOpen) return;
     
     setIsLoading(true);
     try {
+      // Only host or joined members should fetch the list to respect RLS
+      if (!isHost && !party.user_is_member) {
+        setMembers([]);
+        return;
+      }
       const result = await partyMemberService.getPartyMembers(party.id);
       if (result.success && result.members) {
         setMembers(result.members);
+      } else if (!result.success) {
+        toast.error(result.error || 'Failed to fetch party members');
       }
     } catch (error) {
       console.error('Error fetching party members:', error);
+      toast.error('Failed to fetch party members');
     } finally {
       setIsLoading(false);
     }
@@ -73,6 +85,7 @@ export default function PartyMembersDialog({ party, children }: PartyMembersDial
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays}d ago`;
   };
+        
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -134,6 +147,11 @@ export default function PartyMembersDialog({ party, children }: PartyMembersDial
                   </div>
                 </div>
               ))}
+            </div>
+          ) : (!isHost && !party.user_is_member) ? (
+            <div className="text-center py-6 text-muted-foreground">
+              <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Join this party to see the member list</p>
             </div>
           ) : members.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground">
