@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
-export default function ReportPage() {
+function Report() {
   const router = useRouter();
   const params = useSearchParams();
   const targetId = params.get("id");
@@ -123,5 +123,13 @@ export default function ReportPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function ReportPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Report />
+    </Suspense>
   );
 }
