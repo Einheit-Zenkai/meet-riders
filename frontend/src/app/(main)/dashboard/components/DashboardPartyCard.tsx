@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Party } from "../types";
-import { Clock, Users, MapPin, User as UserIcon, Bell, BellOff, Share2, Star } from 'lucide-react';
+import { Clock, Users, MapPin, User as UserIcon, Bell, BellOff, Share2, Star, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/Authcontext";
@@ -27,6 +27,48 @@ interface DashboardPartyCardProps {
 }
 
 export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPartyCardProps) {
+    const [editingExpiry, setEditingExpiry] = useState(false);
+    const [newExpiry, setNewExpiry] = useState<string>("");
+    const [updatingExpiry, setUpdatingExpiry] = useState(false);
+
+    // Expiry options (same as creation)
+    const expiryOptions = ["10 min", "15 min", "20 min", "30 min", "1 hr"];
+
+    // Update expiry handler
+    const handleUpdateExpiry = async () => {
+        if (!newExpiry) return;
+        setUpdatingExpiry(true);
+        try {
+            // Calculate new expiry timestamp
+            const now = new Date();
+            const minutes = newExpiry.includes('hr')
+                ? parseInt(newExpiry) * 60
+                : parseInt(newExpiry);
+            now.setMinutes(now.getMinutes() + minutes);
+            const newExpiryTimestamp = now.toISOString();
+            const supabase = createClient();
+            const { error } = await supabase
+                .from('parties')
+                .update({
+                    expires_in: newExpiry,
+                    expiry_timestamp: newExpiryTimestamp
+                })
+                .eq('id', party.id)
+                .eq('host_id', user.id);
+            if (error) {
+                toast.error('Failed to update expiry');
+            } else {
+                toast.success('Expiry updated!');
+                setEditingExpiry(false);
+                setNewExpiry("");
+                onPartyUpdate?.();
+            }
+        } catch (e) {
+            toast.error('Unexpected error updating expiry');
+        } finally {
+            setUpdatingExpiry(false);
+        }
+    };
     // Helper to get the base URL (works for both dev and prod)
     const getBaseUrl = () => {
         if (typeof window !== 'undefined') {
@@ -264,14 +306,44 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                         </div>
                     </div>
                     
-                    {/* Timer */}
-                    <div className="text-right px-2">
-                        <div className="text-base font-bold text-primary leading-relaxed">
-                            {isExpired ? '--:--' : formatTimeLeft(timeLeft)}
+                    {/* Timer with edit icon for host */}
+                    <div className="text-right px-2 flex flex-col items-end">
+                        <div className="flex items-center gap-1">
+                            <div className="text-base font-bold text-primary leading-relaxed">
+                                        {isExpired ? '--:--' : formatTimeLeft(timeLeft)}
+                            </div>
+                            {isHost && !isExpired && (
+                                <button
+                                    className="ml-1 p-1 rounded hover:bg-accent/40 transition-colors"
+                                    title="Edit expiry time"
+                                    aria-label="Edit expiry time"
+                                    onClick={() => setEditingExpiry((v) => !v)}
+                                >
+                                    <Pencil className="w-4 h-4 text-muted-foreground" />
+                                </button>
+                            )}
                         </div>
                         <div className="text-sm text-muted-foreground leading-relaxed">
                             {isExpired ? 'ended' : 'left'}
                         </div>
+                        {isHost && !isExpired && editingExpiry && (
+                            <div className="flex items-center gap-2 mt-2">
+                                <select
+                                    className="border rounded px-2 py-1"
+                                    value={newExpiry}
+                                    onChange={e => setNewExpiry(e.target.value)}
+                                >
+                                    <option value="">Select expiry</option>
+                                    {expiryOptions.map(opt => (
+                                        <option key={opt} value={opt}>{opt}</option>
+                                    ))}
+                                </select>
+                                <Button size="sm" disabled={updatingExpiry || !newExpiry} onClick={handleUpdateExpiry}>
+                                    {updatingExpiry ? 'Updating...' : 'Save'}
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setEditingExpiry(false)}>Cancel</Button>
+                            </div>
+                        )}
                     </div>
                 </div>
 
