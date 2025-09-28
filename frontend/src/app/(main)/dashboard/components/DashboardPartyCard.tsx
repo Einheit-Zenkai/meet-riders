@@ -36,7 +36,7 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
 
     // Update expiry handler
     const handleUpdateExpiry = async () => {
-        if (!newExpiry) return;
+        if (!newExpiry || !user) return;
         setUpdatingExpiry(true);
         try {
             // Calculate new expiry timestamp

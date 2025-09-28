@@ -30,15 +30,21 @@ export default function RidesList({ parties, isLoading = false, onPartyUpdate }:
     );
   }
 
+  // Filter out expired parties
+  const now = Date.now();
+  const activeParties = parties.filter(
+    (party) => party.expiry_timestamp && new Date(party.expiry_timestamp).getTime() > now
+  );
+
   return (
     <div className=" relative z-0">
       <h2 className="text-2xl font-semibold text-card-foreground mb-4">Available Rides</h2>
 
-      {parties.length === 0 ? (
+      {activeParties.length === 0 ? (
         <EmptyRidesState />
       ) : (
-  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-          {parties.map((party) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+          {activeParties.map((party) => (
             <DashboardPartyCard 
               key={party.id} 
               party={party} 
