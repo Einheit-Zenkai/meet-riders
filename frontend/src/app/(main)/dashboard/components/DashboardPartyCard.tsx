@@ -27,6 +27,40 @@ interface DashboardPartyCardProps {
 }
 
 export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPartyCardProps) {
+    // Helper to get the base URL (works for both dev and prod)
+    const getBaseUrl = () => {
+        if (typeof window !== 'undefined') {
+            return window.location.origin;
+        }
+        return '';
+    };
+
+    // Share handler
+    const handleShareParty = async () => {
+        const shareUrl = `${getBaseUrl()}/party/${party.id}`;
+        const shareText = `Join my party on Meet Riders!\n${shareUrl}`;
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Join my party on Meet Riders!',
+                    text: 'Check out this party I created. Click to join!',
+                    url: shareUrl,
+                });
+            } catch (err) {
+                // User cancelled or error
+            }
+        } else if (navigator.clipboard) {
+            try {
+                await navigator.clipboard.writeText(shareUrl);
+                toast.success('Party link copied to clipboard!');
+            } catch (err) {
+                toast.error('Failed to copy link.');
+            }
+        } else {
+            // fallback: prompt
+            window.prompt('Copy this link:', shareUrl);
+        }
+    };
     const { user } = useAuth();
     const isHost = party.host_id === user?.id;
     const [timeLeft, setTimeLeft] = useState(party.expiry_timestamp.getTime() - Date.now());
@@ -294,7 +328,7 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                             >
                                 Cancel Party
                             </Button>
-                            <Button variant="outline" size="sm" className="h-10 px-3">
+                            <Button variant="outline" size="sm" className="h-10 px-3" onClick={handleShareParty}>
                                 <Share2 className="w-5 h-5" />
                             </Button>
                         </>

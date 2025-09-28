@@ -26,7 +26,7 @@ export default function HostPartyPage() {
   const [isAlreadyHosting, setIsAlreadyHosting] = useState(false);
 
   // Form state
-  const [partySize, setPartySize] = useState(1);
+  const [partySize, setPartySize] = useState(2);
   const [meetupPoint, setMeetupPoint] = useState("");
   const [dropOff, setDropOff] = useState("");
   const [isFriendsOnly, setIsFriendsOnly] = useState(false);
@@ -69,12 +69,12 @@ export default function HostPartyPage() {
   const handlePartySizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let newSize = parseInt(e.target.value, 10) || 0;
     if (newSize > 7) newSize = 7;
-    if (newSize < 0) newSize = 0;
+    if (newSize < 2) newSize = 2;
     setPartySize(newSize);
   };
 
   const handleRemoveMember = () => {
-    if (partySize > 0) setPartySize(partySize - 1);
+    if (partySize > 2) setPartySize(partySize - 1);
   };
 
   const handleRideToggle = (rideName: string) => {
@@ -90,8 +90,8 @@ export default function HostPartyPage() {
   };
 
   const handleStartParty = async () => {
-    if (!meetupPoint || !dropOff || partySize === 0) {
-      toast.error("Please fill out the meetup point, drop-off, and set a party size.");
+    if (!meetupPoint || !dropOff || partySize < 2) {
+      toast.error("Please fill out the meetup point, drop-off, and set a party size of at least 2.");
       return;
     }
 
@@ -262,7 +262,7 @@ export default function HostPartyPage() {
                 value={partySize}
                 onChange={handlePartySizeChange}
                 className="w-20 p-2 border-2 border-input rounded-lg text-center text-lg bg-background"
-                min="1"
+                min="2"
                 max="7"
               />
               <div className="flex items-center space-x-2">
