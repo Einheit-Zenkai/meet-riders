@@ -35,6 +35,7 @@ export default function HostPartyPage() {
   // Removed gender-only option for safety
   const [selectedRides, setSelectedRides] = useState<string[]>([]);
   const [expiresIn, setExpiresIn] = useState("10 min");
+  const [hostComments, setHostComments] = useState("");
 
   // ✅ Check if user is already hosting
   useEffect(() => {
@@ -110,11 +111,12 @@ export default function HostPartyPage() {
       ride_options: selectedRides,
       expires_in: expiresIn,
       is_active: true,
+      host_comments: hostComments,
       expiry_timestamp: (() => {
-      const now = new Date();
-      const minutes = parseInt(expiresIn.split(' ')[0], 10);
-      now.setMinutes(now.getMinutes() + minutes);
-      return now.toISOString();
+        const now = new Date();
+        const minutes = parseInt(expiresIn.split(' ')[0], 10);
+        now.setMinutes(now.getMinutes() + minutes);
+        return now.toISOString();
       })(),
     };
 
@@ -278,6 +280,20 @@ export default function HostPartyPage() {
           </div>
         </div>
 
+        {/* Host Comments */}
+        <div className="space-y-2">
+          <label htmlFor="host-comments" className="text-xl font-semibold text-foreground">
+            Additional Comments (optional)
+          </label>
+          <textarea
+            id="host-comments"
+            className="w-full p-3 border-2 border-input rounded-lg bg-background"
+            placeholder="Add any special instructions, notes, or comments for your party members."
+            value={hostComments}
+            onChange={e => setHostComments(e.target.value)}
+            rows={3}
+          />
+        </div>
         {/* Ride Options */}
         <div className="space-y-4">
           <label className="text-xl font-semibold text-foreground">

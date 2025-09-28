@@ -362,6 +362,13 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                             </div>
                         </div>
                     </div>
+                    {/* Host Comments for joined users */}
+                    {party.user_is_member && party.host_comments && (
+                        <div className="mt-2 p-3 bg-accent/40 rounded border text-base text-foreground">
+                            <span className="font-semibold">Host Comments:</span>
+                            <div className="mt-1 whitespace-pre-line">{party.host_comments}</div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Details Row */}

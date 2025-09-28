@@ -44,12 +44,14 @@ export interface Party {
     host_university: string | null;
     display_university: string | null;
     is_active: boolean | null;
-    // Host profile information (joined from profiles table)
-    host_profile?: Profile;
-    // Members of the party
-    members?: PartyMember[];
-    current_member_count?: number;
-    user_is_member?: boolean;
+  // Host comments for joined users
+  host_comments?: string;
+  // Host profile information (joined from profiles table)
+  host_profile?: Profile;
+  // Members of the party
+  members?: PartyMember[];
+  current_member_count?: number;
+  user_is_member?: boolean;
 }
 
 export interface PartyMember {
