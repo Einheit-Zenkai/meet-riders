@@ -22,6 +22,10 @@ export default function HomePage() {
     setSameDepartment,
     sameYear,
     setSameYear,
+    showFriendsOnly,
+    setShowFriendsOnly,
+    showMyUniversityOnly,
+    setShowMyUniversityOnly,
   } = useDashboard();
 
   if (isLoading) {
@@ -42,6 +46,10 @@ export default function HomePage() {
         onSameDepartmentChange={setSameDepartment}
         sameYear={sameYear}
         onSameYearChange={setSameYear}
+        showFriendsOnly={showFriendsOnly}
+        onShowFriendsOnlyChange={setShowFriendsOnly}
+        showMyUniversityOnly={showMyUniversityOnly}
+        onShowMyUniversityOnlyChange={setShowMyUniversityOnly}
       />
 
       <div className="mt-6 grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6 items-start">

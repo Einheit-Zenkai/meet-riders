@@ -15,6 +15,10 @@ interface DashboardHeaderProps {
   onSameDepartmentChange: (value: boolean) => void;
   sameYear: boolean;
   onSameYearChange: (value: boolean) => void;
+  showFriendsOnly: boolean;
+  onShowFriendsOnlyChange: (value: boolean) => void;
+  showMyUniversityOnly: boolean;
+  onShowMyUniversityOnlyChange: (value: boolean) => void;
 }
 
 export default function DashboardHeader({
@@ -27,6 +31,10 @@ export default function DashboardHeader({
   onSameDepartmentChange,
   sameYear,
   onSameYearChange,
+  showFriendsOnly,
+  onShowFriendsOnlyChange,
+  showMyUniversityOnly,
+  onShowMyUniversityOnlyChange,
 }: DashboardHeaderProps) {
   return (
     <div className="flex flex-col gap-3 mb-4">
@@ -40,6 +48,10 @@ export default function DashboardHeader({
           onSameDepartmentChange={onSameDepartmentChange}
           sameYear={sameYear}
           onSameYearChange={onSameYearChange}
+          showFriendsOnly={showFriendsOnly}
+          onShowFriendsOnlyChange={onShowFriendsOnlyChange}
+          showMyUniversityOnly={showMyUniversityOnly}
+          onShowMyUniversityOnlyChange={onShowMyUniversityOnlyChange}
         />
         
         <NotificationsDropdown />

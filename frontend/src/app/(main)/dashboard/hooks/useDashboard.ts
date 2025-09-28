@@ -24,6 +24,8 @@ export function useDashboard() {
   const [timeWindowMins, setTimeWindowMins] = useState<string>("any");
   const [sameDepartment, setSameDepartment] = useState(false);
   const [sameYear, setSameYear] = useState(false);
+  const [showFriendsOnly, setShowFriendsOnly] = useState(false);
+  const [showMyUniversityOnly, setShowMyUniversityOnly] = useState(false);
 
   // Profile check effect
   useEffect(() => {
@@ -208,10 +210,17 @@ export function useDashboard() {
       
       const timeLeft = party.expiry_timestamp.getTime() - now;
       const matchesTime = maxMs === Infinity || (timeLeft > 0 && timeLeft <= maxMs);
-      
-      return matchesDestination && matchesTime;
+
+      // Friends filter
+      const matchesFriends = !showFriendsOnly || party.is_friends_only;
+      // University filter
+      const matchesUniversity = !showMyUniversityOnly || (
+        viewerUniversity && party.host_university === viewerUniversity
+      );
+
+      return matchesDestination && matchesTime && matchesFriends && matchesUniversity;
     });
-  }, [parties, destinationQuery, timeWindowMins]);
+  }, [parties, destinationQuery, timeWindowMins, showFriendsOnly, showMyUniversityOnly, viewerUniversity]);
 
   // Ordered parties: friends first, then same university, then others
   const orderedParties = useMemo(() => {
@@ -261,5 +270,9 @@ export function useDashboard() {
     setSameDepartment,
     sameYear,
     setSameYear,
+    showFriendsOnly,
+    setShowFriendsOnly,
+    showMyUniversityOnly,
+    setShowMyUniversityOnly,
   };
 }

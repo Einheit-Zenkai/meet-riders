@@ -12,6 +12,10 @@ interface SearchAndFiltersProps {
   onSameDepartmentChange: (value: boolean) => void;
   sameYear: boolean;
   onSameYearChange: (value: boolean) => void;
+  showFriendsOnly: boolean;
+  onShowFriendsOnlyChange: (value: boolean) => void;
+  showMyUniversityOnly: boolean;
+  onShowMyUniversityOnlyChange: (value: boolean) => void;
 }
 
 export default function SearchAndFilters({
@@ -23,6 +27,10 @@ export default function SearchAndFilters({
   onSameDepartmentChange,
   sameYear,
   onSameYearChange,
+  showFriendsOnly,
+  onShowFriendsOnlyChange,
+  showMyUniversityOnly,
+  onShowMyUniversityOnlyChange,
 }: SearchAndFiltersProps) {
   const [showFilters, setShowFilters] = useState(false);
   const filtersRef = useRef<HTMLDivElement>(null);
@@ -99,6 +107,22 @@ export default function SearchAndFilters({
                 onChange={(e) => onSameYearChange(e.target.checked)}
               />
               <span className="text-sm text-muted-foreground">Same year (coming soon)</span>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="checkbox"
+                checked={showFriendsOnly}
+                onChange={e => onShowFriendsOnlyChange(e.target.checked)}
+              />
+              <span className="text-sm text-foreground">Friends' Parties only</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={showMyUniversityOnly}
+                onChange={e => onShowMyUniversityOnlyChange(e.target.checked)}
+              />
+              <span className="text-sm text-foreground">My University only</span>
             </div>
           </div>
         </div>
