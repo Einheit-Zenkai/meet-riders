@@ -324,7 +324,7 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                             )}
                         </div>
                         <div className="text-sm text-muted-foreground leading-relaxed">
-                            {isExpired ? 'ended' : 'left'}
+                            {isExpired ? 'ended' : ''}
                         </div>
                         {isHost && !isExpired && editingExpiry && (
                             <div className="flex items-center gap-2 mt-2">
