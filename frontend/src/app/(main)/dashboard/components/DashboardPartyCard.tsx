@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
@@ -13,23 +14,24 @@ import { partyMemberService } from "../services/partyMemberService";
 import PartyMembersDialog from "./PartyMembersDialog";
 import PartyJoinedOverlay from "./PartyJoinedOverlay";
 
+interface DashboardPartyCardProps {
+    party: Party;
+    onPartyUpdate?: () => void;
+}
+
 // Helper function to format remaining time as MM:SS
 const formatTimeLeft = (ms: number): string => {
     const totalSeconds = Math.max(0, Math.floor(ms / 1000));
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-};
-
-interface DashboardPartyCardProps {
-  party: Party;
-  onPartyUpdate?: () => void;
 }
 
 export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPartyCardProps) {
     const [editingExpiry, setEditingExpiry] = useState(false);
     const [newExpiry, setNewExpiry] = useState<string>("");
     const [updatingExpiry, setUpdatingExpiry] = useState(false);
+    const [showProfileDialog, setShowProfileDialog] = useState(false);
 
     // Expiry options (same as creation)
     const expiryOptions = ["10 min", "15 min", "20 min", "30 min", "1 hr"];
@@ -256,19 +258,53 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                 {/* Header Row */}
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                        <Avatar className="w-12 h-12">
-                            {party.host_profile?.avatar_url ? (
-                                <img 
-                                    src={party.host_profile.avatar_url} 
-                                    alt="Host avatar" 
-                                    className="w-full h-full object-cover rounded-full"
-                                />
-                            ) : (
-                                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                                    {getHostInitials()}
-                                </AvatarFallback>
-                            )}
-                        </Avatar>
+                        <button onClick={() => setShowProfileDialog(true)} className="focus:outline-none">
+                          <Avatar className="w-12 h-12">
+                              {party.host_profile?.avatar_url ? (
+                                  <img 
+                                      src={party.host_profile.avatar_url} 
+                                      alt="Host avatar" 
+                                      className="w-full h-full object-cover rounded-full"
+                                  />
+                              ) : (
+                                  <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+                                      {getHostInitials()}
+                                  </AvatarFallback>
+                              )}
+                          </Avatar>
+                        </button>
+                        {/* Host Profile Popup Dialog */}
+                        {showProfileDialog && party.host_profile && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                                <div className="bg-card rounded-lg shadow-lg p-8 max-w-md w-full relative">
+                                    <button className="absolute top-2 right-2 text-xl" onClick={() => setShowProfileDialog(false)}>&times;</button>
+                                    <div className="flex flex-col items-center gap-3">
+                                        <Avatar className="w-20 h-20">
+                                            {party.host_profile.avatar_url ? (
+                                                <img src={party.host_profile.avatar_url} alt="Host avatar" className="w-full h-full object-cover rounded-full" />
+                                            ) : (
+                                                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-2xl">
+                                                    {getHostInitials()}
+                                                </AvatarFallback>
+                                            )}
+                                        </Avatar>
+                                        <h2 className="text-xl font-bold mt-2">{party.host_profile.nickname || party.host_profile.full_name || 'Anonymous Host'}</h2>
+                                        {party.host_profile.university && (
+                                            <div className="text-sm text-muted-foreground">{party.host_profile.university}</div>
+                                        )}
+                                        {party.host_profile.gender && (
+                                            <div className="text-sm text-muted-foreground">Gender: {party.host_profile.gender}</div>
+                                        )}
+                                        {party.host_profile.points !== null && party.host_profile.points !== undefined && (
+                                            <div className="text-sm text-muted-foreground">Points: {party.host_profile.points}</div>
+                                        )}
+                                        {party.host_profile.bio && (
+                                            <div className="text-sm text-muted-foreground mt-2 text-center">{party.host_profile.bio}</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 mb-1">
                                 <h3 className="font-semibold text-lg leading-relaxed">
