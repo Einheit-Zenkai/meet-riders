@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, Bus, Car, CarTaxiFront, Footprints, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
-import { useAuth } from "@/context/Authcontext";
+import useAuthStore from "@/stores/authStore";
 
 const rideOptions = [
   { name: "On Foot", icon: Footprints },
@@ -18,7 +18,7 @@ const rideOptions = [
 
 export default function ShowInterestPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const supabase = createClient();
   const [isAlreadyHosting, setIsAlreadyHosting] = useState(false);
 

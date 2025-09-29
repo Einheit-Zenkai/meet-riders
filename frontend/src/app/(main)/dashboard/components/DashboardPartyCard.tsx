@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
@@ -8,7 +7,7 @@ import { Party } from "../types";
 import { Clock, Users, MapPin, User as UserIcon, Bell, BellOff, Share2, Star, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useAuth } from "@/context/Authcontext";
+import useAuthStore from "@/stores/authStore";
 import { createClient } from "@/utils/supabase/client";
 import { partyMemberService } from "../services/partyMemberService";
 import PartyMembersDialog from "./PartyMembersDialog";
@@ -105,7 +104,7 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
             window.prompt('Copy this link:', shareUrl);
         }
     };
-    const { user } = useAuth();
+    const { user } = useAuthStore();
     const isHost = party.host_id === user?.id;
     const [timeLeft, setTimeLeft] = useState(party.expiry_timestamp.getTime() - Date.now());
     const [alertOn, setAlertOn] = useState<boolean>(false);

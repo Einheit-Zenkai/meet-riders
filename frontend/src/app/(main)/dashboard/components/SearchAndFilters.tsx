@@ -2,38 +2,24 @@
 
 import { Filter } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import useDashboardFiltersStore, { TimeWindow } from "@/stores/dashboardFiltersStore";
 
-interface SearchAndFiltersProps {
-  destinationQuery: string;
-  onDestinationQueryChange: (query: string) => void;
-  timeWindowMins: string;
-  onTimeWindowChange: (timeWindow: string) => void;
-  sameDepartment: boolean;
-  onSameDepartmentChange: (value: boolean) => void;
-  sameYear: boolean;
-  onSameYearChange: (value: boolean) => void;
-  showFriendsOnly: boolean;
-  onShowFriendsOnlyChange: (value: boolean) => void;
-  showMyUniversityOnly: boolean;
-  onShowMyUniversityOnlyChange: (value: boolean) => void;
-}
-
-export default function SearchAndFilters({
-  destinationQuery,
-  onDestinationQueryChange,
-  timeWindowMins,
-  onTimeWindowChange,
-  sameDepartment,
-  onSameDepartmentChange,
-  sameYear,
-  onSameYearChange,
-  showFriendsOnly,
-  onShowFriendsOnlyChange,
-  showMyUniversityOnly,
-  onShowMyUniversityOnlyChange,
-}: SearchAndFiltersProps) {
+export default function SearchAndFilters() {
   const [showFilters, setShowFilters] = useState(false);
   const filtersRef = useRef<HTMLDivElement>(null);
+
+  const destinationQuery = useDashboardFiltersStore((state) => state.destinationQuery);
+  const setDestinationQuery = useDashboardFiltersStore((state) => state.setDestinationQuery);
+  const timeWindowMins = useDashboardFiltersStore((state) => state.timeWindowMins);
+  const setTimeWindowMins = useDashboardFiltersStore((state) => state.setTimeWindowMins);
+  const sameDepartment = useDashboardFiltersStore((state) => state.sameDepartment);
+  const setSameDepartment = useDashboardFiltersStore((state) => state.setSameDepartment);
+  const sameYear = useDashboardFiltersStore((state) => state.sameYear);
+  const setSameYear = useDashboardFiltersStore((state) => state.setSameYear);
+  const showFriendsOnly = useDashboardFiltersStore((state) => state.showFriendsOnly);
+  const setShowFriendsOnly = useDashboardFiltersStore((state) => state.setShowFriendsOnly);
+  const showMyUniversityOnly = useDashboardFiltersStore((state) => state.showMyUniversityOnly);
+  const setShowMyUniversityOnly = useDashboardFiltersStore((state) => state.setShowMyUniversityOnly);
 
   // Close filters when clicking outside
   useEffect(() => {
@@ -59,7 +45,7 @@ export default function SearchAndFilters({
         className="w-full p-3 pr-11 border border-input rounded-full bg-background text-foreground placeholder:text-muted-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
         placeholder="Search destination (e.g., MG Road, North Gate)"
         value={destinationQuery}
-        onChange={(e) => onDestinationQueryChange(e.target.value)}
+        onChange={(e) => setDestinationQuery(e.target.value)}
       />
       
       <button
@@ -80,7 +66,7 @@ export default function SearchAndFilters({
               id="timeWindow"
               className="w-full p-2 border rounded-md bg-background"
               value={timeWindowMins}
-              onChange={(e) => onTimeWindowChange(e.target.value)}
+              onChange={(e) => setTimeWindowMins(e.target.value as TimeWindow)}
             >
               <option value="any">Any time</option>
               <option value="10">10 minutes</option>
@@ -94,7 +80,7 @@ export default function SearchAndFilters({
                 type="checkbox" 
                 disabled 
                 checked={sameDepartment}
-                onChange={(e) => onSameDepartmentChange(e.target.checked)}
+                onChange={(e) => setSameDepartment(e.target.checked)}
               />
               <span className="text-sm text-muted-foreground">Same department (coming soon)</span>
             </div>
@@ -104,7 +90,7 @@ export default function SearchAndFilters({
                 type="checkbox" 
                 disabled 
                 checked={sameYear}
-                onChange={(e) => onSameYearChange(e.target.checked)}
+                onChange={(e) => setSameYear(e.target.checked)}
               />
               <span className="text-sm text-muted-foreground">Same year (coming soon)</span>
             </div>
@@ -112,15 +98,15 @@ export default function SearchAndFilters({
               <input
                 type="checkbox"
                 checked={showFriendsOnly}
-                onChange={e => onShowFriendsOnlyChange(e.target.checked)}
+                onChange={e => setShowFriendsOnly(e.target.checked)}
               />
-              <span className="text-sm text-foreground">Friends' Parties only</span>
+              <span className="text-sm text-foreground">Friends&apos; Parties only</span>
             </div>
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 checked={showMyUniversityOnly}
-                onChange={e => onShowMyUniversityOnlyChange(e.target.checked)}
+                onChange={e => setShowMyUniversityOnly(e.target.checked)}
               />
               <span className="text-sm text-foreground">My University only</span>
             </div>

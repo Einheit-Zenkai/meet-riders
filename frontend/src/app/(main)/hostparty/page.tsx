@@ -7,8 +7,8 @@ import { useRouter } from "next/navigation";
 import { User, Bus, Car, CarTaxiFront, Footprints, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
-import { useAuth } from "@/context/Authcontext";
-import { useParties } from "@/context/PartyContext";
+import useAuthStore from "@/stores/authStore";
+import usePartyStore from "@/stores/partyStore";
 
 const rideOptions = [
   { name: "On Foot", icon: Footprints },
@@ -20,9 +20,9 @@ const rideOptions = [
 
 export default function HostPartyPage() {
   const router = useRouter();
-  const { user } = useAuth(); // Get user from auth context
+  const { user } = useAuthStore(); // Get user from auth context
   const supabase = createClient();
-  const { addParty } = useParties();
+  const { addParty } = usePartyStore();
   const [isAlreadyHosting, setIsAlreadyHosting] = useState(false);
 
   // Form state

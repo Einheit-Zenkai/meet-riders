@@ -14,18 +14,6 @@ export default function HomePage() {
     isLoading,
     orderedParties,
     refreshParties,
-    destinationQuery,
-    setDestinationQuery,
-    timeWindowMins,
-    setTimeWindowMins,
-    sameDepartment,
-    setSameDepartment,
-    sameYear,
-    setSameYear,
-    showFriendsOnly,
-    setShowFriendsOnly,
-    showMyUniversityOnly,
-    setShowMyUniversityOnly,
   } = useDashboard();
 
   if (isLoading) {
@@ -38,18 +26,6 @@ export default function HomePage() {
 
       <DashboardHeader
         welcomeName={welcomeName}
-        destinationQuery={destinationQuery}
-        onDestinationQueryChange={setDestinationQuery}
-        timeWindowMins={timeWindowMins}
-        onTimeWindowChange={setTimeWindowMins}
-        sameDepartment={sameDepartment}
-        onSameDepartmentChange={setSameDepartment}
-        sameYear={sameYear}
-        onSameYearChange={setSameYear}
-        showFriendsOnly={showFriendsOnly}
-        onShowFriendsOnlyChange={setShowFriendsOnly}
-        showMyUniversityOnly={showMyUniversityOnly}
-        onShowMyUniversityOnlyChange={setShowMyUniversityOnly}
       />
 
       <div className="mt-6 grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6 items-start">

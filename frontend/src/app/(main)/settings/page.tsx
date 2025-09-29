@@ -5,14 +5,14 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { AvatarSection, PasswordSection, SettingsForm } from "./components";
-import { useAuth } from "@/context/Authcontext";
+import useAuthStore from "@/stores/authStore";
 import { useAvatarUpload } from "./hooks/useAvatarUpload";
 import { usePasswordChange } from "./hooks/usePasswordChange";
 import { useProfile } from "./hooks/useProfile";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuthStore();
   const { loading: profileLoading, avatarUrl } = useProfile();
 
   const {

@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/Authcontext";
+import useAuthStore from "@/stores/authStore";
+import useDashboardFiltersStore from "@/stores/dashboardFiltersStore";
 import { createClient } from "@/utils/supabase/client";
-import { Party, UserProfile } from "../types";
+import { Party } from "../types";
 
 export function useDashboard() {
-  const { user, loading } = useAuth();
+  const { user, loading } = useAuthStore();
   const router = useRouter();
 
   // User profile state
@@ -19,37 +20,17 @@ export function useDashboard() {
   const [parties, setParties] = useState<Party[]>([]);
   const [partiesLoading, setPartiesLoading] = useState(true);
 
-  // Filter state
-  const [destinationQuery, setDestinationQuery] = useState("");
-  const [timeWindowMins, setTimeWindowMins] = useState<string>("any");
-  const [sameDepartment, setSameDepartment] = useState(false);
-  const [sameYear, setSameYear] = useState(false);
-  const [showFriendsOnly, setShowFriendsOnly] = useState(false);
-  const [showMyUniversityOnly, setShowMyUniversityOnly] = useState(false);
+  const destinationQuery = useDashboardFiltersStore((state) => state.destinationQuery);
+  const timeWindowMins = useDashboardFiltersStore((state) => state.timeWindowMins);
+  const showFriendsOnly = useDashboardFiltersStore((state) => state.showFriendsOnly);
+  const showMyUniversityOnly = useDashboardFiltersStore((state) => state.showMyUniversityOnly);
 
-  // Profile check effect
-  useEffect(() => {
-    if (!loading && user) {
-      checkUserProfile();
-      fetchParties();
-    } else if (!loading && !user) {
-      router.push("/login");
+  const fetchParties = useCallback(async () => {
+    if (!user) {
+      setParties([]);
+      setPartiesLoading(false);
+      return;
     }
-  }, [user, loading, router]);
-
-  // Set up periodic refresh for parties
-  useEffect(() => {
-    if (!user || loading) return;
-
-    const interval = setInterval(() => {
-      fetchParties();
-    }, 30000); // Refresh every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [user, loading]);
-
-  // Fetch parties from Supabase
-  const fetchParties = async () => {
     try {
       setPartiesLoading(true);
       const supabase = createClient();
@@ -163,9 +144,9 @@ export function useDashboard() {
     } finally {
       setPartiesLoading(false);
     }
-  };
+  }, [user]);
 
-  const checkUserProfile = async () => {
+  const checkUserProfile = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -194,7 +175,28 @@ export function useDashboard() {
       console.error('Profile check failed:', error);
       router.push('/login');
     }
-  };
+  }, [router, user]);
+
+  // Profile check effect
+  useEffect(() => {
+    if (!loading && user) {
+      checkUserProfile();
+      fetchParties();
+    } else if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [user, loading, router, checkUserProfile, fetchParties]);
+
+  // Set up periodic refresh for parties
+  useEffect(() => {
+    if (!user || loading) return;
+
+    const interval = setInterval(() => {
+      fetchParties();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [user, loading, fetchParties]);
 
   // Filtered parties based on search and filters
   const filteredParties = useMemo(() => {
@@ -260,19 +262,5 @@ export function useDashboard() {
     
     // Data refresh
     refreshParties: fetchParties,
-    
-    // Filters
-    destinationQuery,
-    setDestinationQuery,
-    timeWindowMins,
-    setTimeWindowMins,
-    sameDepartment,
-    setSameDepartment,
-    sameYear,
-    setSameYear,
-    showFriendsOnly,
-    setShowFriendsOnly,
-    showMyUniversityOnly,
-    setShowMyUniversityOnly,
   };
 }

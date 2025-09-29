@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Party, useParties } from "@/context/PartyContext";
+import { Party } from "@/stores/partyStore";
+import usePartyStore from "@/stores/partyStore";
 import { Clock, Users, MapPin, User as UserIcon, Bell, BellOff, Share2, Star } from 'lucide-react';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
@@ -21,7 +22,7 @@ interface PartyCardProps {
 }
 
 export default function PartyCard({ party }: PartyCardProps) {
-    const { cancelParty } = useParties();
+    const { cancelParty } = usePartyStore();
     const isHost = party.host === 'You';
     const [timeLeft, setTimeLeft] = useState(party.expiryTimestamp - Date.now());
     const [alertOn, setAlertOn] = useState<boolean>(false);

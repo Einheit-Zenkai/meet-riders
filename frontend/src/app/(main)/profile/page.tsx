@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { createClient } from "@/utils/supabase/client";
-import { useAuth } from "@/context/Authcontext";
+import useAuthStore from "@/stores/authStore";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 import HostButton from "@/components/ui/hostbutton";
@@ -30,7 +30,7 @@ type ProfileData = {
 export default function ProfilePage() {
   const supabase = createClient();
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, signOut } = useAuthStore();
   const [loading, setLoading] = useState(true);
   
   // A single state to hold all the profile data for easier management
