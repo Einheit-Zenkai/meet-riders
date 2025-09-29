@@ -5,16 +5,10 @@ import DashboardHeader from "./components/DashboardHeader";
 import RidesList from "./components/RidesList";
 import LoadingScreen from "./components/LoadingScreen";
 import SoiList from "./components/SoiList";
-import ExpiredPanel from "./components/ExpiredPanel";
 import { useDashboard } from "./hooks/useDashboard";
 
 export default function HomePage() {
-  const {
-    welcomeName,
-    isLoading,
-    orderedParties,
-    refreshParties,
-  } = useDashboard();
+  const { welcomeName, isLoading } = useDashboard();
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -28,19 +22,13 @@ export default function HomePage() {
         welcomeName={welcomeName}
       />
 
-      <div className="mt-6 grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6 items-start">
-        <div>
-          <RidesList 
-            parties={orderedParties} 
-            onPartyUpdate={refreshParties}
-          />
+      <div className="mt-6 space-y-10">
+        <RidesList />
 
-          <div className="mt-10">
-            <h2 className="text-2xl font-semibold text-card-foreground mb-4">Upcoming Rides (SOI)</h2>
-            <SoiList />
-          </div>
+        <div>
+          <h2 className="text-2xl font-semibold text-card-foreground mb-4">Upcoming Rides (SOI)</h2>
+          <SoiList />
         </div>
-        <ExpiredPanel />
       </div>
     </div>
   );

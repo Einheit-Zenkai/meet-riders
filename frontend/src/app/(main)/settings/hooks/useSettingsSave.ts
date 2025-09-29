@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { useAuth } from '@/context/Authcontext';
+import useAuthStore from '@/stores/authStore';
 import { Preferences } from './useProfile';
 
 export const useSettingsSave = () => {
   const supabase = createClient();
   const router = useRouter();
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
   const [saveLoading, setSaveLoading] = useState(false);
   const [message, setMessage] = useState('');
 

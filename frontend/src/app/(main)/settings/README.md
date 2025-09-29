@@ -89,11 +89,11 @@ settings/
 
 ## Usage
 
-The main page component (`page.tsx`) orchestrates all the hooks and components:
+The main page component (`page.tsx`) orchestrates all the hooks and components, wiring in the global auth store (`useAuthStore`) instead of the deprecated context:
 
 ```tsx
 export default function SettingsPage() {
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading } = useAuthStore();
   const { loading: profileLoading, avatarUrl } = useProfile();
   
   const {

@@ -7,6 +7,7 @@ import { partyMemberService } from "../services/partyMemberService";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import useAuthStore from "@/stores/authStore";
 
 interface PartyJoinedOverlayProps {
   party: Party;
@@ -18,7 +19,8 @@ export default function PartyJoinedOverlay({ party, onClose, onAfterLeave }: Par
   const [members, setMembers] = useState<PartyMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
-  const isHost = party.host_id === (party.host_profile?.id || "");
+  const { user } = useAuthStore();
+  const isHost = user?.id === party.host_id;
 
   useEffect(() => {
     let mounted = true;
