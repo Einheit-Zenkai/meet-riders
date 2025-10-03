@@ -150,8 +150,8 @@ export default function HostPartyPage() {
         // displayUniversity: payload.display_university,
         // hostUniversity: payload.host_university || undefined,
       });
-      toast.success("Party created and visible on the dashboard");
-      router.push("/dashboard");
+  toast.success("Party created. Redirecting to Current Parties…");
+  router.push("/current-party");
     }
   };
 

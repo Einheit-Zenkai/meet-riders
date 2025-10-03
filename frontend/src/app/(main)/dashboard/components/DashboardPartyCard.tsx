@@ -11,7 +11,8 @@ import { useAuth } from "@/context/Authcontext";
 import { createClient } from "@/utils/supabase/client";
 import { partyMemberService } from "../services/partyMemberService";
 import PartyMembersDialog from "./PartyMembersDialog";
-import PartyJoinedOverlay from "./PartyJoinedOverlay";
+// PartyJoinedOverlay removed in favor of dedicated page
+import { useRouter } from "next/navigation";
 
 // Helper function to format remaining time as MM:SS
 const formatTimeLeft = (ms: number): string => {
@@ -109,7 +110,8 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
     const [alertOn, setAlertOn] = useState<boolean>(false);
     const [isJoining, setIsJoining] = useState(false);
     const [isLeaving, setIsLeaving] = useState(false);
-    const [showJoinedOverlay, setShowJoinedOverlay] = useState(false);
+    // Overlay removed; redirect instead
+    const router = useRouter();
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -129,11 +131,8 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
             const result = await partyMemberService.joinParty(party.id);
             
             if (result.success) {
-                // Show success message
                 toast.success(`Joined party to ${party.drop_off}`);
-                setShowJoinedOverlay(true);
-                // Trigger refresh of parties data
-                onPartyUpdate?.();
+                router.push('/current-party');
             } else {
                 toast.error(result.error || 'Failed to join party');
             }
@@ -245,13 +244,7 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                   boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
                   border: '1px solid rgba(255, 255, 255, 0.1)'
               }}>
-            {showJoinedOverlay && (
-                <PartyJoinedOverlay 
-                    party={party} 
-                    onClose={() => setShowJoinedOverlay(false)} 
-                    onAfterLeave={onPartyUpdate}
-                />
-            )}
+            {/* Overlay removed */}
             <div className="p-6">
                 {/* Header Row */}
                 <div className="flex items-center justify-between mb-4">
