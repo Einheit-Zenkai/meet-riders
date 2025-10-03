@@ -30,20 +30,21 @@ export interface Notification {
 }
 
 export interface Party {
-    id: number;
-    created_at: Date;
-    host_id: string;
-    party_size: number;
-    meetup_point: string;
-    drop_off: string;
-    is_friends_only: boolean;
-    is_gender_only: boolean;
-    ride_options: string[];
-    expires_in: string;
-    expiry_timestamp: Date;
-    host_university: string | null;
-    display_university: string | null;
-    is_active: boolean | null;
+  id: string;
+  created_at: Date;
+  updated_at: Date;
+  host_id: string;
+  party_size: number;
+  duration_minutes: number;
+  expires_at: Date;
+  meetup_point: string;
+  drop_off: string;
+  is_friends_only: boolean;
+  is_gender_only: boolean;
+  ride_options: string[];
+  host_university: string | null;
+  display_university: boolean;
+  is_active: boolean;
   // Host comments for joined users
   host_comments?: string;
   // Host profile information (joined from profiles table)
@@ -56,9 +57,9 @@ export interface Party {
 
 export interface PartyMember {
     id: string;
-    party_id: number;
+  party_id: string;
     user_id: string;
-    status: 'joined' | 'left' | 'kicked' | 'pending';
+  status: 'joined' | 'left' | 'kicked' | 'pending' | 'expired';
     joined_at: Date;
     left_at?: Date;
     pickup_notes?: string;
@@ -106,7 +107,7 @@ export interface SoiParty {
   start_time: Date;
   expiry_timestamp: Date | null;
   host_university: string | null;
-  display_university: boolean | null;
+  display_university: boolean;
   is_active: boolean | null;
   host_profile?: Profile;
   current_member_count?: number;
@@ -124,17 +125,4 @@ export interface SoiMember {
   created_at?: Date;
   updated_at?: Date;
   profile?: Profile;
-}
-
-// Expired party types (recently expired within the last 10 minutes)
-export interface ExpiredParty {
-  id: number; // expired record id
-  party_id: number; // original parties.id
-  host_id: string;
-  meetup_point: string;
-  drop_off: string;
-  ride_options?: string[];
-  party_size?: number;
-  expired_at: Date;
-  host_profile?: Profile;
 }

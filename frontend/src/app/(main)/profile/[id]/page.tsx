@@ -9,7 +9,7 @@ import { ShieldAlert, User, Star } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
-import { useAuth } from "@/context/Authcontext";
+import useAuthStore from "@/stores/authStore";
 
 type Profile = {
   id: string;
@@ -27,7 +27,7 @@ export default function PublicProfilePage() {
   const supabase = createClient();
   const router = useRouter();
   const params = useParams();
-  const { user: me } = useAuth();
+  const { user: me } = useAuthStore();
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);

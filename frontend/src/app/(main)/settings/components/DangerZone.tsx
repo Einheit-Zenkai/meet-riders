@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Trash2 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
-import { useAuth } from '@/context/Authcontext';
+import useAuthStore from '@/stores/authStore';
 
 interface DangerZoneProps {
   setError: (error: string) => void;
@@ -16,7 +16,7 @@ interface DangerZoneProps {
 export const DangerZone = ({ setError, setMessage }: DangerZoneProps) => {
   const supabase = createClient();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleDeleteAccount = async () => {

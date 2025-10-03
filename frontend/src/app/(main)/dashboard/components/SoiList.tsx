@@ -68,7 +68,7 @@ export default function SoiList() {
         start_time: new Date(r.start_time),
         expiry_timestamp: r.expiry_timestamp ? new Date(r.expiry_timestamp) : null,
         host_university: r.host_university,
-        display_university: r.display_university,
+        display_university: Boolean(r.display_university),
         is_active: r.is_active,
       } as SoiParty));
 

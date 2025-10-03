@@ -7,7 +7,7 @@ import { Users, Crown } from 'lucide-react';
 import { Party, PartyMember } from "../types";
 import { toast } from "sonner";
 import { partyMemberService } from "../services/partyMemberService";
-import { useAuth } from "@/context/Authcontext";
+import useAuthStore from "@/stores/authStore";
 
 interface PartyMembersDialogProps {
   party: Party;
@@ -18,7 +18,7 @@ export default function PartyMembersDialog({ party, children }: PartyMembersDial
   const [members, setMembers] = useState<PartyMember[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const isHost = user?.id === party.host_id;
 
   const fetchMembers = async () => {

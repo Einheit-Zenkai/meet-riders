@@ -7,8 +7,7 @@ import { useRouter } from "next/navigation";
 import { User, Bus, Car, CarTaxiFront, Footprints, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
-import { useAuth } from "@/context/Authcontext";
-import { useParties } from "@/context/PartyContext";
+import useAuthStore from "@/stores/authStore";
 
 const rideOptions = [
   { name: "On Foot", icon: Footprints },
@@ -18,11 +17,18 @@ const rideOptions = [
   { name: "SUV", icon: Car },
 ];
 
+const DURATION_OPTIONS = [
+  { minutes: 10, label: "10 min" },
+  { minutes: 15, label: "15 min" },
+  { minutes: 20, label: "20 min" },
+  { minutes: 30, label: "30 min" },
+  { minutes: 60, label: "1 hr" },
+];
+
 export default function HostPartyPage() {
   const router = useRouter();
-  const { user } = useAuth(); // Get user from auth context
+  const { user } = useAuthStore(); // Get user from auth context
   const supabase = createClient();
-  const { addParty } = useParties();
   const [isAlreadyHosting, setIsAlreadyHosting] = useState(false);
 
   // Form state
@@ -34,7 +40,7 @@ export default function HostPartyPage() {
   const [myUniversity, setMyUniversity] = useState<string>("");
   // Removed gender-only option for safety
   const [selectedRides, setSelectedRides] = useState<string[]>([]);
-  const [expiresIn, setExpiresIn] = useState("10 min");
+  const [durationMinutes, setDurationMinutes] = useState(10);
   const [hostComments, setHostComments] = useState("");
 
   // ✅ Check if user is already hosting
@@ -43,14 +49,24 @@ export default function HostPartyPage() {
       if (!user) return; // User is guaranteed by middleware, but safety check
 
       // check if user is already hosting
+      const nowIso = new Date().toISOString();
       const { data, error } = await supabase
         .from("parties")
         .select("id")
         .eq("host_id", user.id)
-        .eq("is_active", true) // assuming you track active status
-        .single();
+        .eq("is_active", true)
+        .gt("expires_at", nowIso)
+        .limit(1);
 
-      if (data) setIsAlreadyHosting(true);
+      if (error) {
+        console.error("Failed to check existing parties:", error.message);
+      }
+
+      if (data && data.length > 0) {
+        setIsAlreadyHosting(true);
+      } else {
+        setIsAlreadyHosting(false);
+      }
 
       // fetch my profile university for display toggle
       const { data: prof } = await supabase
@@ -109,15 +125,10 @@ export default function HostPartyPage() {
       is_friends_only: isFriendsOnly,
       is_gender_only: false, // enforced disabled by design
       ride_options: selectedRides,
-      expires_in: expiresIn,
+      duration_minutes: durationMinutes,
       is_active: true,
       host_comments: hostComments,
-      expiry_timestamp: (() => {
-        const now = new Date();
-        const minutes = parseInt(expiresIn.split(' ')[0], 10);
-        now.setMinutes(now.getMinutes() + minutes);
-        return now.toISOString();
-      })(),
+      expires_at: new Date(Date.now() + durationMinutes * 60_000).toISOString(),
     };
 
     if (displayUniversity && myUniversity) {
@@ -136,7 +147,12 @@ export default function HostPartyPage() {
 
     if (error) {
       console.error(error);
-      toast.error(error.message || 'Failed to create party');
+      if (typeof error.message === "string" && error.message.includes("active party")) {
+        toast.error("You already have a live party. Let it expire or end it before creating another.");
+        setIsAlreadyHosting(true);
+      } else {
+        toast.error(error.message || 'Failed to create party');
+      }
     } else {
       // Also add to local context so it appears immediately
       addParty({
@@ -322,20 +338,20 @@ export default function HostPartyPage() {
             Expire party request in
           </label>
           <div className="flex flex-wrap gap-3">
-            {["10 min", "15 min", "20 min", "30 min", "1 hr"].map((time) => (
+            {DURATION_OPTIONS.map(({ minutes, label }) => (
               <label
-                key={time}
+                key={minutes}
                 className="flex items-center space-x-2 cursor-pointer"
               >
                 <input
                   type="radio"
                   name="expiration"
-                  value={time}
-                  checked={expiresIn === time}
-                  onChange={() => setExpiresIn(time)}
+                  value={minutes}
+                  checked={durationMinutes === minutes}
+                  onChange={() => setDurationMinutes(minutes)}
                   className="h-4 w-4 text-primary focus:ring-ring"
                 />
-                <span className="text-foreground">{time}</span>
+                <span className="text-foreground">{label}</span>
               </label>
             ))}
           </div>

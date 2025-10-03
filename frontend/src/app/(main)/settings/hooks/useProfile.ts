@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { useAuth } from '@/context/Authcontext';
+import useAuthStore from '@/stores/authStore';
 
 const transportModes = [
   { id: 'walking', label: 'Walking' },
@@ -18,8 +18,8 @@ const PREFERENCE_LEVELS = { UNSELECTED: 0, PRIMARY: 1, SECONDARY: 2, TERTIARY: 3
 export type Preferences = Record<string, number>;
 
 export const useProfile = () => {
-  const supabase = createClient();
-  const { user } = useAuth();
+  const supabase = useMemo(() => createClient(), []);
+  const user = useAuthStore((state) => state.user);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -43,9 +43,16 @@ export const useProfile = () => {
   });
 
   useEffect(() => {
+    let isActive = true;
+
     const loadProfile = async () => {
-      if (!user) return;
-      
+      if (!user) {
+        if (isActive) {
+          setLoading(false);
+        }
+        return;
+      }
+
       setLoading(true);
       setError('');
 
@@ -54,6 +61,8 @@ export const useProfile = () => {
         .select('*')
         .eq('id', user.id)
         .maybeSingle();
+
+      if (!isActive) return;
 
       if (error) {
         setError(error.message);
@@ -66,13 +75,18 @@ export const useProfile = () => {
         setUniversity(profile.university || '');
         setShowUniversity(typeof profile.show_university === 'boolean' ? profile.show_university : true);
         setAvatarUrl(profile.avatar_url || null);
-  setPhone(profile.phone_number || '');
-  setShowPhone(!!profile.show_phone);
+        setPhone(profile.phone_number || '');
+        setShowPhone(!!profile.show_phone);
       }
+
       setLoading(false);
     };
 
     loadProfile();
+
+    return () => {
+      isActive = false;
+    };
   }, [user, supabase]);
 
   const handlePreferenceClick = (modeId: string) => {

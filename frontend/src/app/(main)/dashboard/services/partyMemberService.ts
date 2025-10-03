@@ -8,7 +8,7 @@ export class PartyMemberService {
   /**
    * Join a party as the current user
    */
-  async joinParty(partyId: number, pickupNotes?: string): Promise<{ success: boolean; error?: string; member?: PartyMember }> {
+  async joinParty(partyId: string, pickupNotes?: string): Promise<{ success: boolean; error?: string; member?: PartyMember }> {
     try {
       const { data: { user } } = await this.supabase.auth.getUser();
       if (!user) {
@@ -18,8 +18,8 @@ export class PartyMemberService {
       // Check if user can join the party using our helper function
       const { data: canJoin, error: checkError } = await this.supabase
         .rpc('can_user_join_party', { 
-          party_bigint: partyId, 
-          user_uuid: user.id 
+          p_party_id: partyId, 
+          p_user_id: user.id 
         });
 
       if (checkError) {
@@ -32,7 +32,7 @@ export class PartyMemberService {
       }
 
       // Join the party
-      const { data: member, error: joinError } = await this.supabase
+      const { data: memberRow, error: joinError } = await this.supabase
         .from('party_members')
         .insert({
           party_id: partyId,
@@ -41,22 +41,7 @@ export class PartyMemberService {
           pickup_notes: pickupNotes || null,
           contact_shared: false
         })
-        .select(`
-          *,
-          profile:user_id (
-            id,
-            full_name,
-            nickname,
-            avatar_url,
-            gender,
-            points,
-            university,
-            show_university,
-            created_at,
-            updated_at,
-            birth_date
-          )
-        `)
+        .select()
         .single();
 
       if (joinError) {
@@ -64,19 +49,41 @@ export class PartyMemberService {
         return { success: false, error: "Failed to join party" };
       }
 
+      if (!memberRow) {
+        return { success: false, error: "Failed to join party" };
+      }
+
+      // Fetch the member profile in a follow-up query to avoid relying on implicit FK relationships
+      let profile: Record<string, any> | null = null;
+      const { data: profileRow, error: profileError } = await this.supabase
+        .from('profiles')
+        .select('id, full_name, nickname, avatar_url, gender, points, university, show_university, created_at, updated_at, birth_date')
+        .eq('id', memberRow.user_id)
+        .single();
+
+      if (profileError) {
+        const errMsg = (profileError as any)?.message || (profileError as any)?.hint || JSON.stringify(profileError);
+        console.warn('Joined member profile fetch failed; continuing without profile details:', errMsg);
+      } else {
+        profile = profileRow;
+      }
+
       // Transform the data to match our PartyMember type
       const transformedMember: PartyMember = {
-        ...member,
-        joined_at: new Date(member.joined_at),
-        left_at: member.left_at ? new Date(member.left_at) : undefined,
-        created_at: new Date(member.created_at),
-        updated_at: new Date(member.updated_at),
-        profile: member.profile ? {
-          ...member.profile,
-          created_at: member.profile.created_at ? new Date(member.profile.created_at) : null,
-          updated_at: member.profile.updated_at ? new Date(member.profile.updated_at) : null,
-          birth_date: member.profile.birth_date ? new Date(member.profile.birth_date) : null,
-        } : undefined
+        ...memberRow,
+        joined_at: new Date(memberRow.joined_at),
+        left_at: memberRow.left_at ? new Date(memberRow.left_at) : undefined,
+        created_at: new Date(memberRow.created_at),
+        updated_at: new Date(memberRow.updated_at),
+        profile: profile
+          ? {
+              ...profile,
+              created_at: profile.created_at ? new Date(profile.created_at) : null,
+              updated_at: profile.updated_at ? new Date(profile.updated_at) : null,
+              birth_date: profile.birth_date ? new Date(profile.birth_date) : null,
+            }
+          : undefined
+        
       };
 
       return { success: true, member: transformedMember };
@@ -89,7 +96,7 @@ export class PartyMemberService {
   /**
    * Leave a party as the current user
    */
-  async leaveParty(partyId: number): Promise<{ success: boolean; error?: string }> {
+  async leaveParty(partyId: string): Promise<{ success: boolean; error?: string }> {
     try {
       const { data: { user } } = await this.supabase.auth.getUser();
       if (!user) {
@@ -122,7 +129,7 @@ export class PartyMemberService {
   /**
    * Get party members for a specific party
    */
-  async getPartyMembers(partyId: number): Promise<{ success: boolean; members?: PartyMember[]; error?: string }> {
+  async getPartyMembers(partyId: string): Promise<{ success: boolean; members?: PartyMember[]; error?: string }> {
     try {
       // 1) Fetch raw members without cross-table joins to avoid RLS/relationship issues
       const { data: memberRows, error: memberErr } = await this.supabase
@@ -191,10 +198,10 @@ export class PartyMemberService {
   /**
    * Get member count for a party
    */
-  async getPartyMemberCount(partyId: number): Promise<{ success: boolean; count?: number; error?: string }> {
+  async getPartyMemberCount(partyId: string): Promise<{ success: boolean; count?: number; error?: string }> {
     try {
       const { data: count, error } = await this.supabase
-        .rpc('get_party_member_count', { party_bigint: partyId });
+  .rpc('get_party_member_count', { p_party_id: partyId });
 
       if (error) {
         console.error('Error getting member count:', error);
@@ -211,7 +218,7 @@ export class PartyMemberService {
   /**
    * Check if current user is a member of a party
    */
-  async isUserMember(partyId: number): Promise<{ success: boolean; isMember?: boolean; error?: string }> {
+  async isUserMember(partyId: string): Promise<{ success: boolean; isMember?: boolean; error?: string }> {
     try {
       const { data: { user } } = await this.supabase.auth.getUser();
       if (!user) {
@@ -239,7 +246,7 @@ export class PartyMemberService {
   }
 
   /** Host-only: kick a member from a party via RPC */
-  async kickMember(partyId: number, memberUserId: string): Promise<{ success: boolean; error?: string }> {
+  async kickMember(partyId: string, memberUserId: string): Promise<{ success: boolean; error?: string }> {
     try {
       const { data: { user } } = await this.supabase.auth.getUser();
       if (!user) return { success: false, error: 'Not authenticated' };

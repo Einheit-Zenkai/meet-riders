@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { PartyProvider } from "@/context/PartyContext";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { AuthProvider } from "@/context/Authcontext";
+import { StoreInitializer } from "@/components/store-initializer";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,16 +20,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className}`}>
-        <AuthProvider> {/* 👈 wrap entire app with AuthProvider */}
-          <PartyProvider>
-            <ThemeProvider>
-              <div className="min-h-screen">
-                <main>{children}</main>
-              <Toaster />
-              </div>
-            </ThemeProvider>
-          </PartyProvider>
-        </AuthProvider>
+        <StoreInitializer />
+        <ThemeProvider>
+          <div className="min-h-screen">
+            <main>{children}</main>
+          <Toaster />
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -2,16 +2,12 @@
 
 import Link from "next/link";
 import DashboardPartyCard from "./DashboardPartyCard";
-import { Party } from "../types";
+import { useDashboardParties } from "../hooks/useDashboard";
 
-interface RidesListProps {
-  parties: Party[];
-  isLoading?: boolean;
-  onPartyUpdate?: () => void;
-}
+export default function RidesList() {
+  const { orderedParties, partiesLoading } = useDashboardParties();
 
-export default function RidesList({ parties, isLoading = false, onPartyUpdate }: RidesListProps) {
-  if (isLoading) {
+  if (partiesLoading) {
     return (
       <div className="bg-card p-6 rounded-lg shadow-md">
         <h2 className="text-2xl font-semibold text-card-foreground mb-4">Available Rides</h2>
@@ -32,8 +28,8 @@ export default function RidesList({ parties, isLoading = false, onPartyUpdate }:
 
   // Filter out expired parties
   const now = Date.now();
-  const activeParties = parties.filter(
-    (party) => party.expiry_timestamp && new Date(party.expiry_timestamp).getTime() > now
+  const activeParties = orderedParties.filter(
+    (party) => party.expires_at && party.expires_at.getTime() > now
   );
 
   return (
@@ -45,11 +41,7 @@ export default function RidesList({ parties, isLoading = false, onPartyUpdate }:
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
           {activeParties.map((party) => (
-            <DashboardPartyCard 
-              key={party.id} 
-              party={party} 
-              onPartyUpdate={onPartyUpdate}
-            />
+            <DashboardPartyCard key={party.id} party={party} />
           ))}
         </div>
       )}

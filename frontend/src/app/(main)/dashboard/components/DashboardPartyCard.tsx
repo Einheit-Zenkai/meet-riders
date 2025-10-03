@@ -1,18 +1,31 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Party } from "../types";
 import { Clock, Users, MapPin, User as UserIcon, Bell, BellOff, Share2, Star, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useAuth } from "@/context/Authcontext";
+import useAuthStore from "@/stores/authStore";
+import useDashboardDataStore from "@/stores/dashboardDataStore";
 import { createClient } from "@/utils/supabase/client";
 import { partyMemberService } from "../services/partyMemberService";
 import PartyMembersDialog from "./PartyMembersDialog";
 // PartyJoinedOverlay removed in favor of dedicated page
 import { useRouter } from "next/navigation";
+
+interface DashboardPartyCardProps {
+    party: Party;
+}
+
+const EXPIRY_OPTIONS = [
+    { label: "10 min", minutes: 10 },
+    { label: "15 min", minutes: 15 },
+    { label: "20 min", minutes: 20 },
+    { label: "30 min", minutes: 30 },
+    { label: "1 hr", minutes: 60 },
+];
 
 // Helper function to format remaining time as MM:SS
 const formatTimeLeft = (ms: number): string => {
@@ -20,39 +33,27 @@ const formatTimeLeft = (ms: number): string => {
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-};
-
-interface DashboardPartyCardProps {
-  party: Party;
-  onPartyUpdate?: () => void;
 }
 
-export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPartyCardProps) {
+export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
+    const refreshParties = useDashboardDataStore((state) => state.refreshParties);
     const [editingExpiry, setEditingExpiry] = useState(false);
-    const [newExpiry, setNewExpiry] = useState<string>("");
+    const [newExpiryMinutes, setNewExpiryMinutes] = useState<number | null>(null);
     const [updatingExpiry, setUpdatingExpiry] = useState(false);
-
-    // Expiry options (same as creation)
-    const expiryOptions = ["10 min", "15 min", "20 min", "30 min", "1 hr"];
+    const [showProfileDialog, setShowProfileDialog] = useState(false);
 
     // Update expiry handler
     const handleUpdateExpiry = async () => {
-        if (!newExpiry || !user) return;
+        if (!newExpiryMinutes || !user) return;
         setUpdatingExpiry(true);
         try {
-            // Calculate new expiry timestamp
-            const now = new Date();
-            const minutes = newExpiry.includes('hr')
-                ? parseInt(newExpiry) * 60
-                : parseInt(newExpiry);
-            now.setMinutes(now.getMinutes() + minutes);
-            const newExpiryTimestamp = now.toISOString();
+            const newExpiryTimestamp = new Date(Date.now() + newExpiryMinutes * 60_000).toISOString();
             const supabase = createClient();
             const { error } = await supabase
                 .from('parties')
                 .update({
-                    expires_in: newExpiry,
-                    expiry_timestamp: newExpiryTimestamp
+                    duration_minutes: newExpiryMinutes,
+                    expires_at: newExpiryTimestamp
                 })
                 .eq('id', party.id)
                 .eq('host_id', user.id);
@@ -61,8 +62,8 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
             } else {
                 toast.success('Expiry updated!');
                 setEditingExpiry(false);
-                setNewExpiry("");
-                onPartyUpdate?.();
+                setNewExpiryMinutes(null);
+                await refreshParties();
             }
         } catch (e) {
             toast.error('Unexpected error updating expiry');
@@ -104,9 +105,9 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
             window.prompt('Copy this link:', shareUrl);
         }
     };
-    const { user } = useAuth();
+    const { user } = useAuthStore();
     const isHost = party.host_id === user?.id;
-    const [timeLeft, setTimeLeft] = useState(party.expiry_timestamp.getTime() - Date.now());
+    const [timeLeft, setTimeLeft] = useState(party.expires_at.getTime() - Date.now());
     const [alertOn, setAlertOn] = useState<boolean>(false);
     const [isJoining, setIsJoining] = useState(false);
     const [isLeaving, setIsLeaving] = useState(false);
@@ -115,13 +116,13 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
 
     useEffect(() => {
         const timer = setInterval(() => {
-            setTimeLeft(party.expiry_timestamp.getTime() - Date.now());
+            setTimeLeft(party.expires_at.getTime() - Date.now());
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [party.expiry_timestamp]);
+    }, [party.expires_at]);
 
-    const isExpired = timeLeft <= 0;
+    const isExpired = timeLeft <= 0 || !party.is_active;
 
     const handleJoinParty = async () => {
         if (!user || isHost || party.user_is_member) return;
@@ -157,7 +158,7 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
             if (result.success) {
                 toast.success('Left the party');
                 // Trigger refresh of parties data
-                onPartyUpdate?.();
+                await refreshParties();
             } else {
                 toast.error(result.error || 'Failed to leave party');
             }
@@ -188,7 +189,7 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                 toast.error('Failed to cancel party');
             } else {
                 toast.success('Party canceled');
-                onPartyUpdate?.();
+                await refreshParties();
             }
         } catch (error) {
             console.error('Error canceling party:', error);
@@ -249,19 +250,53 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                 {/* Header Row */}
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                        <Avatar className="w-12 h-12">
-                            {party.host_profile?.avatar_url ? (
-                                <img 
-                                    src={party.host_profile.avatar_url} 
-                                    alt="Host avatar" 
-                                    className="w-full h-full object-cover rounded-full"
-                                />
-                            ) : (
-                                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                                    {getHostInitials()}
-                                </AvatarFallback>
-                            )}
-                        </Avatar>
+                        <button onClick={() => setShowProfileDialog(true)} className="focus:outline-none">
+                          <Avatar className="w-12 h-12">
+                              {party.host_profile?.avatar_url ? (
+                                  <img 
+                                      src={party.host_profile.avatar_url} 
+                                      alt="Host avatar" 
+                                      className="w-full h-full object-cover rounded-full"
+                                  />
+                              ) : (
+                                  <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+                                      {getHostInitials()}
+                                  </AvatarFallback>
+                              )}
+                          </Avatar>
+                        </button>
+                        {/* Host Profile Popup Dialog */}
+                        {showProfileDialog && party.host_profile && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                                <div className="bg-card rounded-lg shadow-lg p-8 max-w-md w-full relative">
+                                    <button className="absolute top-2 right-2 text-xl" onClick={() => setShowProfileDialog(false)}>&times;</button>
+                                    <div className="flex flex-col items-center gap-3">
+                                        <Avatar className="w-20 h-20">
+                                            {party.host_profile.avatar_url ? (
+                                                <img src={party.host_profile.avatar_url} alt="Host avatar" className="w-full h-full object-cover rounded-full" />
+                                            ) : (
+                                                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-2xl">
+                                                    {getHostInitials()}
+                                                </AvatarFallback>
+                                            )}
+                                        </Avatar>
+                                        <h2 className="text-xl font-bold mt-2">{party.host_profile.nickname || party.host_profile.full_name || 'Anonymous Host'}</h2>
+                                        {party.host_profile.university && (
+                                            <div className="text-sm text-muted-foreground">{party.host_profile.university}</div>
+                                        )}
+                                        {party.host_profile.gender && (
+                                            <div className="text-sm text-muted-foreground">Gender: {party.host_profile.gender}</div>
+                                        )}
+                                        {party.host_profile.points !== null && party.host_profile.points !== undefined && (
+                                            <div className="text-sm text-muted-foreground">Points: {party.host_profile.points}</div>
+                                        )}
+                                        {party.host_profile.bio && (
+                                            <div className="text-sm text-muted-foreground mt-2 text-center">{party.host_profile.bio}</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 mb-1">
                                 <h3 className="font-semibold text-lg leading-relaxed">
@@ -323,15 +358,18 @@ export default function DashboardPartyCard({ party, onPartyUpdate }: DashboardPa
                             <div className="flex items-center gap-2 mt-2">
                                 <select
                                     className="border rounded px-2 py-1"
-                                    value={newExpiry}
-                                    onChange={e => setNewExpiry(e.target.value)}
+                                    value={newExpiryMinutes ?? ""}
+                                    onChange={e => {
+                                        const value = e.target.value;
+                                        setNewExpiryMinutes(value ? Number(value) : null);
+                                    }}
                                 >
                                     <option value="">Select expiry</option>
-                                    {expiryOptions.map(opt => (
-                                        <option key={opt} value={opt}>{opt}</option>
+                                    {EXPIRY_OPTIONS.map(opt => (
+                                        <option key={opt.minutes} value={opt.minutes}>{opt.label}</option>
                                     ))}
                                 </select>
-                                <Button size="sm" disabled={updatingExpiry || !newExpiry} onClick={handleUpdateExpiry}>
+                                <Button size="sm" disabled={updatingExpiry || !newExpiryMinutes} onClick={handleUpdateExpiry}>
                                     {updatingExpiry ? 'Updating...' : 'Save'}
                                 </Button>
                                 <Button size="sm" variant="ghost" onClick={() => setEditingExpiry(false)}>Cancel</Button>

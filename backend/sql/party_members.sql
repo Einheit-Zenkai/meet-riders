@@ -1,10 +1,10 @@
 -- IMPORTANT: Data Types Alignment
--- parties.id = BIGINT (auto-increment)
+-- parties.id = UUID (generated)
 -- auth.users.id = UUID
 -- profiles.id = UUID (references auth.users.id)
 -- 
 -- Therefore:
--- party_members.party_id = BIGINT (references parties.id)
+-- party_members.party_id = UUID (references parties.id)
 -- party_members.user_id = UUID (references auth.users.id)
 
 -- Create party_members table to track which users have joined which parties
@@ -15,11 +15,11 @@ CREATE TABLE IF NOT EXISTS party_members (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     
     -- Foreign key references
-    party_id BIGINT NOT NULL REFERENCES parties(id) ON DELETE CASCADE,
+    party_id UUID NOT NULL REFERENCES parties(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     
     -- Member status and metadata
-    status VARCHAR(20) DEFAULT 'joined' CHECK (status IN ('joined', 'left', 'kicked', 'pending')),
+    status VARCHAR(20) DEFAULT 'joined' CHECK (status IN ('joined', 'left', 'kicked', 'pending', 'expired')),
     joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     left_at TIMESTAMP WITH TIME ZONE NULL,
     
@@ -46,17 +46,55 @@ WHERE status = 'joined';
 -- RLS (Row Level Security) policies
 ALTER TABLE party_members ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can view party members for parties they're part of or host
+-- Helper to determine if the current user can view members of a given party without triggering recursive RLS checks
+DROP FUNCTION IF EXISTS public.can_user_view_party_members(UUID);
+CREATE OR REPLACE FUNCTION public.can_user_view_party_members(p_party_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    current_user_id UUID;
+BEGIN
+    current_user_id := auth.uid();
+    IF current_user_id IS NULL THEN
+        RETURN FALSE;
+    END IF;
+
+    -- Hosts can always view their party members
+    IF EXISTS (
+        SELECT 1
+        FROM public.parties
+        WHERE id = p_party_id
+          AND host_id = current_user_id
+    ) THEN
+        RETURN TRUE;
+    END IF;
+
+    -- Members of the party can view fellow members
+    IF EXISTS (
+        SELECT 1
+        FROM public.party_members AS pm
+        WHERE pm.party_id = p_party_id
+          AND pm.user_id = current_user_id
+          AND pm.status = 'joined'
+    ) THEN
+        RETURN TRUE;
+    END IF;
+
+    RETURN FALSE;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.can_user_view_party_members(UUID) TO authenticated;
+
+DROP POLICY IF EXISTS "Users can view party members they're involved with" ON party_members;
 CREATE POLICY "Users can view party members they're involved with" ON party_members
     FOR SELECT 
     USING (
         user_id = auth.uid() OR  -- User can see their own memberships
-        party_id IN (
-            SELECT id FROM parties WHERE host_id = auth.uid()  -- Host can see all members
-        ) OR
-        party_id IN (
-            SELECT party_id FROM party_members WHERE user_id = auth.uid() AND status = 'joined'  -- Members can see other members
-        )
+        public.can_user_view_party_members(party_members.party_id)
     );
 
 -- Policy: Users can insert themselves into parties (join)
@@ -69,7 +107,7 @@ CREATE POLICY "Users can join parties" ON party_members
             SELECT 1 FROM parties 
             WHERE id = party_id 
             AND is_active = true 
-            AND expiry_timestamp > NOW()  -- Party must be active and not expired
+            AND expires_at > NOW()  -- Party must be active and not expired
         )
     );
 
@@ -94,7 +132,7 @@ CREATE POLICY "Hosts can manage party members" ON party_members
         party_id IN (
             SELECT id FROM parties WHERE host_id = auth.uid()
         ) AND
-        status IN ('kicked', 'joined')  -- Hosts can kick or reinstate members
+        status IN ('kicked', 'joined', 'expired')  -- Hosts can manage member lifecycle
     );
 
 -- Policy: Users can delete their own memberships, hosts can delete any member
@@ -123,50 +161,50 @@ CREATE TRIGGER trigger_update_party_members_updated_at
     EXECUTE FUNCTION update_party_members_updated_at();
 
 -- Create a function to get current member count for a party
-CREATE OR REPLACE FUNCTION get_party_member_count(party_bigint BIGINT)
+CREATE OR REPLACE FUNCTION get_party_member_count(p_party_id UUID)
 RETURNS INTEGER AS $$
 BEGIN
     RETURN (
         SELECT COUNT(*)::INTEGER 
         FROM party_members 
-        WHERE party_id = party_bigint 
+        WHERE party_id = p_party_id 
         AND status = 'joined'
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create a function to check if a user can join a party
-CREATE OR REPLACE FUNCTION can_user_join_party(party_bigint BIGINT, user_uuid UUID)
+CREATE OR REPLACE FUNCTION can_user_join_party(p_party_id UUID, p_user_id UUID)
 RETURNS BOOLEAN AS $$
 DECLARE
     party_record parties%ROWTYPE;
     current_members INTEGER;
 BEGIN
     -- Get party details
-    SELECT * INTO party_record FROM parties WHERE id = party_bigint;
+    SELECT * INTO party_record FROM parties WHERE id = p_party_id;
     
     -- Check if party exists and is active
-    IF NOT FOUND OR NOT party_record.is_active OR party_record.expiry_timestamp <= NOW() THEN
+    IF NOT FOUND OR NOT party_record.is_active OR party_record.expires_at <= NOW() THEN
         RETURN FALSE;
     END IF;
     
     -- Check if user is the host (hosts can't join their own party)
-    IF party_record.host_id = user_uuid THEN
+    IF party_record.host_id = p_user_id THEN
         RETURN FALSE;
     END IF;
     
     -- Check if user is already a member
     IF EXISTS (
         SELECT 1 FROM party_members 
-        WHERE party_id = party_bigint 
-        AND user_id = user_uuid 
+        WHERE party_id = p_party_id 
+        AND user_id = p_user_id 
         AND status = 'joined'
     ) THEN
         RETURN FALSE;
     END IF;
     
     -- Check if party is full
-    current_members := get_party_member_count(party_bigint);
+    current_members := get_party_member_count(p_party_id);
     IF current_members >= party_record.party_size THEN
         RETURN FALSE;
     END IF;
@@ -178,5 +216,38 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Grant necessary permissions
 GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT ALL ON party_members TO authenticated;
-GRANT EXECUTE ON FUNCTION get_party_member_count(BIGINT) TO authenticated;
-GRANT EXECUTE ON FUNCTION can_user_join_party(BIGINT, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_party_member_count(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION can_user_join_party(UUID, UUID) TO authenticated;
+
+-- Host-only helper to kick a member
+DROP FUNCTION IF EXISTS public.kick_party_member(UUID, UUID);
+CREATE OR REPLACE FUNCTION public.kick_party_member(p_party_id UUID, p_member_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    host_uuid UUID;
+BEGIN
+    SELECT host_id INTO host_uuid FROM public.parties WHERE id = p_party_id;
+    IF host_uuid IS NULL THEN
+        RAISE EXCEPTION 'Party not found';
+    END IF;
+
+    IF host_uuid <> auth.uid() THEN
+        RAISE EXCEPTION 'Only the host can remove members';
+    END IF;
+
+    UPDATE public.party_members
+    SET status = 'kicked',
+            left_at = NOW(),
+            updated_at = NOW()
+    WHERE party_id = p_party_id
+        AND user_id = p_member_user_id
+        AND status = 'joined';
+
+    RETURN FOUND;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.kick_party_member(UUID, UUID) TO authenticated;

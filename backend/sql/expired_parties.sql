@@ -1,17 +1,18 @@
--- Expired parties archive + restore
--- Keeps expired rides for 10 minutes and lets the host restore them with original details
+-- Expired parties archive + restore (UUID aware)
 
 -- 1) Table to store recently expired parties
 CREATE TABLE IF NOT EXISTS public.expired_parties (
   id BIGSERIAL PRIMARY KEY,
-  party_id BIGINT NOT NULL REFERENCES public.parties(id) ON DELETE CASCADE,
-  host_id UUID NOT NULL,
-  meetup_point TEXT NOT NULL,
-  drop_off TEXT NOT NULL,
-  ride_options TEXT[] DEFAULT '{}',
-  party_size INTEGER,
-  expired_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  party_id uuid NOT NULL REFERENCES public.parties(id) ON DELETE CASCADE,
+  host_id uuid NOT NULL,
+  meetup_point text NOT NULL,
+  drop_off text NOT NULL,
+  ride_options text[] DEFAULT '{}'::text[],
+  party_size integer,
+  duration_minutes integer,
+  expires_at timestamptz,
+  expired_at timestamptz NOT NULL DEFAULT NOW(),
+  created_at timestamptz NOT NULL DEFAULT NOW()
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_expired_parties_party_id ON public.expired_parties(party_id);
@@ -20,7 +21,6 @@ CREATE INDEX IF NOT EXISTS ix_expired_parties_expired_at ON public.expired_parti
 -- 2) RLS
 ALTER TABLE public.expired_parties ENABLE ROW LEVEL SECURITY;
 
--- Allow anyone authenticated to see expired items (read-only)
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'expired_parties' AND policyname = 'expired_select_all'
@@ -32,7 +32,6 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- Allow only the host to delete their expired row (used by restore)
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'expired_parties' AND policyname = 'expired_delete_host_only'
@@ -44,54 +43,85 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- No generic INSERT/UPDATE policies; only functions below insert/delete with SECURITY DEFINER
-
--- 3) Function to move newly expired parties into expired_parties
-CREATE OR REPLACE FUNCTION public.close_expired_parties_and_move()
-RETURNS VOID
+-- 3) Function to move expired parties (batchable)
+CREATE OR REPLACE FUNCTION public.close_expired_parties_and_move(batch_size integer DEFAULT 100)
+RETURNS TABLE (closed_party_id uuid)
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  moved_ids BIGINT[];
+  expired_record RECORD;
 BEGIN
-  -- Insert any party that just expired and hasn't been moved yet
-  WITH to_move AS (
-    SELECT p.id AS party_id, p.host_id, p.meetup_point, p.drop_off, p.ride_options, p.party_size
+  FOR expired_record IN
+    SELECT p.*
     FROM public.parties p
-    WHERE p.expiry_timestamp <= NOW()
-      AND p.is_active = TRUE
-      AND NOT EXISTS (
-        SELECT 1 FROM public.expired_parties e WHERE e.party_id = p.id
-      )
-  ), ins AS (
-    INSERT INTO public.expired_parties (party_id, host_id, meetup_point, drop_off, ride_options, party_size, expired_at)
-    SELECT party_id, host_id, meetup_point, drop_off, ride_options, party_size, NOW()
-    FROM to_move
-    ON CONFLICT (party_id) DO NOTHING
-    RETURNING party_id
-  )
-  SELECT array_agg(party_id) INTO moved_ids FROM ins;
+    WHERE p.is_active = TRUE
+      AND p.expires_at <= NOW()
+    ORDER BY p.expires_at
+    LIMIT batch_size
+  LOOP
+    INSERT INTO public.expired_parties (
+      party_id,
+      host_id,
+      meetup_point,
+      drop_off,
+      ride_options,
+      party_size,
+      duration_minutes,
+      expires_at,
+      expired_at
+    ) VALUES (
+      expired_record.id,
+      expired_record.host_id,
+      expired_record.meetup_point,
+      expired_record.drop_off,
+      expired_record.ride_options,
+      expired_record.party_size,
+      expired_record.duration_minutes,
+      expired_record.expires_at,
+      NOW()
+    )
+    ON CONFLICT (party_id) DO UPDATE
+      SET expired_at = EXCLUDED.expired_at,
+          duration_minutes = EXCLUDED.duration_minutes,
+          expires_at = EXCLUDED.expires_at,
+          meetup_point = EXCLUDED.meetup_point,
+          drop_off = EXCLUDED.drop_off,
+          ride_options = EXCLUDED.ride_options,
+          party_size = EXCLUDED.party_size;
 
-  -- Mark those parties inactive (idempotent)
-  IF moved_ids IS NOT NULL THEN
-    UPDATE public.parties SET is_active = FALSE
-    WHERE id = ANY(moved_ids);
-  END IF;
-END $$;
+    UPDATE public.party_members
+    SET status = 'expired',
+        left_at = COALESCE(left_at, NOW()),
+        updated_at = NOW()
+    WHERE party_id = expired_record.id
+      AND status = 'joined';
 
-GRANT EXECUTE ON FUNCTION public.close_expired_parties_and_move() TO authenticated;
+    UPDATE public.parties
+    SET is_active = FALSE,
+        updated_at = NOW()
+    WHERE id = expired_record.id;
 
--- 4) Function to restore an expired party (host only)
--- Ensure previous conflicting versions are removed to avoid return-type mismatch
-DROP FUNCTION IF EXISTS public.restore_expired_party(BIGINT);
-CREATE OR REPLACE FUNCTION public.restore_expired_party(p_expired_id BIGINT)
-RETURNS BOOLEAN
+    closed_party_id := expired_record.id;
+    RETURN NEXT;
+  END LOOP;
+
+  RETURN;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.close_expired_parties_and_move(integer) TO authenticated;
+
+DROP FUNCTION IF EXISTS public.restore_expired_party(uuid);
+DROP FUNCTION IF EXISTS public.restore_expired_party(bigint);
+CREATE OR REPLACE FUNCTION public.restore_expired_party(p_expired_id bigint)
+RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
   rec RECORD;
+  new_expiry timestamptz;
 BEGIN
   SELECT * INTO rec FROM public.expired_parties WHERE id = p_expired_id;
   IF NOT FOUND THEN
@@ -102,27 +132,37 @@ BEGIN
     RAISE EXCEPTION 'Only the host can restore this party';
   END IF;
 
-  -- Reactivate the original party with a fresh 10-minute expiry
+  new_expiry := NOW() + make_interval(mins => COALESCE(rec.duration_minutes, 10));
+
   UPDATE public.parties
   SET is_active = TRUE,
-      expiry_timestamp = NOW() + INTERVAL '10 minutes'
+      duration_minutes = COALESCE(rec.duration_minutes, duration_minutes),
+      expires_at = new_expiry,
+      updated_at = NOW(),
+      meetup_point = rec.meetup_point,
+      drop_off = rec.drop_off,
+      ride_options = rec.ride_options,
+      party_size = rec.party_size
   WHERE id = rec.party_id AND host_id = auth.uid();
 
-  -- Remove from expired bucket
   DELETE FROM public.expired_parties WHERE id = p_expired_id;
   RETURN TRUE;
-END $$;
-
-GRANT EXECUTE ON FUNCTION public.restore_expired_party(BIGINT) TO authenticated;
-
--- 5) Optional cleanup: remove rows older than 10 minutes (you can schedule this, but selection also filters by window)
--- Example: call periodically via Supabase cron/scheduler if desired
-CREATE OR REPLACE FUNCTION public.cleanup_old_expired_parties()
-RETURNS VOID
-LANGUAGE sql
-SECURITY DEFINER
-AS $$
-  DELETE FROM public.expired_parties WHERE expired_at < NOW() - INTERVAL '10 minutes';
+END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.cleanup_old_expired_parties() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.restore_expired_party(bigint) TO authenticated;
+
+-- 5) Optional cleanup for archive table
+CREATE OR REPLACE FUNCTION public.cleanup_old_expired_parties(retention_minutes integer DEFAULT 10)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  DELETE FROM public.expired_parties
+  WHERE expired_at < NOW() - make_interval(mins => retention_minutes);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.cleanup_old_expired_parties(integer) TO authenticated;
+
