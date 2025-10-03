@@ -1,5 +1,6 @@
 .vscode/
-
+pnpm-lock.yaml
+frontend/pnpm-lock.yaml
 node_modules/
 package-lock.json
 docs/sql/

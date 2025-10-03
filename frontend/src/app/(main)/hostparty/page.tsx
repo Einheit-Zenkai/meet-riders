@@ -154,8 +154,20 @@ export default function HostPartyPage() {
         toast.error(error.message || 'Failed to create party');
       }
     } else {
-      toast.success("Party created and visible on the dashboard");
-      router.push("/dashboard");
+      // Also add to local context so it appears immediately
+      addParty({
+        partySize,
+        meetupPoint,
+        dropOff,
+        isFriendsOnly,
+        isGenderOnly: false,
+        rideOptions: selectedRides,
+        expiresIn,
+        // displayUniversity: payload.display_university,
+        // hostUniversity: payload.host_university || undefined,
+      });
+  toast.success("Party created. Redirecting to Current Parties…");
+  router.push("/current-party");
     }
   };
 
