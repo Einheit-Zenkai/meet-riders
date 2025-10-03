@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { useAuth } from "@/context/Authcontext";
+import useAuthStore from "@/stores/authStore";
 import { partyMemberService } from "../dashboard/services/partyMemberService";
 import type { Party, PartyMember, Profile } from "../dashboard/types";
 import { Button } from "@/components/ui/button";
@@ -14,19 +14,20 @@ import { Crown, LogOut, UserX, Phone, Users, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
 export default function CurrentPartyPage() {
-  const { user, loading: authLoading } = useAuth();
+  const user = useAuthStore(state => state.user);
+  const authLoading = useAuthStore(state => state.loading);
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [loading, setLoading] = useState(true);
   const [parties, setParties] = useState<Party[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [members, setMembers] = useState<PartyMember[]>([]);
   const [hostProfile, setHostProfile] = useState<Profile | null>(null);
   const [busy, setBusy] = useState(false);
 
   const selectedParty = useMemo(
-    () => parties.find(p => p.id === selectedId) || null,
+    () => (selectedId ? parties.find(p => p.id === selectedId) || null : null),
     [parties, selectedId]
   );
 
@@ -42,9 +43,11 @@ export default function CurrentPartyPage() {
       setLoading(true);
       try {
         // hosting party
+        const partyFields = `id, created_at, updated_at, host_id, party_size, duration_minutes, expires_at, meetup_point, drop_off, is_friends_only, is_gender_only, ride_options, host_comments, host_university, display_university, is_active`;
+
         const { data: hosting, error: hostErr } = await supabase
           .from('parties')
-          .select('id, created_at, host_id, party_size, meetup_point, drop_off, is_friends_only, is_gender_only, ride_options, expires_in, expiry_timestamp, host_university, display_university, is_active, host_comments')
+          .select(partyFields)
           .eq('host_id', user.id)
           .eq('is_active', true);
 
@@ -63,7 +66,7 @@ export default function CurrentPartyPage() {
         if (ids.length) {
           const { data: joinedParties, error: joinedErr } = await supabase
             .from('parties')
-            .select('id, created_at, host_id, party_size, meetup_point, drop_off, is_friends_only, is_gender_only, ride_options, expires_in, expiry_timestamp, host_university, display_university, is_active, host_comments')
+            .select(partyFields)
             .in('id', ids)
             .eq('is_active', true);
           if (joinedErr) console.warn('joined fetch error', joinedErr);
@@ -78,7 +81,10 @@ export default function CurrentPartyPage() {
         const casted: Party[] = merged.map((p: any) => ({
           ...p,
           created_at: new Date(p.created_at),
-          expiry_timestamp: new Date(p.expiry_timestamp),
+          updated_at: p.updated_at ? new Date(p.updated_at) : new Date(p.created_at),
+          expires_at: new Date(p.expires_at),
+          ride_options: Array.isArray(p.ride_options) ? p.ride_options : [],
+          duration_minutes: typeof p.duration_minutes === 'number' ? p.duration_minutes : 0,
           display_university: p.display_university,
           is_active: p.is_active,
         }));
@@ -225,7 +231,7 @@ export default function CurrentPartyPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="font-medium">{p.drop_off}</div>
-                  <div className="text-xs text-muted-foreground">{new Date(p.expiry_timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</div>
+                  <div className="text-xs text-muted-foreground">{p.expires_at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
                 <div className="text-xs text-muted-foreground">Meet: {p.meetup_point}</div>
               </button>

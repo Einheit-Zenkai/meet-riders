@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Users, Crown } from 'lucide-react';
@@ -21,7 +21,7 @@ export default function PartyMembersDialog({ party, children }: PartyMembersDial
   const { user } = useAuthStore();
   const isHost = user?.id === party.host_id;
 
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     if (!isOpen) return;
     
     setIsLoading(true);
@@ -43,13 +43,13 @@ export default function PartyMembersDialog({ party, children }: PartyMembersDial
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isHost, isOpen, party.id, party.user_is_member]);
 
   useEffect(() => {
     if (isOpen) {
       fetchMembers();
     }
-  }, [isOpen, party.id]);
+  }, [fetchMembers, isOpen]);
 
   const getDisplayName = (member: PartyMember) => {
     const profile = member.profile;

@@ -8,6 +8,7 @@ import { User, Bus, Car, CarTaxiFront, Footprints, AlertCircle } from "lucide-re
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import useAuthStore from "@/stores/authStore";
+import usePartyStore from "@/stores/partyStore";
 
 const rideOptions = [
   { name: "On Foot", icon: Footprints },
@@ -30,6 +31,7 @@ export default function HostPartyPage() {
   const { user } = useAuthStore(); // Get user from auth context
   const supabase = createClient();
   const [isAlreadyHosting, setIsAlreadyHosting] = useState(false);
+  const { addParty } = usePartyStore();
 
   // Form state
   const [partySize, setPartySize] = useState(2);
@@ -155,6 +157,7 @@ export default function HostPartyPage() {
       }
     } else {
       // Also add to local context so it appears immediately
+      const durationLabel = DURATION_OPTIONS.find((option) => option.minutes === durationMinutes)?.label ?? `${durationMinutes} min`;
       addParty({
         partySize,
         meetupPoint,
@@ -162,9 +165,9 @@ export default function HostPartyPage() {
         isFriendsOnly,
         isGenderOnly: false,
         rideOptions: selectedRides,
-        expiresIn,
-        // displayUniversity: payload.display_university,
-        // hostUniversity: payload.host_university || undefined,
+        expiresIn: durationLabel,
+        displayUniversity: payload.display_university,
+        hostUniversity: payload.host_university || undefined,
       });
   toast.success("Party created. Redirecting to Current Parties…");
   router.push("/current-party");

@@ -34,17 +34,17 @@ export default function SettingsPage() {
     handlePasswordChange,
   } = usePasswordChange();
 
-  if (!user && !authLoading) {
-    router.replace("/login");
-    return null;
-  }
-
   // Initialize avatar preview from profile once available
   useEffect(() => {
     if (avatarUrl && !imagePreview) {
       setInitialImagePreview(avatarUrl);
     }
   }, [avatarUrl, imagePreview, setInitialImagePreview]);
+
+  if (!user && !authLoading) {
+    router.replace("/login");
+    return null;
+  }
 
   return (
     <div className="p-6">

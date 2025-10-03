@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Bus, Car, CarTaxiFront, Footprints, CalendarClock } from "lucide-react";
+import { AlertCircle, Bus, Car, CarTaxiFront, Footprints, CalendarClock, MapPin, Flag, Users, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import useAuthStore from "@/stores/authStore";
@@ -145,123 +145,184 @@ export default function ShowInterestPage() {
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="space-y-10">
-        <div className="flex items-center gap-3">
-          <CalendarClock className="w-8 h-8 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">Show of Interest</h1>
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 py-8 px-4">
+      <div className="max-w-3xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4">
+            <CalendarClock className="w-8 h-8 text-primary" />
+          </div>
+          <h1 className="text-4xl font-bold text-foreground mb-2">Create Show of Interest</h1>
+          <p className="text-muted-foreground">Let others know you're interested in sharing a ride</p>
         </div>
 
-        {/* Meetup Point */}
-        <div className="space-y-2">
-          <label htmlFor="meetup" className="text-xl font-semibold text-foreground">
-            Meetup point
-          </label>
-          <input
-            type="text"
-            id="meetup"
-            placeholder="Enter the full meeting address"
-            className="w-full p-3 border-2 border-input rounded-lg bg-background"
-            value={meetupPoint}
-            onChange={(e) => setMeetupPoint(e.target.value)}
-          />
-        </div>
+        {/* Main Form Card */}
+        <div className="bg-card rounded-2xl shadow-xl border p-8 space-y-8">
+          
+          {/* Location Section */}
+          <div className="space-y-6">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-primary" />
+              Journey Details
+            </h2>
+            
+            <div className="space-y-4 pl-7">
+              <div className="space-y-2">
+                <label htmlFor="meetup" className="text-sm font-medium text-foreground flex items-center gap-2">
+                  Meetup Point
+                </label>
+                <input
+                  type="text"
+                  id="meetup"
+                  placeholder="Where should everyone meet?"
+                  className="w-full p-3 border-2 border-input rounded-lg bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                  value={meetupPoint}
+                  onChange={(e) => setMeetupPoint(e.target.value)}
+                />
+              </div>
 
-        {/* Destination */}
-        <div className="space-y-2">
-          <label htmlFor="dropoff" className="text-xl font-semibold text-foreground">
-            Final Destination
-          </label>
-          <input
-            type="text"
-            id="dropoff"
-            placeholder="Enter your final destination address"
-            className="w-full p-3 border-2 border-input rounded-lg bg-background"
-            value={dropOff}
-            onChange={(e) => setDropOff(e.target.value)}
-          />
-        </div>
-
-        {/* Party Size & University Toggle */}
-        <div className="flex flex-wrap gap-8 items-start">
-          <div className="space-y-4">
-            <label className="text-xl font-semibold text-foreground">Max party size</label>
-            <input
-              type="number"
-              value={partySize}
-              onChange={(e) => {
-                let v = parseInt(e.target.value || "0", 10);
-                if (v < 1) v = 1;
-                if (v > 7) v = 7;
-                setPartySize(v);
-              }}
-              className="w-24 p-2 border-2 border-input rounded-lg text-center text-lg bg-background"
-              min={1}
-              max={7}
-            />
+              <div className="space-y-2">
+                <label htmlFor="dropoff" className="text-sm font-medium text-foreground flex items-center gap-2">
+                  Final Destination
+                </label>
+                <input
+                  type="text"
+                  id="dropoff"
+                  placeholder="Where are you heading?"
+                  className="w-full p-3 border-2 border-input rounded-lg bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                  value={dropOff}
+                  onChange={(e) => setDropOff(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-4">
-            <label className="text-xl font-semibold text-foreground">Start time</label>
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="p-2 border-2 border-input rounded-lg bg-background"
-            />
-            <p className="text-sm text-muted-foreground">
-              We’ll schedule it for the next occurrence of this time (today if still ahead, otherwise tomorrow).
-            </p>
+          <div className="border-t pt-6"></div>
+
+          {/* Time & Party Section */}
+          <div className="space-y-6">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" />
+              When & Who
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-7">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground block">Start Time</label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full p-3 border-2 border-input rounded-lg bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-lg"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Next occurrence of this time
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Max Party Size
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPartySize(Math.max(1, partySize - 1))}
+                    className="w-10 h-10 rounded-lg border-2 border-input hover:border-primary hover:bg-primary/5 transition-all font-bold"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    value={partySize}
+                    onChange={(e) => {
+                      let v = parseInt(e.target.value || "0", 10);
+                      if (v < 1) v = 1;
+                      if (v > 7) v = 7;
+                      setPartySize(v);
+                    }}
+                    className="w-20 p-3 border-2 border-input rounded-lg text-center text-xl font-semibold bg-background"
+                    min={1}
+                    max={7}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPartySize(Math.min(7, partySize + 1))}
+                    className="w-10 h-10 rounded-lg border-2 border-input hover:border-primary hover:bg-primary/5 transition-all font-bold"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
+          <div className="border-t pt-6"></div>
+
+          {/* Ride Options */}
           <div className="space-y-4">
-            <label className="text-xl font-semibold text-foreground">Visibility</label>
-            <label className="flex items-center gap-2 cursor-pointer">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <Car className="w-5 h-5 text-primary" />
+              Preferred Ride Type
+            </h2>
+            <p className="text-sm text-muted-foreground pl-7">Select up to 2 options</p>
+            <div className="flex flex-wrap gap-3 pl-7">
+              {rideOptions.map((ride) => (
+                <button
+                  key={ride.name}
+                  type="button"
+                  onClick={() => handleRideToggle(ride.name)}
+                  className={`flex items-center space-x-2 px-5 py-3 rounded-xl border-2 transition-all ${
+                    selectedRides.includes(ride.name)
+                      ? "bg-primary text-primary-foreground border-primary shadow-md scale-105"
+                      : "bg-background text-foreground border-input hover:border-primary/50 hover:bg-primary/5"
+                  }`}
+                >
+                  <ride.icon className="w-5 h-5" />
+                  <span className="font-medium">{ride.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t pt-6"></div>
+
+          {/* Visibility */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <Flag className="w-5 h-5 text-primary" />
+              Visibility Settings
+            </h2>
+            <label className="flex items-start gap-3 cursor-pointer pl-7 p-4 rounded-lg hover:bg-muted/50 transition-colors">
               <input
                 type="checkbox"
-                className="h-5 w-5 rounded text-primary focus:ring-ring"
+                className="h-5 w-5 rounded text-primary focus:ring-ring mt-0.5"
                 checked={displayUniversity}
                 onChange={(e) => setDisplayUniversity(e.target.checked)}
                 disabled={!myUniversity}
               />
-              <span className="text-foreground">Display my university on this SOI</span>
-              {!myUniversity && (
-                <span className="text-xs text-muted-foreground"> (add your university in Profile)</span>
-              )}
+              <div className="flex-1">
+                <span className="text-foreground font-medium">Display my university on this SOI</span>
+                {!myUniversity && (
+                  <p className="text-xs text-muted-foreground mt-1">Add your university in Profile to enable this</p>
+                )}
+                {myUniversity && (
+                  <p className="text-xs text-muted-foreground mt-1">Show "{myUniversity}" to other users</p>
+                )}
+              </div>
             </label>
           </div>
-        </div>
 
-        {/* Ride Options */}
-        <div className="space-y-4">
-          <label className="text-xl font-semibold text-foreground">Ideal ride from destination</label>
-          <div className="flex flex-wrap gap-3">
-            {rideOptions.map((ride) => (
-              <button
-                key={ride.name}
-                type="button"
-                onClick={() => handleRideToggle(ride.name)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-full border-2 transition-colors ${
-                  selectedRides.includes(ride.name)
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background text-foreground border-input hover:border-foreground/50"
-                }`}
-              >
-                <ride.icon className="w-5 h-5" />
-                <span>{ride.name}</span>
-              </button>
-            ))}
+          {/* Submit Button */}
+          <div className="pt-4">
+            <button
+              onClick={handleStartSOI}
+              className="w-full px-8 py-4 bg-primary text-primary-foreground font-bold text-lg rounded-xl hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl active:scale-98"
+            >
+              Create Show of Interest
+            </button>
           </div>
-        </div>
-
-        {/* Submit */}
-        <div className="pt-6 text-center">
-          <button
-            onClick={handleStartSOI}
-            className="px-12 py-4 bg-primary text-primary-foreground font-bold text-lg rounded-full hover:bg-primary/90 transition-colors shadow-lg"
-          >
-            Create SOI
-          </button>
         </div>
       </div>
     </div>
