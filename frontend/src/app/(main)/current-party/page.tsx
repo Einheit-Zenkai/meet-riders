@@ -206,6 +206,23 @@ export default function CurrentPartyPage() {
     );
   }
 
+  if (parties.length === 0) {
+    return (
+      <div className="p-6 space-y-6">
+        <Button asChild variant="outline"><Link href="/dashboard">← Back</Link></Button>
+        <Card>
+          <CardContent className="py-12 text-center space-y-3">
+            <h1 className="text-xl font-semibold">No party in progress</h1>
+            <p className="text-muted-foreground">You aren’t in any party right now.</p>
+            <Button asChild>
+              <Link href="/dashboard">Browse parties</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">

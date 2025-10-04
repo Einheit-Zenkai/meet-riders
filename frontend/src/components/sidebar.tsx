@@ -8,8 +8,8 @@ export default function Sidebar() {
     { href: "/dashboard", icon: Home, label: "Home" },
     { href: "/profile", icon: User, label: "Profile" },
     { href: "/hostparty", icon: Plus, label: "Host Party" },
-    { href: "/current-party", icon: Users, label: "Current Parties" },
     { href: "/soi", icon: CalendarClock, label: "Show of Interest" },
+    { href: "/current-party", icon: Users, label: "Current Party" },
     { href: "/leaderboard", icon: Trophy, label: "Leaderboard" },
     { href: "/map", icon: MapIcon, label: "Map" },
   ];
