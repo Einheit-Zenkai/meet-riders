@@ -1,6 +1,7 @@
 'use client';
 
 import Sidebar from "@/components/sidebar";
+import ExpiredSidebar from "@/components/expired-sidebar";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -12,11 +13,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
       {/* Sidebar overlays content on the left */}
       <Sidebar />
       {/* Main Content; add left padding equal to collapsed width to avoid content underlap */}
-      <main className="flex-1 pl-16 relative">
+      <main className="relative flex-1 pl-16 pr-16">
         <div className="h-full">
           {children}
         </div>
       </main>
+      {/* Expired parties surface on the right */}
+      <ExpiredSidebar />
     </div>
   );
 }
