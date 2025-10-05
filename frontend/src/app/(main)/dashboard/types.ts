@@ -47,6 +47,9 @@ export interface Party {
   is_active: boolean;
   // Host comments for joined users
   host_comments?: string;
+  // Map coordinates for start and destination
+  start_coords?: { lat: number; lng: number };
+  dest_coords?: { lat: number; lng: number };
   // Host profile information (joined from profiles table)
   host_profile?: Profile;
   // Members of the party

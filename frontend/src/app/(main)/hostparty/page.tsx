@@ -9,6 +9,10 @@ import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import useAuthStore from "@/stores/authStore";
 import usePartyStore from "@/stores/partyStore";
+import dynamic from "next/dynamic";
+
+// Dynamically import LocationPicker to avoid SSR issues
+const LocationPicker = dynamic(() => import("@/components/LocationPicker"), { ssr: false });
 
 const rideOptions = [
   { name: "On Foot", icon: Footprints },
@@ -37,6 +41,9 @@ export default function HostPartyPage() {
   const [partySize, setPartySize] = useState(2);
   const [meetupPoint, setMeetupPoint] = useState("");
   const [dropOff, setDropOff] = useState("");
+  // Map coordinates
+  const [startCoords, setStartCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [destCoords, setDestCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isFriendsOnly, setIsFriendsOnly] = useState(false);
   const [displayUniversity, setDisplayUniversity] = useState(false);
   const [myUniversity, setMyUniversity] = useState<string>("");
@@ -109,8 +116,13 @@ export default function HostPartyPage() {
   };
 
   const handleStartParty = async () => {
+
     if (!meetupPoint || !dropOff || partySize < 2) {
       toast.error("Please fill out the meetup point, drop-off, and set a party size of at least 2.");
+      return;
+    }
+    if (!startCoords || !destCoords) {
+      toast.error("Please select both a start and destination point on the map.");
       return;
     }
 
@@ -131,6 +143,8 @@ export default function HostPartyPage() {
       is_active: true,
       host_comments: hostComments,
       expires_at: new Date(Date.now() + durationMinutes * 60_000).toISOString(),
+      start_coords: startCoords,
+      dest_coords: destCoords,
     };
 
     if (displayUniversity && myUniversity) {
@@ -208,14 +222,10 @@ export default function HostPartyPage() {
         {/* Party Size */}
 
 
-        {/* Meetup Point */}
+
+        {/* Meetup Point (Address) */}
         <div className="space-y-2">
-          <label
-            htmlFor="meetup"
-            className="text-xl font-semibold text-foreground"
-          >
-            Meetup point
-          </label>
+          <label htmlFor="meetup" className="text-xl font-semibold text-foreground">Meetup point (address)</label>
           <input
             type="text"
             id="meetup"
@@ -225,15 +235,15 @@ export default function HostPartyPage() {
             onChange={(e) => setMeetupPoint(e.target.value)}
           />
         </div>
-
-        {/* Dropoff */}
+        {/* Start Point (Map) */}
+        <LocationPicker
+          label="Select Start Point on Map"
+          value={startCoords}
+          onChange={setStartCoords}
+        />
+        {/* Dropoff (Address) */}
         <div className="space-y-2">
-          <label
-            htmlFor="dropoff"
-            className="text-xl font-semibold text-foreground"
-          >
-            Final Destination
-          </label>
+          <label htmlFor="dropoff" className="text-xl font-semibold text-foreground">Final Destination (address)</label>
           <input
             type="text"
             id="dropoff"
@@ -243,6 +253,12 @@ export default function HostPartyPage() {
             onChange={(e) => setDropOff(e.target.value)}
           />
         </div>
+        {/* Destination Point (Map) */}
+        <LocationPicker
+          label="Select Destination Point on Map"
+          value={destCoords}
+          onChange={setDestCoords}
+        />
 
         <div className="flex space-x-6">
           {/* Privacy */}

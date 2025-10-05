@@ -12,8 +12,11 @@ import useDashboardDataStore from "@/stores/dashboardDataStore";
 import { createClient } from "@/utils/supabase/client";
 import { partyMemberService } from "../services/partyMemberService";
 import PartyMembersDialog from "./PartyMembersDialog";
-// PartyJoinedOverlay removed in favor of dedicated page
 import { useRouter } from "next/navigation";
+
+import dynamic from "next/dynamic";
+// Dynamically import RideMap to avoid SSR issues
+const RideMap = dynamic(() => import("@/components/RideMap"), { ssr: false });
 
 interface DashboardPartyCardProps {
     party: Party;
@@ -378,6 +381,7 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
                     </div>
                 </div>
 
+
                 {/* Route Info - More Compact */}
                 <div className="space-y-3 mb-5 px-1">
                     <div className="flex items-start gap-3">
@@ -393,6 +397,12 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
                             </div>
                         </div>
                     </div>
+                    {/* Map showing start/destination if available */}
+                    {party.start_coords && party.dest_coords && (
+                        <div className="my-3">
+                            <RideMap start={party.start_coords} dest={party.dest_coords} height={220} />
+                        </div>
+                    )}
                     {/* Host Comments for joined users */}
                     {party.user_is_member && party.host_comments && (
                         <div className="mt-2 p-3 bg-accent/40 rounded border text-base text-foreground">
