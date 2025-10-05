@@ -66,8 +66,8 @@ export default function ExpiredSidebar() {
   return (
     <aside className="fixed right-0 top-0 flex h-full flex-col bg-sidebar text-foreground shadow-lg transition-[width] duration-200 group group/expired-sidebar w-16 hover:w-80 z-50 pointer-events-auto">
       <header className="flex items-center gap-3 px-3 py-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground">
-          <Clock className="h-5 w-5" strokeWidth={2.5} />
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-foreground ring-2 ring-accent/60 shadow-sm">
+          <Clock className="h-6 w-6" strokeWidth={2.25} />
         </div>
         <div className="flex flex-col overflow-hidden">
           <span className="text-base font-semibold opacity-0 transition-opacity duration-200 group-hover/expired-sidebar:opacity-100">
