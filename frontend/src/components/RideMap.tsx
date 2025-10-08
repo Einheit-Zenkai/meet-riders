@@ -27,8 +27,8 @@ const destIcon = L.icon({
 });
 
 interface RideMapProps {
-  start?: { lat: number; lng: number } | null;
-  dest?: { lat: number; lng: number } | null;
+  start?: { lat: number | string; lng: number | string } | null;
+  dest?: { lat: number | string; lng: number | string } | null;
   height?: number | string;
 }
 
@@ -38,13 +38,23 @@ const BENGALURU_BOUNDS: [[number, number], [number, number]] = [
   [13.1, 77.8],
 ];
 
+function toPoint(p?: { lat: number | string; lng: number | string } | null) {
+  if (!p) return null;
+  const lat = typeof p.lat === "string" ? parseFloat(p.lat) : p.lat;
+  const lng = typeof p.lng === "string" ? parseFloat(p.lng) : p.lng;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng } as { lat: number; lng: number };
+}
+
 export default function RideMap({ start, dest, height = 300 }: RideMapProps) {
-  // Only render the map if both start and dest are present
-  if (!start || !dest) return null;
+  // Only render the map if both start and dest are valid
+  const s = toPoint(start);
+  const d = toPoint(dest);
+  if (!s || !d) return null;
 
   const center = {
-    lat: (start.lat + dest.lat) / 2,
-    lng: (start.lng + dest.lng) / 2,
+    lat: (s.lat + d.lat) / 2,
+    lng: (s.lng + d.lng) / 2,
   };
 
   return (
@@ -63,12 +73,12 @@ export default function RideMap({ start, dest, height = 300 }: RideMapProps) {
           attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <Marker position={start} icon={startIcon} />
-        <Marker position={dest} icon={destIcon} />
+        <Marker position={s} icon={startIcon} />
+        <Marker position={d} icon={destIcon} />
         <Polyline
           positions={[
-            [start.lat, start.lng],
-            [dest.lat, dest.lng],
+            [s.lat, s.lng],
+            [d.lat, d.lng],
           ]}
           color="blue"
         />
