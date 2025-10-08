@@ -57,7 +57,7 @@ export class PartyMemberService {
       let profile: Record<string, any> | null = null;
       const { data: profileRow, error: profileError } = await this.supabase
         .from('profiles')
-        .select('id, full_name, nickname, avatar_url, gender, points, university, show_university, created_at, updated_at, birth_date')
+        .select('id, full_name, nickname, avatar_url, gender, points, university, show_university, phone_number, show_phone, created_at, updated_at, birth_date')
         .eq('id', memberRow.user_id)
         .single();
 
@@ -152,8 +152,8 @@ export class PartyMemberService {
       let profilesById: Record<string, any> = {};
       if (userIds.length > 0) {
         const { data: profiles, error: profileErr } = await this.supabase
-          .from('profiles')
-          .select('id, full_name, nickname, avatar_url, gender, points, university, show_university, created_at, updated_at, birth_date')
+    .from('profiles')
+    .select('id, full_name, nickname, avatar_url, gender, points, university, show_university, phone_number, show_phone, created_at, updated_at, birth_date')
           .in('id', userIds);
 
         if (profileErr) {

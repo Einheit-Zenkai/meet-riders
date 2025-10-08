@@ -102,6 +102,16 @@ export default function CurrentPartyPage() {
   useEffect(() => {
     const loadDetails = async () => {
       if (!selectedParty) return;
+      // If party has reached time 0 and has at least 1 member (besides host), redirect to live page
+      const now = Date.now();
+      const expired = selectedParty.expires_at.getTime() <= now;
+      const { success, count } = await partyMemberService.getPartyMemberCount(selectedParty.id);
+      const memberCount = success ? (count || 0) : 0;
+      const totalCount = memberCount + 1; // + host
+      if (expired && totalCount > 1) {
+        router.replace(`/live-party?id=${selectedParty.id}`);
+        return;
+      }
       // load members via service (RLS-safe)
       const res = await partyMemberService.getPartyMembers(selectedParty.id);
       if (res.success && res.members) setMembers(res.members);
@@ -143,7 +153,7 @@ export default function CurrentPartyPage() {
       }
     };
     loadDetails();
-  }, [selectedParty, supabase]);
+  }, [selectedParty, supabase, router]);
 
   const isHost = selectedParty && user && selectedParty.host_id === user.id;
 
