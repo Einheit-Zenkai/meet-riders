@@ -12,12 +12,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Crown, LogOut, UserX, Phone, Users, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { useNotificationsStore } from "@/stores/notificationsStore";
+import NotificationsDropdown from "../dashboard/components/NotificationsDropdown";
 
 export default function CurrentPartyPage() {
   const user = useAuthStore(state => state.user);
   const authLoading = useAuthStore(state => state.loading);
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const addNotification = useNotificationsStore((s) => s.add);
+  const hasNotification = useNotificationsStore((s) => s.has);
 
   const [loading, setLoading] = useState(true);
   const [parties, setParties] = useState<Party[]>([]);
@@ -102,19 +106,29 @@ export default function CurrentPartyPage() {
   useEffect(() => {
     const loadDetails = async () => {
       if (!selectedParty) return;
-      // If party has reached time 0 and has at least 1 member (besides host), redirect to live page
-      const now = Date.now();
-      const expired = selectedParty.expires_at.getTime() <= now;
-      const { success, count } = await partyMemberService.getPartyMemberCount(selectedParty.id);
-      const memberCount = success ? (count || 0) : 0;
-      const totalCount = memberCount + 1; // + host
-      if (expired && totalCount > 1) {
-        router.replace(`/live-party?id=${selectedParty.id}`);
-        return;
-      }
-      // load members via service (RLS-safe)
+      // Load members via service (RLS-safe) and compute excluding host
       const res = await partyMemberService.getPartyMembers(selectedParty.id);
-      if (res.success && res.members) setMembers(res.members);
+      const memberList = res.success && res.members ? res.members : [];
+      setMembers(memberList);
+
+      // If party has reached time 0 and has at least 1 member (besides host), create a notification (no auto-redirect)
+  const now = Date.now();
+  // Add a small buffer to avoid client/DB clock skew
+  const expired = selectedParty.expires_at.getTime() <= (now - 2000);
+      const nonHostCount = memberList.filter(m => m.user_id !== selectedParty.host_id).length;
+      if (expired && nonHostCount > 0) {
+        const id = `live-start:${selectedParty.id}`;
+        if (!hasNotification(id)) {
+          addNotification({
+            id,
+            message: `${hostProfile?.nickname || hostProfile?.full_name || 'Host'}'s party has started for ${selectedParty.drop_off}. Click to open.`,
+            timestamp: new Date(),
+            read: false,
+            href: `/live-party?id=${selectedParty.id}`,
+          });
+          toast.info("Party started! Check the notification bell.");
+        }
+      }
       // load host profile for contact/university
       const { data: profile } = await supabase
         .from('profiles')
@@ -153,7 +167,35 @@ export default function CurrentPartyPage() {
       }
     };
     loadDetails();
-  }, [selectedParty, supabase, router]);
+  }, [selectedParty, supabase, router, addNotification, hasNotification, hostProfile]);
+
+  // Schedule a one-shot check right when the countdown reaches 0 to push a notification
+  useEffect(() => {
+    if (!selectedParty) return;
+  const msUntilExpiry = selectedParty.expires_at.getTime() - Date.now();
+    if (msUntilExpiry <= 0) return; // already handled by loadDetails above
+    const timer = setTimeout(async () => {
+      // Re-check members right at expiry time and exclude host explicitly
+      const res = await partyMemberService.getPartyMembers(selectedParty.id);
+      const memberList = res.success && res.members ? res.members : [];
+      const nonHostCount = memberList.filter(m => m.user_id !== selectedParty.host_id).length;
+      if (nonHostCount > 0) {
+        const id = `live-start:${selectedParty.id}`;
+        if (!hasNotification(id)) {
+          addNotification({
+            id,
+            message: `${hostProfile?.nickname || hostProfile?.full_name || 'Host'}'s party has started for ${selectedParty.drop_off}. Click to open.`,
+            timestamp: new Date(),
+            read: false,
+            href: `/live-party?id=${selectedParty.id}`,
+          });
+          toast.info("Party started! Check the notification bell.");
+        }
+      }
+      // else: stay on current party per requirement
+    }, Math.min(msUntilExpiry + 100, 2_147_483_647)); // slight buffer, clamp to max setTimeout
+    return () => clearTimeout(timer);
+  }, [selectedParty, router, addNotification, hasNotification, hostProfile]);
 
   const isHost = selectedParty && user && selectedParty.host_id === user.id;
 
@@ -238,7 +280,7 @@ export default function CurrentPartyPage() {
       <div className="mb-6 flex items-center justify-between">
         <Button asChild variant="outline"><Link href="/dashboard">← Back</Link></Button>
         <h1 className="text-xl font-semibold">Current Parties</h1>
-        <div />
+        <NotificationsDropdown />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-6 items-start">
@@ -277,6 +319,20 @@ export default function CurrentPartyPage() {
                 <CardTitle>Ride to {selectedParty.drop_off}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* If expired and has non-host members, show a soft prompt instead of auto-redirect */}
+                {(() => {
+                  const expired = selectedParty.expires_at.getTime() <= (Date.now() - 2000);
+                  const nonHostCount = members.filter(m => m.user_id !== selectedParty.host_id).length;
+                  if (expired && nonHostCount > 0) {
+                    return (
+                      <div className="p-3 rounded border bg-amber-500/10 text-amber-200 text-sm flex items-center justify-between">
+                        <span>Party has started. Open the live page from the notification bell.</span>
+                        <Button size="sm" variant="secondary" onClick={() => router.push(`/live-party?id=${selectedParty.id}`)}>Open Live Party</Button>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center gap-3"><MapPin size={18} /><span className="font-medium">Meetup:</span> {selectedParty.meetup_point}</div>
                   <div className="flex items-center gap-3"><Users size={18} /><span className="font-medium">Size:</span> {members.length}/{selectedParty.party_size}</div>

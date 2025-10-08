@@ -156,12 +156,12 @@ function LivePartyInner() {
           setHostProfile(null);
         }
 
-        // Guard: if party expired with zero members, consider expired flow
-        const totalCount = mems.length + 1;
+        // Guard: if party expired and no non-host members joined, do not enter live view
+        const nonHost = mems.filter((m: any) => m.user_id !== target.host_id);
         const isExpired = new Date(target.expires_at).getTime() <= Date.now();
-        if (isExpired && totalCount === 1) {
-          toast.info("Party expired (no one joined)");
-          router.replace("/dashboard");
+        if (isExpired && nonHost.length === 0) {
+          toast.info("Live party is available only after at least one member joins.");
+          router.replace("/current-party");
         }
       } finally {
         setLoading(false);
@@ -339,6 +339,25 @@ function LivePartyUI({
                       if (error) {
                         toast.error("Failed to end party");
                       } else {
+                        // Optional: award points if successfully connected (gamification)
+                        if (endReason === "connected") {
+                          try {
+                            // This RPC should be created in Supabase (see SQL in chat)
+                            const { error: rpcErr } = await supabase.rpc("award_points_for_party", {
+                              p_party_id: party.id,
+                              p_reason: "connected",
+                            });
+                            if (rpcErr) {
+                              console.info("award_points_for_party not configured", rpcErr);
+                              toast.message("Party ended. Points will be enabled once gamification is configured.");
+                            } else {
+                              toast.success("Party ended and points awarded");
+                            }
+                          } catch (e) {
+                            console.info("award_points_for_party missing", e);
+                            toast.message("Party ended. Gamification pending setup.");
+                          }
+                        }
                         toast.success("Party ended");
                         setEndOpen(false);
                         // Optional: you can persist endReason somewhere later

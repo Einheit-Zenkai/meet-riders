@@ -2,19 +2,17 @@
 
 import { Bell } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { useNotificationsStore } from "@/stores/notificationsStore";
+import { useRouter } from "next/navigation";
 
-interface NotificationsDropdownProps {
-  notifications?: Array<{
-    id: string;
-    message: string;
-    timestamp: Date;
-    read: boolean;
-  }>;
-}
-
-export default function NotificationsDropdown({ notifications = [] }: NotificationsDropdownProps) {
+export default function NotificationsDropdown() {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const notifications = useNotificationsStore((s) => s.notifications);
+  const unreadCount = useNotificationsStore((s) => s.unreadCount());
+  const markRead = useNotificationsStore((s) => s.markRead);
+  const markAllRead = useNotificationsStore((s) => s.markAllRead);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -33,7 +31,11 @@ export default function NotificationsDropdown({ notifications = [] }: Notificati
     };
   }, [showDropdown]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const onClickNotification = (id: string, href?: string) => {
+    markRead(id);
+    if (href) router.push(href);
+    setShowDropdown(false);
+  };
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -53,7 +55,12 @@ export default function NotificationsDropdown({ notifications = [] }: Notificati
       {showDropdown && (
         <div className="absolute right-0 mt-2 w-80 rounded-md border bg-card shadow-lg z-50 max-h-96 overflow-y-auto">
           <div className="p-3 border-b">
-            <h3 className="font-semibold text-sm">Notifications</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm">Notifications</h3>
+              {unreadCount > 0 && (
+                <button className="text-xs text-primary hover:underline" onClick={() => markAllRead()}>Mark all read</button>
+              )}
+            </div>
           </div>
           
           {notifications.length === 0 ? (
@@ -62,16 +69,17 @@ export default function NotificationsDropdown({ notifications = [] }: Notificati
             </div>
           ) : (
             <div className="divide-y">
-              {notifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className={`p-3 hover:bg-accent/50 ${!notification.read ? 'bg-accent/20' : ''}`}
+              {notifications.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => onClickNotification(n.id, n.href)}
+                  className={`w-full text-left p-3 hover:bg-accent/50 ${!n.read ? 'bg-accent/20' : ''}`}
                 >
-                  <p className="text-sm">{notification.message}</p>
+                  <p className="text-sm">{n.message}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {notification.timestamp.toLocaleTimeString()}
+                    {n.timestamp.toLocaleTimeString()}
                   </p>
-                </div>
+                </button>
               ))}
             </div>
           )}
