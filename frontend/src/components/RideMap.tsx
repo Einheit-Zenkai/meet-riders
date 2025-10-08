@@ -1,5 +1,30 @@
-import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+// Custom icons for start and destination
+const startIcon = L.icon({
+  iconUrl: markerIcon.src ?? markerIcon,
+  iconRetinaUrl: markerIcon2x.src ?? markerIcon2x,
+  shadowUrl: markerShadow.src ?? markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+const destIcon = L.icon({
+  iconUrl: markerIcon2x.src ?? markerIcon2x, // You can use a different image for destination
+  iconRetinaUrl: markerIcon2x.src ?? markerIcon2x,
+  shadowUrl: markerShadow.src ?? markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
 
 interface RideMapProps {
   start?: { lat: number; lng: number } | null;
@@ -7,44 +32,47 @@ interface RideMapProps {
   height?: number | string;
 }
 
-export default function RideMap({ start, dest, height = 300 }: RideMapProps) {
-  // Center map between start and dest, or default to India
-  let center = { lat: 20.5937, lng: 78.9629 };
-  if (start && dest) {
-    center = {
-      lat: (start.lat + dest.lat) / 2,
-      lng: (start.lng + dest.lng) / 2,
-    };
-  } else if (start) {
-    center = start;
-  } else if (dest) {
-    center = dest;
-  }
+const BENGALURU_CENTER = { lat: 12.9716, lng: 77.5946 };
+const BENGALURU_BOUNDS: [[number, number], [number, number]] = [
+  [12.8, 77.4],
+  [13.1, 77.8],
+];
 
-  const markers = [];
-  if (start) markers.push(<Marker key="start" position={start} />);
-  if (dest) markers.push(<Marker key="dest" position={dest} />);
+export default function RideMap({ start, dest, height = 300 }: RideMapProps) {
+  // Only render the map if both start and dest are present
+  if (!start || !dest) return null;
+
+  const center = {
+    lat: (start.lat + dest.lat) / 2,
+    lng: (start.lng + dest.lng) / 2,
+  };
 
   return (
-    <MapContainer
-      center={center}
-      zoom={start && dest ? 10 : 5}
-      style={{ height, width: '100%' }}
-      className="rounded-lg border"
-      scrollWheelZoom={false}
-      dragging={false}
-      doubleClickZoom={false}
-      zoomControl={false}
-      attributionControl={false}
-    >
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution="&copy; OpenStreetMap contributors"
-      />
-      {markers}
-      {start && dest && (
-        <Polyline positions={[start, dest]} color="blue" />
-      )}
-    </MapContainer>
+    <div style={{ width: "100%", height }}>
+      <MapContainer
+        center={center}
+        zoom={13}
+        style={{ width: "100%", height: "100%", borderRadius: 12 }}
+        maxBounds={BENGALURU_BOUNDS}
+        minZoom={11}
+        maxZoom={18}
+        scrollWheelZoom={false}
+        dragging={true}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <Marker position={start} icon={startIcon} />
+        <Marker position={dest} icon={destIcon} />
+        <Polyline
+          positions={[
+            [start.lat, start.lng],
+            [dest.lat, dest.lng],
+          ]}
+          color="blue"
+        />
+      </MapContainer>
+    </div>
   );
 }
