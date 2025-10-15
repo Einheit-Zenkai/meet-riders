@@ -9,7 +9,7 @@ import type { Party, PartyMember, Profile } from "../dashboard/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MapPin, Phone, Users, ArrowLeft, Route as RouteIcon, Crown, Flag } from "lucide-react";
+import { MapPin, Phone, Users, ArrowLeft, Route as RouteIcon, Crown, Flag, Share2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
@@ -239,7 +239,8 @@ function LivePartyUI({
   const user = useAuthStore(s => s.user);
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const { sendLocation, locations, messages, sendChat } = useLiveChannel();
+  const { sendLocation, locations, messages, sendChat, sendStatus, statuses } = useLiveChannel();
+  const [myStatus, setMyStatus] = useState<"on_my_way" | "at_meetup" | "in_cab" | "completed" | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<{ userId: string; name: string } | null>(null);
   const [reportReason, setReportReason] = useState<string>("");
@@ -278,6 +279,29 @@ function LivePartyUI({
       navigator.geolocation.clearWatch(id);
     };
   }, [shareOn, sendLocation, setShareOn]);
+
+  const statusLabel = (s?: string) =>
+    s === 'on_my_way' ? 'On my way' : s === 'at_meetup' ? 'At meetup' : s === 'in_cab' ? 'In cab' : s === 'completed' ? 'Completed' : undefined;
+
+  const handleShareMeetup = async () => {
+    const title = `Ride to ${party.drop_off}`;
+    const details = party.meetup_point ? `Meetup: ${party.meetup_point}` : '';
+    const coords = party.start_coords && typeof (party.start_coords as any).lat !== 'undefined' && typeof (party.start_coords as any).lng !== 'undefined'
+      ? `\nMap: https://www.openstreetmap.org/?mlat=${(party.start_coords as any).lat}&mlon=${(party.start_coords as any).lng}#map=16/${(party.start_coords as any).lat}/${(party.start_coords as any).lng}`
+      : '';
+    const text = `${title}\n${details}${coords}`.trim();
+    try {
+      if (typeof navigator !== 'undefined' && (navigator as any).share) {
+        await (navigator as any).share({ title, text });
+      } else {
+        await navigator.clipboard.writeText(text);
+        toast.success('Meetup info copied');
+      }
+    } catch (e) {
+      await navigator.clipboard.writeText(text);
+      toast.success('Meetup info copied');
+    }
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -435,12 +459,37 @@ function LivePartyUI({
           )}
 
           {/* Meetup info */}
-          <div className="flex items-center gap-2 text-base">
-            <MapPin className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <span className="font-bold">{party.meetup_point}</span>
-              <span className="text-muted-foreground"> (specify as much details)</span>
+          <div className="flex items-start md:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-base">
+              <MapPin className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <span className="font-bold">{party.meetup_point}</span>
+                <span className="text-muted-foreground"> (specify as much details)</span>
+              </div>
             </div>
+            <Button size="sm" variant="outline" onClick={handleShareMeetup}>
+              <Share2 className="h-4 w-4 mr-1" /> Share meetup
+            </Button>
+          </div>
+
+          {/* My live status quick actions */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">My status:</span>
+            {[
+              { key: 'on_my_way', label: 'On my way' },
+              { key: 'at_meetup', label: 'At meetup' },
+              { key: 'in_cab', label: 'In cab' },
+              { key: 'completed', label: 'Completed' },
+            ].map((opt) => (
+              <Button
+                key={opt.key}
+                size="sm"
+                variant={myStatus === (opt.key as any) ? 'default' : 'outline'}
+                onClick={() => { setMyStatus(opt.key as any); sendStatus(opt.key as any); }}
+              >
+                {opt.label}
+              </Button>
+            ))}
           </div>
 
           {/* Contacts */}
@@ -458,6 +507,11 @@ function LivePartyUI({
                     {hostProfile?.nickname || hostProfile?.full_name || "Host"}
                     <Crown className="h-4 w-4 text-yellow-500" />
                   </div>
+                  {statuses?.[hostId]?.status && (
+                    <div className="mt-1 inline-flex items-center px-2 py-0.5 rounded bg-primary/10 text-primary text-xs">
+                      {statusLabel(statuses?.[hostId]?.status)}
+                    </div>
+                  )}
                   {hostProfile?.show_university && hostProfile.university && (
                     <div className="text-xs text-muted-foreground">{hostProfile.university}</div>
                   )}
@@ -486,9 +540,14 @@ function LivePartyUI({
                         <AvatarFallback>{initials(m.profile?.nickname || m.profile?.full_name)}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="font-medium flex items-center gap-1">
+                        <div className="font-medium flex items-center gap-2">
                           {m.profile?.nickname || m.profile?.full_name || "User"}
                           {m.user_id === hostId && <Crown className="h-3 w-3 text-yellow-500" />}
+                          {statuses?.[m.user_id]?.status && (
+                            <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded bg-primary/10 text-primary text-[11px]">
+                              {statusLabel(statuses?.[m.user_id]?.status)}
+                            </span>
+                          )}
                         </div>
                         {m.profile?.show_university && m.profile.university && (
                           <div className="text-xs text-muted-foreground">{m.profile.university}</div>
