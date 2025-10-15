@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import dynamic from "next/dynamic";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { LiveChannelProvider, useLiveChannel } from "./LiveChannelContext";
+import GenderBadge from "@/components/GenderBadge";
 
 // Dynamically import RideMap to avoid SSR issues
 const RideMap = dynamic(() => import("@/components/RideMap"), { ssr: false });
@@ -503,9 +504,12 @@ function LivePartyUI({
                   <AvatarFallback>{initials(hostProfile?.nickname || hostProfile?.full_name)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <div className="font-medium flex items-center gap-1">
+                  <div className="font-medium flex items-center gap-2">
                     {hostProfile?.nickname || hostProfile?.full_name || "Host"}
                     <Crown className="h-4 w-4 text-yellow-500" />
+                    {hostProfile?.gender && (
+                      <GenderBadge gender={hostProfile.gender} />
+                    )}
                   </div>
                   {statuses?.[hostId]?.status && (
                     <div className="mt-1 inline-flex items-center px-2 py-0.5 rounded bg-primary/10 text-primary text-xs">
@@ -543,6 +547,9 @@ function LivePartyUI({
                         <div className="font-medium flex items-center gap-2">
                           {m.profile?.nickname || m.profile?.full_name || "User"}
                           {m.user_id === hostId && <Crown className="h-3 w-3 text-yellow-500" />}
+                          {m.profile?.gender && (
+                            <GenderBadge gender={m.profile.gender} />
+                          )}
                           {statuses?.[m.user_id]?.status && (
                             <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded bg-primary/10 text-primary text-[11px]">
                               {statusLabel(statuses?.[m.user_id]?.status)}

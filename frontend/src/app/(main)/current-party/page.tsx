@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Crown, LogOut, UserX, Phone, Users, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useNotificationsStore } from "@/stores/notificationsStore";
+import GenderBadge from "@/components/GenderBadge";
 import NotificationsDropdown from "../dashboard/components/NotificationsDropdown";
 
 export default function CurrentPartyPage() {
@@ -359,6 +360,9 @@ export default function CurrentPartyPage() {
                             <div className="flex items-center gap-2">
                               <span className="font-medium">{m.profile?.nickname || m.profile?.full_name || 'User'}</span>
                               {m.user_id === selectedParty.host_id && <Crown size={14} className="text-yellow-500" />}
+                              {m.profile?.gender && (
+                                <GenderBadge gender={m.profile.gender} />
+                              )}
                               {/* TODO: mutual friends button placeholder */}
                             </div>
                             {m.profile?.show_university && m.profile.university && (

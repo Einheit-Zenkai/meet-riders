@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, Bus, Car, TramFront, Bike, Footprints } from 'lucide-react';
+import { User, Bus, Car, TramFront, Bike, Footprints, Mars, Venus } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/utils/supabase/client';
@@ -39,6 +39,7 @@ export default function UserCreatePage() {
   const [error, setError] = useState('');
   const [nickname, setNickname] = useState('');
   const [bio, setBio] = useState('');
+  const [gender, setGender] = useState<string>('');
   
   // --- 1. ADD STATE TO HOLD THE ACTUAL IMAGE FILE ---
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -81,9 +82,16 @@ export default function UserCreatePage() {
       avatar_url = urlData.publicUrl;
     }
 
+    if (!gender) {
+      setError('Please select your gender');
+      setLoading(false);
+      return;
+    }
+
     const profileDataToSave = {
       nickname,
       bio,
+      gender,
       punctuality,
       ideal_location: idealLocation,
       ideal_departure_time: idealDepartureTime,
@@ -177,7 +185,22 @@ export default function UserCreatePage() {
                 </ToggleGroup>
               </div>
 
-              {/* Gender selection removed for safety */}
+              {/* Gender selection - mandatory */}
+              <div className="space-y-2">
+                <Label>Gender</Label>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant={gender === 'male' ? 'default' : 'outline'} onClick={() => setGender('male')}>
+                    <Mars className="h-4 w-4 mr-1 text-sky-500" /> Male
+                  </Button>
+                  <Button type="button" variant={gender === 'female' ? 'default' : 'outline'} onClick={() => setGender('female')}>
+                    <Venus className="h-4 w-4 mr-1 text-pink-500" /> Female
+                  </Button>
+                  <Button type="button" variant={gender === 'they/them' ? 'default' : 'outline'} onClick={() => setGender('they/them')}>
+                    <User className="h-4 w-4 mr-1 text-zinc-500" /> They/Them
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">This will be shown to others in parties and your profile.</p>
+              </div>
               
               <div className="space-y-2">
                 <Label>Travel Preferences (Click to rank 1, 2, 3 or mark as disliked)</Label>

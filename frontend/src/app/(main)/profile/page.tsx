@@ -14,6 +14,7 @@ import useAuthStore from "@/stores/authStore";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 import HostButton from "@/components/ui/hostbutton";
+import GenderBadge from "@/components/GenderBadge";
 
 // This defines the shape of the data we'll be working with from our 'profiles' table
 type ProfileData = {
@@ -24,6 +25,7 @@ type ProfileData = {
   points: number;
   university?: string;
   show_university?: boolean; // optional preference; if missing, treat as true
+  gender?: string | null;
   // We will add transport preferences later when the data exists
 };
 
@@ -48,7 +50,7 @@ export default function ProfilePage() {
 
       let { data, error } = await supabase
         .from("profiles")
-  .select(`nickname, bio, avatar_url, points, university, show_university`) // points + university
+        .select(`nickname, bio, avatar_url, points, university, show_university, gender`)
         .eq("id", user.id)
         .maybeSingle();
       if (error) {
@@ -79,6 +81,7 @@ export default function ProfilePage() {
           points: typeof data.points === 'number' ? data.points : 0,
           university: data.university || "",
           show_university: typeof (data as any).show_university === 'boolean' ? (data as any).show_university : true,
+          gender: data.gender ?? null,
         });
       }
       setLoading(false);
@@ -176,6 +179,7 @@ export default function ProfilePage() {
                     />
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">{profileData.email}</span>
+                      {profileData.gender && <GenderBadge gender={profileData.gender} />}
                       {typeof profileData.points === 'number' && (
                         <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 rounded-full">
                           <Star className="w-3 h-3 text-primary" />

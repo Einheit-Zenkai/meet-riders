@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ShieldAlert, User, Star } from "lucide-react";
+import GenderBadge from "@/components/GenderBadge";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ type Profile = {
   points: number | null;
   university?: string | null;
   show_university?: boolean | null;
+  gender?: string | null;
 };
 
 type RelationshipStatus = "connected" | "blocked" | null;
@@ -51,7 +53,7 @@ export default function PublicProfilePage() {
       // 1) Fetch the profile being viewed
       const { data: p, error: pErr } = await supabase
         .from("profiles")
-        .select("id, nickname, bio, avatar_url, points, university, show_university")
+  .select("id, nickname, bio, avatar_url, points, university, show_university, gender")
         .eq("id", viewedId)
         .single();
 
@@ -156,7 +158,7 @@ export default function PublicProfilePage() {
               <AvatarImage src={profile.avatar_url ?? undefined} alt={nickname} />
               <AvatarFallback><User className="w-10 h-10" /></AvatarFallback>
             </Avatar>
-            <h1 className="text-2xl font-bold">{nickname}</h1>
+            <h1 className="text-2xl font-bold flex items-center gap-2">{nickname} {profile.gender && <GenderBadge gender={profile.gender} />}</h1>
 
             {!isOwnProfile && !blockedByThem && (
               <div className="mt-4 flex items-center gap-3">
