@@ -7,6 +7,8 @@ import { toast } from "sonner";
 
 type LocationPayload = { uid: string; lat: number; lng: number; ts: number };
 type ChatPayload = { uid: string; text: string; ts: number };
+type StatusKind = 'on_my_way' | 'at_meetup' | 'in_cab' | 'completed';
+type StatusPayload = { uid: string; status: StatusKind; ts: number };
 
 interface LiveMessage extends ChatPayload { id: string }
 
@@ -16,6 +18,8 @@ interface LiveChannelValue {
   sendChat: (text: string) => void;
   locations: Record<string, LocationPayload>;
   messages: LiveMessage[];
+  sendStatus: (status: StatusKind) => void;
+  statuses: Record<string, StatusPayload>;
 }
 
 const LiveChannelCtx = createContext<LiveChannelValue | null>(null);
@@ -31,6 +35,7 @@ export function LiveChannelProvider({ partyId, children }: { partyId: string; ch
   const user = useAuthStore(s => s.user);
   const [locations, setLocations] = useState<Record<string, LocationPayload>>({});
   const [messages, setMessages] = useState<LiveMessage[]>([]);
+  const [statuses, setStatuses] = useState<Record<string, StatusPayload>>({});
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
@@ -61,6 +66,19 @@ export function LiveChannelProvider({ partyId, children }: { partyId: string; ch
       if (data.uid !== user.id) {
         // light notification
         toast.message("New message", { description: data.text });
+      }
+    });
+
+    channel.on("broadcast", { event: "status" }, ({ payload }) => {
+      const data = payload as StatusPayload;
+      if (!data?.uid || !data.status) return;
+      setStatuses(prev => ({ ...prev, [data.uid]: data }));
+      if (data.uid !== user.id) {
+        const label =
+          data.status === 'on_my_way' ? 'On my way' :
+          data.status === 'at_meetup' ? 'At meetup' :
+          data.status === 'in_cab' ? 'In cab' : 'Completed';
+        toast.message(label, { description: `${data.uid.slice(0,6)}… updated status` });
       }
     });
 
@@ -95,9 +113,18 @@ export function LiveChannelProvider({ partyId, children }: { partyId: string; ch
     });
   }, [user]);
 
+  const sendStatus = useCallback((status: StatusKind) => {
+    if (!user || !channelRef.current) return;
+    channelRef.current.send({
+      type: "broadcast",
+      event: "status",
+      payload: { uid: user.id, status, ts: Date.now() },
+    });
+  }, [user]);
+
   const value: LiveChannelValue = useMemo(
-    () => ({ partyId, sendLocation, sendChat, locations, messages }),
-    [partyId, sendLocation, sendChat, locations, messages]
+    () => ({ partyId, sendLocation, sendChat, locations, messages, sendStatus, statuses }),
+    [partyId, sendLocation, sendChat, locations, messages, sendStatus, statuses]
   );
 
   return <LiveChannelCtx.Provider value={value}>{children}</LiveChannelCtx.Provider>;
