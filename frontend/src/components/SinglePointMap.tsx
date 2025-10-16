@@ -3,9 +3,12 @@
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon2x from "@/../node_modules/leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import { MapPin } from "lucide-react";
+import { renderToString } from "react-dom/server";
+const iconHtml = renderToString(<MapPin size={32} fill="red" stroke="white" strokeWidth={2} />);
 
 const icon = L.icon({
   iconUrl: (markerIcon as any).src ?? (markerIcon as any),

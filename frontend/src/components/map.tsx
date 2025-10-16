@@ -1,7 +1,18 @@
+"use client";
 import React from "react";
-import { LatLngExpression } from "leaflet";
+import L, { LatLngExpression } from "leaflet";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import redMarker from "@/public/red-pin.png";
+
+// Custom icons for start and destination
+const startIcon = L.icon({
+  iconUrl: redMarker.src,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
 
 type RideMapProps = {
   startCoords: LatLngExpression | null;
@@ -24,8 +35,8 @@ const RideMap: React.FC<RideMapProps> = ({ startCoords, setStartCoords, destCoor
 
     return (
       <>
-        {startCoords && <Marker position={startCoords} />}
-        {destCoords && <Marker position={destCoords} />}
+        {startCoords && <Marker position={startCoords} icon={startIcon}/>}
+        {destCoords && <Marker position={destCoords} icon={startIcon} />}
       </>
     );
   };
