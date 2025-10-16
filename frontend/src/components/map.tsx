@@ -14,29 +14,32 @@ const startIcon = L.icon({
   shadowSize: [41, 41],
 });
 
+type LatLngLiteral = { lat: number; lng: number };
+
 type RideMapProps = {
-  startCoords: LatLngExpression | null;
-  setStartCoords: (coords: LatLngExpression) => void;
-  destCoords: LatLngExpression | null;
-  setDestCoords: (coords: LatLngExpression) => void;
+  startCoords: LatLngLiteral | null;
+  setStartCoords: React.Dispatch<React.SetStateAction<LatLngLiteral | null>>;
+  destCoords: LatLngLiteral | null;
+  setDestCoords: React.Dispatch<React.SetStateAction<LatLngLiteral | null>>;
 };
 
 const RideMap: React.FC<RideMapProps> = ({ startCoords, setStartCoords, destCoords, setDestCoords }) => {
   const AddMarkers = () => {
     useMapEvents({
       click: (e) => {
+        const clicked = { lat: e.latlng.lat, lng: e.latlng.lng };
         if (!startCoords) {
-          setStartCoords(e.latlng);
+          setStartCoords(clicked);
         } else if (!destCoords) {
-          setDestCoords(e.latlng);
+          setDestCoords(clicked);
         }
       },
     });
 
     return (
       <>
-        {startCoords && <Marker position={startCoords} icon={startIcon}/>}
-        {destCoords && <Marker position={destCoords} icon={startIcon} />}
+  {startCoords && <Marker position={startCoords as LatLngExpression} icon={startIcon}/>}
+  {destCoords && <Marker position={destCoords as LatLngExpression} icon={startIcon} />}
       </>
     );
   };

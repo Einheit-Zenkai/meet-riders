@@ -10,8 +10,8 @@ import { Label } from "@/components/ui/label";
 function Report() {
   const router = useRouter();
   const params = useSearchParams();
-  const targetId = params.get("id");
-  const targetType = params.get("type") || "item"; // general purpose, defaults to item
+  const targetId = params?.get?.("id");
+  const targetType = params?.get?.("type") || "item"; // general purpose, defaults to item
 
   const [reason, setReason] = useState<string>("harassment");
   const [details, setDetails] = useState<string>("");

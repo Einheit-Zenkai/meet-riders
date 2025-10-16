@@ -31,7 +31,7 @@ function LoginForm() {
   const supabase = createClient();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+  const redirectTo = (searchParams?.get?.('redirectTo') ?? '/dashboard');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<LoginFormData>({

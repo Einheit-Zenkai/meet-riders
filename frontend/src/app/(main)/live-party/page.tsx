@@ -48,7 +48,7 @@ function LivePartyInner() {
       if (!user) return;
       setLoading(true);
       try {
-        const idParam = params.get("id");
+  const idParam = params?.get?.("id");
 
         // Fetch the target party
         const partyFields = `id, created_at, updated_at, host_id, party_size, duration_minutes, expires_at, meetup_point, drop_off, is_friends_only, is_gender_only, ride_options, host_comments, host_university, display_university, is_active, start_coords, dest_coords`;

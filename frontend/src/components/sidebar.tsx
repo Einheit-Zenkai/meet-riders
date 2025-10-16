@@ -1,7 +1,7 @@
 // src/components/Sidebar.tsx
 
 import Link from "next/link";
-import { User, Settings, Home, Users, Trophy, Plus, Map as MapIcon, CalendarClock } from "lucide-react";
+import { User, Settings, Home, Users, Trophy, Plus, Map as MapIcon, CalendarClock, Clock } from "lucide-react";
 
 export default function Sidebar() {
   const menuItems = [
@@ -12,6 +12,7 @@ export default function Sidebar() {
     { href: "/current-party", icon: Users, label: "Current Party" },
     { href: "/leaderboard", icon: Trophy, label: "Leaderboard" },
     { href: "/map", icon: MapIcon, label: "Map" },
+    { href: "/expired-parties", icon: Clock, label: "Expired" },
   ];
 
   return (

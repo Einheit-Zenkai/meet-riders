@@ -10,7 +10,8 @@ import { createClient } from "@/utils/supabase/client";
 import useAuthStore from "@/stores/authStore";
 import usePartyStore from "@/stores/partyStore";
 import dynamic from "next/dynamic";
-import RideMap from "@/components/map";
+// Dynamically import RideMap to avoid SSR issues with Leaflet
+const RideMap = dynamic(() => import("@/components/map"), { ssr: false });
 
 // Dynamically import LocationPicker to avoid SSR issues
 const LocationPicker = dynamic(() => import("@/components/LocationPicker"), { ssr: false });
