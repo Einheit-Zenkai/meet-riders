@@ -6,6 +6,7 @@ import useExpiredPartiesStore from "@/stores/expiredPartiesStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, RefreshCcw } from "lucide-react";
+import MainLayout from "@/components/main-layout";
 
 export default function ExpiredPartiesPage() {
   const { expiredParties, isRefreshing, refreshExpiredParties } = useExpiredPartiesStore();
@@ -16,6 +17,7 @@ export default function ExpiredPartiesPage() {
   }, [refreshExpiredParties]);
 
   return (
+    <MainLayout>
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-4 flex items-center justify-between">
         <Button asChild variant="outline"><Link href="/dashboard">← Back</Link></Button>
@@ -56,5 +58,6 @@ export default function ExpiredPartiesPage() {
         </div>
       )}
     </div>
+    </MainLayout>
   );
 }

@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from "@/components/ui/label";
 
 interface PasswordSectionProps {
+  oldPassword?: string;
+  setOldPassword?: (value: string) => void;
   newPassword: string;
   setNewPassword: (value: string) => void;
   confirmPassword: string;
@@ -16,6 +18,8 @@ interface PasswordSectionProps {
 }
 
 export const PasswordSection = ({
+  oldPassword,
+  setOldPassword,
   newPassword,
   setNewPassword,
   confirmPassword,
@@ -31,6 +35,15 @@ export const PasswordSection = ({
           <CardTitle>Change Password</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="oldPassword">Old Password</Label>
+            <Input
+              id="oldPassword"
+              type="password"
+              value={oldPassword ?? ''}
+              onChange={(e) => setOldPassword && setOldPassword(e.target.value)}
+            />
+          </div>
           <div>
             <Label htmlFor="newPassword">New Password</Label>
             <Input 
