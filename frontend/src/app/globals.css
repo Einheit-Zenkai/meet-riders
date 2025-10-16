@@ -54,39 +54,39 @@
 }
 
 .dark {
-  /* Dark theme: maroon to near-black */
-  --background: #0a0204;
-  --foreground: #f5e7eb;
-  --card: #12040b;
-  --card-foreground: #f5e7eb;
-  --popover: #12040b;
-  --popover-foreground: #f5e7eb;
-  --primary: #b11f4d; /* vivid maroon */
+  /* Dark theme: lighten background and boost maroon visibility */
+  --background: #190409; /* lighter than before */
+  --foreground: #fdebef;
+  --card: #210610;
+  --card-foreground: #fdebef;
+  --popover: #210610;
+  --popover-foreground: #fdebef;
+  --primary: #d12a5a; /* brighter maroon */
   --primary-foreground: #ffffff;
-  --secondary: #2a0910;
-  --secondary-foreground: #f5e7eb;
-  --muted: #1a090d;
-  --muted-foreground: #e8cbd2;
-  --accent: #3a0a14;
-  --accent-foreground: #fbe9ee;
-  --destructive: #ef4444;
+  --secondary: #3a0d18;
+  --secondary-foreground: #fdebef;
+  --muted: #2a0a12;
+  --muted-foreground: #f6d3db;
+  --accent: #4a0f1e;
+  --accent-foreground: #ffe9ef;
+  --destructive: #f05252;
   --destructive-foreground: #ffffff;
-  --border: #2a0a12;
-  --input: #321019;
-  --ring: #e11d48;
-  --chart-1: #b11f4d;
-  --chart-2: #ef4444;
+  --border: #3a0d18;
+  --input: #43101d;
+  --ring: #f43f5e; /* vivid rose */
+  --chart-1: #d12a5a;
+  --chart-2: #f43f5e;
   --chart-3: #fb7185;
   --chart-4: #f59e0b;
-  --chart-5: #10b981;
-  --sidebar: #13060a;
-  --sidebar-foreground: #f1dbe0;
-  --sidebar-primary: #b11f4d;
+  --chart-5: #22c55e;
+  --sidebar: #220811;
+  --sidebar-foreground: #ffe9ef;
+  --sidebar-primary: #d12a5a;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #26060d;
-  --sidebar-accent-foreground: #f1dbe0;
+  --sidebar-accent: #311018;
+  --sidebar-accent-foreground: #ffe9ef;
   --sidebar-border: #000000;
-  --sidebar-ring: #e11d48;
+  --sidebar-ring: #f43f5e;
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
