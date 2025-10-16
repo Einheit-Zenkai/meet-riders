@@ -18,7 +18,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Trophy } from "lucide-react";
-import HostButton from "@/components/ui/hostbutton";
 
 export default function LeaderboardPage() {
   // Dummy data (replace with API data later)
@@ -83,8 +82,7 @@ export default function LeaderboardPage() {
           </Table>
         </CardContent>
       </Card>
-      {/* Floating Host (+) button */}
-      <HostButton />
+  {/* Floating Host (+) button hidden on this page; only on Dashboard */}
     </div>
   );
 }

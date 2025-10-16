@@ -11,7 +11,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar (hidden on mobile) */}
-      <div className="hidden sm:block">
+      <div className="hidden sm:block z-[70]">
         <Sidebar />
       </div>
       {/* Main Content; add left padding equal to collapsed width to avoid content underlap */}

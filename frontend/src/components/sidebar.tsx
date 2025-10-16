@@ -16,7 +16,7 @@ export default function Sidebar() {
   ];
 
   return (
-    <div className="fixed left-0 top-0 h-full bg-sidebar text-foreground flex flex-col py-4 shadow-lg group group/sidebar transition-all duration-200 w-16 hover:w-48 z-50 pointer-events-auto">
+    <div className="fixed left-0 top-0 h-full bg-white/60 text-foreground flex flex-col py-4 shadow-lg group group/sidebar transition-all duration-200 w-16 hover:w-48 z-[70] pointer-events-auto backdrop-blur-[9.1px] border border-white/30 rounded-r-2xl">
       <nav className="flex-1 flex flex-col gap-2 px-2">
         {menuItems.map(({ href, icon: Icon, label }) => (
           <Link

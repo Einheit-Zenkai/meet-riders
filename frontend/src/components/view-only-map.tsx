@@ -23,7 +23,7 @@ export default function ViewOnlyMap({
     <MapContainer
       center={[safeCenter.lat, safeCenter.lng]}
       zoom={zoom}
-      style={{ height: "100%", width: "100%", borderRadius: 12 }}
+      style={{ height: "100%", width: "100%", borderRadius: 12, zIndex: 10 }}
       scrollWheelZoom={true}
       attributionControl={false}
     >

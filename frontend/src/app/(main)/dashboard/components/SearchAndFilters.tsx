@@ -42,7 +42,7 @@ export default function SearchAndFilters() {
     <div className="flex-1 relative" ref={filtersRef}>
       <input
         type="text"
-        className="w-full p-3 pr-11 border border-input rounded-full bg-background text-foreground placeholder:text-muted-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        className="w-full p-3 pr-11 rounded-full bg-white/60 text-foreground placeholder:text-muted-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring border border-white/30 backdrop-blur-[9.1px]"
         placeholder="Search destination (e.g., MG Road, North Gate)"
         value={destinationQuery}
         onChange={(e) => setDestinationQuery(e.target.value)}
@@ -57,7 +57,7 @@ export default function SearchAndFilters() {
       </button>
 
       {showFilters && (
-        <div className="absolute z-50 mt-2 w-80 rounded-md border bg-card shadow p-3">
+        <div className="absolute z-50 mt-2 w-80 rounded-2xl border border-white/30 bg-white/60 shadow backdrop-blur-[9.1px] p-3">
           <div className="space-y-2">
             <label htmlFor="timeWindow" className="text-sm font-medium text-muted-foreground">
               Expiring within

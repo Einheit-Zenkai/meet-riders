@@ -30,12 +30,12 @@ export default function MapPage() {
   }, []);
 
   return (
-    <div className="p-0 sm:p-6">
+    <div className="p-0 sm:p-6 relative z-10">
       <div className="p-4 sm:px-0">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2">Map</h1>
         <p className="text-sm text-muted-foreground">Explore the map. No input required.</p>
       </div>
-      <div className="h-[calc(100dvh-8rem)] sm:h-[70dvh] w-full">
+      <div className="h-[calc(100dvh-8rem)] sm:h-[70dvh] w-full relative z-10">
         <ViewOnlyMap center={center} zoom={zoom} />
       </div>
     </div>
