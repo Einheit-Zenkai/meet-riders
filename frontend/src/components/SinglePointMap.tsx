@@ -3,19 +3,12 @@
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import markerIcon2x from "@/../node_modules/leaflet/dist/images/marker-icon-2x.png";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
-import { MapPin } from "lucide-react";
-import { renderToString } from "react-dom/server";
-const iconHtml = renderToString(<MapPin size={32} fill="red" stroke="white" strokeWidth={2} />);
+import redMarker from "@/public/red-pin.png";
 
-const icon = L.icon({
-  iconUrl: (markerIcon as any).src ?? (markerIcon as any),
-  iconRetinaUrl: (markerIcon2x as any).src ?? (markerIcon2x as any),
-  shadowUrl: (markerShadow as any).src ?? (markerShadow as any),
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
+const pin = L.icon({
+  iconUrl: (redMarker as any).src ?? (redMarker as any),
+  iconSize: [28, 44],
+  iconAnchor: [14, 44],
 });
 
 function toPoint(p?: { lat: number | string; lng: number | string } | null) {
@@ -27,13 +20,21 @@ function toPoint(p?: { lat: number | string; lng: number | string } | null) {
 }
 
 export default function SinglePointMap({ point, height = 180 }: { point?: { lat: number | string; lng: number | string } | null; height?: number }) {
-  const pos = toPoint(point || null);
-  if (!pos) return null;
+  const pos = toPoint(point || null) ?? { lat: 20, lng: 0 };
   return (
     <div style={{ width: "100%", height }}>
-      <MapContainer center={pos} zoom={14} style={{ width: "100%", height: "100%", borderRadius: 12 }} scrollWheelZoom={false}>
-        <TileLayer attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <Marker position={pos} icon={icon} />
+      <MapContainer
+        center={pos}
+        zoom={15}
+        style={{ width: "100%", height: "100%", borderRadius: 12 }}
+        scrollWheelZoom={false}
+        dragging={false}
+        doubleClickZoom={false}
+        zoomControl={false}
+        attributionControl={false}
+      >
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <Marker position={pos} icon={pin} />
       </MapContainer>
     </div>
   );

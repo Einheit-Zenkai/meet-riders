@@ -25,8 +25,11 @@ type RideMapProps = {
 
 const RideMap: React.FC<RideMapProps> = ({ startCoords, setStartCoords, destCoords, setDestCoords }) => {
   const AddMarkers = () => {
+    // Once both markers are set, stop reacting to further clicks
+    const bothSet = Boolean(startCoords && destCoords);
     useMapEvents({
       click: (e) => {
+        if (bothSet) return;
         const clicked = { lat: e.latlng.lat, lng: e.latlng.lng };
         if (!startCoords) {
           setStartCoords(clicked);

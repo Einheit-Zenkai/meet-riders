@@ -40,7 +40,7 @@ export default function NotificationsDropdown() {
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        className="p-2 rounded-full border hover:bg-accent relative"
+        className="p-2 rounded-full border hover:bg-accent hover:shadow-[0_0_20px_4px_rgba(255,43,99,0.35)] relative"
         title="Notifications"
         onClick={() => setShowDropdown(!showDropdown)}
       >
@@ -53,7 +53,7 @@ export default function NotificationsDropdown() {
       </button>
       
       {showDropdown && (
-        <div className="absolute right-0 mt-2 w-80 rounded-md border bg-card shadow-lg z-50 max-h-96 overflow-y-auto">
+        <div className="absolute right-0 mt-2 w-80 rounded-md border bg-card/95 backdrop-blur shadow-lg z-50 max-h-96 overflow-y-auto">
           <div className="p-3 border-b">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-sm">Notifications</h3>

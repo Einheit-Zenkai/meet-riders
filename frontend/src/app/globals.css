@@ -56,24 +56,24 @@
 .dark {
   /* Dark theme: lighten background and boost maroon visibility */
   --background: #190409; /* lighter than before */
-  --foreground: #fdebef;
-  --card: #210610;
-  --card-foreground: #fdebef;
-  --popover: #210610;
-  --popover-foreground: #fdebef;
+  --foreground: #ffe4ea;
+  --card: #2b0a12; /* brighter than before for contrast */
+  --card-foreground: #ffe4ea;
+  --popover: #2b0a12; /* match card */
+  --popover-foreground: #ffe4ea;
   --primary: #d12a5a; /* brighter maroon */
   --primary-foreground: #ffffff;
   --secondary: #3a0d18;
   --secondary-foreground: #fdebef;
   --muted: #2a0a12;
-  --muted-foreground: #f6d3db;
+  --muted-foreground: #ffd8e0;
   --accent: #4a0f1e;
   --accent-foreground: #ffe9ef;
   --destructive: #f05252;
   --destructive-foreground: #ffffff;
-  --border: #3a0d18;
+  --border: #5a1a2e; /* clearer borders */
   --input: #43101d;
-  --ring: #f43f5e; /* vivid rose */
+  --ring: #ff2b63; /* neon rose ring */
   --chart-1: #d12a5a;
   --chart-2: #f43f5e;
   --chart-3: #fb7185;
