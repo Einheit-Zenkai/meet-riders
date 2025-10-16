@@ -10,6 +10,7 @@ import { createClient } from "@/utils/supabase/client";
 import useAuthStore from "@/stores/authStore";
 import usePartyStore from "@/stores/partyStore";
 import dynamic from "next/dynamic";
+import RideMap from "@/components/map";
 
 // Dynamically import LocationPicker to avoid SSR issues
 const LocationPicker = dynamic(() => import("@/components/LocationPicker"), { ssr: false });
@@ -235,12 +236,14 @@ export default function HostPartyPage() {
             onChange={(e) => setMeetupPoint(e.target.value)}
           />
         </div>
-        {/* Start Point (Map) */}
-        <LocationPicker
-          label="Select Start Point on Map"
-          value={startCoords}
-          onChange={setStartCoords}
+        {/* Start and Destination Points (Map) */}
+        <RideMap
+          startCoords={startCoords}
+          setStartCoords={setStartCoords}
+          destCoords={destCoords}
+          setDestCoords={setDestCoords}
         />
+
         {/* Dropoff (Address) */}
         <div className="space-y-2">
           <label htmlFor="dropoff" className="text-xl font-semibold text-foreground">Final Destination (address)</label>
@@ -253,12 +256,6 @@ export default function HostPartyPage() {
             onChange={(e) => setDropOff(e.target.value)}
           />
         </div>
-        {/* Destination Point (Map) */}
-        <LocationPicker
-          label="Select Destination Point on Map"
-          value={destCoords}
-          onChange={setDestCoords}
-        />
 
         <div className="flex space-x-6">
           {/* Privacy */}

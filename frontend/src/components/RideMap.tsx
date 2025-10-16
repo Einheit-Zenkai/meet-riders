@@ -1,15 +1,12 @@
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import greenMarker from "@/assets/green-marker.png";
+import redMarker from "@/assets/red-marker.png";
 
 // Custom icons for start and destination
 const startIcon = L.icon({
-  iconUrl: markerIcon.src ?? markerIcon,
-  iconRetinaUrl: markerIcon2x.src ?? markerIcon2x,
-  shadowUrl: markerShadow.src ?? markerShadow,
+  iconUrl: redMarker.src,
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
@@ -17,9 +14,7 @@ const startIcon = L.icon({
 });
 
 const destIcon = L.icon({
-  iconUrl: markerIcon2x.src ?? markerIcon2x, // You can use a different image for destination
-  iconRetinaUrl: markerIcon2x.src ?? markerIcon2x,
-  shadowUrl: markerShadow.src ?? markerShadow,
+  iconUrl: greenMarker.src,
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
