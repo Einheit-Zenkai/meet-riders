@@ -17,7 +17,7 @@ export default function Sidebar() {
 
   return (
     <div
-      className="fixed left-0 top-0 h-full bg-[rgba(255,255,255,0.63)] text-foreground flex flex-col py-4 shadow-[0_4px_30px_rgba(0,0,0,0.1)] group group/sidebar transition-all duration-200 w-16 hover:w-48 z-[70] pointer-events-auto backdrop-blur-[2.2px] border border-[rgba(255,255,255,0.27)] rounded-r-[16px]"
+      className="fixed left-0 top-0 h-full bg-[rgba(255,255,255,0.63)] dark:bg-[rgba(15,15,15,0.48)] text-foreground flex flex-col py-4 shadow-[0_4px_30px_rgba(0,0,0,0.1)] group group/sidebar transition-all duration-200 w-16 hover:w-48 z-[70] pointer-events-auto backdrop-blur-[2.2px] rounded-r-[16px]"
       style={{ WebkitBackdropFilter: "blur(2.2px)" }}
     >
       <nav className="flex-1 flex flex-col gap-2 px-2">

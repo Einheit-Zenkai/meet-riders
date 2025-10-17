@@ -75,8 +75,8 @@ function LoginForm() {
         </Button>
       </div>
 
-      <div className="flex items-center justify-center w-full">
-        <div className="w-full max-w-md bg-card p-8 rounded-xl shadow-lg border">
+      <div className="flex items-center justify-center  w-full">
+        <div className="mx-2 p-6 sm:mx-0 sm:w-full max-w-md bg-card sm:p-8 rounded-xl shadow-lg border">
           <h2 className="text-3xl font-bold mb-6 text-center text-foreground">
             Login
           </h2>

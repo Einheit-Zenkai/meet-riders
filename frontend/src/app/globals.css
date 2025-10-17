@@ -176,6 +176,14 @@
   background-repeat: no-repeat;
 }
 
+.dark .dashboard-gradient {
+  background-color: color-mix(in oklch, var(--background) 75%, black);
+  background-image:
+    radial-gradient(600px 600px at 0% 0%, color-mix(in oklch, var(--primary) 3%, var(--background)) 0%, transparent 70%),
+    radial-gradient(800px 800px at 100% 50%, color-mix(in oklch, var(--primary) 2%, var(--background)) 0%, transparent 70%);
+  background-repeat: no-repeat;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -42,7 +42,7 @@ export default function SearchAndFilters() {
     <div className="flex-1 relative" ref={filtersRef}>
       <input
         type="text"
-        className="w-full p-3 pr-11 rounded-full bg-[rgba(255,255,255,0.63)] text-foreground placeholder:text-muted-foreground shadow-[0_4px_30px_rgba(0,0,0,0.1)] focus:outline-none focus:ring-2 focus:ring-ring border border-[rgba(255,255,255,0.27)] backdrop-blur-[2.2px]"
+        className="w-full p-3 pr-11 rounded-full bg-[rgba(255,255,255,0.63)] dark:bg-[rgba(15,15,15,0.48)] text-foreground placeholder:text-muted-foreground shadow-[0_4px_30px_rgba(0,0,0,0.1)] focus:outline-none focus:ring-2 focus:ring-ring border border-[rgba(255,255,255,0.27)] backdrop-blur-[2.2px] "
         style={{ WebkitBackdropFilter: "blur(2.2px)" }}
         placeholder="Search destination (e.g., MG Road, North Gate)"
         value={destinationQuery}

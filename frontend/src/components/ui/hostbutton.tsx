@@ -3,7 +3,7 @@ import { Plus } from "lucide-react";
 
 export default function HostButton() {
   return (
-    <div className="fixed bottom-10 right-4 sm:right-6 group z-[60]">
+    <div className="fixed bottom-10 right-4 hidden sm:block sm:right-6 group z-[60]">
       <Link
         href="/hostparty"
         className="flex items-center justify-center w-20 h-20 bg-black rounded-full shadow-lg hover:bg-gray-800 transition-colors duration-300"

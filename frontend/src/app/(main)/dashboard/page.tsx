@@ -15,7 +15,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="dashboard-gradient min-h-dvh p-6">
+    <div className=" min-h-dvh p-6">
       <HostButton />
 
       <DashboardHeader

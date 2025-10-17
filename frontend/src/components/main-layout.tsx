@@ -9,13 +9,13 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children }: MainLayoutProps) {
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background" >
       {/* Sidebar (hidden on mobile) */}
       <div className="hidden sm:block z-[70]">
         <Sidebar />
       </div>
       {/* Main Content; add left padding equal to collapsed width to avoid content underlap */}
-      <main className="relative flex-1 pl-16 pr-4">
+      <main className="relative flex-1 md:pl-16 dashboard-gradient">
         <div className="h-full">
           {children}
         </div>
@@ -24,7 +24,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
       <div className="sm:hidden">
         <MobileTabBar />
       </div>
-      {/* Expired parties moved to a dedicated page */}
     </div>
   );
 }
