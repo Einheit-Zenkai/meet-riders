@@ -5,27 +5,32 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { createClient } from "@/utils/supabase/client";
 import useAuthStore from "@/stores/authStore";
 import { Star } from "lucide-react";
-import { toast } from "sonner";
 import GenderBadge from "@/components/GenderBadge";
 
 // This defines the shape of the data we'll be working with from our 'profiles' table
 type ProfileData = {
+  username: string;
   nickname: string;
+  full_name: string | null;
   bio: string;
   avatar_url: string;
   email: string;
   points: number;
   university?: string;
-  show_university?: boolean; // optional preference; if missing, treat as true
+  show_university?: boolean;
   gender?: string | null;
-  // We will add transport preferences later when the data exists
+  major?: string | null;
+  punctuality?: string | null;
+  ideal_location?: string | null;
+  ideal_departure_time?: string | null;
+  birth_date?: string | null;
+  phone_number?: string | null;
+  show_phone?: boolean;
+  created_at?: string | null;
 };
 
 export default function ProfilePage() {
@@ -37,9 +42,6 @@ export default function ProfilePage() {
   // A single state to hold all the profile data for easier management
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
 
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-
   // --- 1. RE-WIRED: Fetch data from the 'profiles' table ---
   useEffect(() => {
     const fetchProfile = async () => {
@@ -49,7 +51,25 @@ export default function ProfilePage() {
 
       let { data, error } = await supabase
         .from("profiles")
-        .select(`nickname, bio, avatar_url, points, university, show_university, gender`)
+        .select(`
+          username, 
+          nickname, 
+          full_name,
+          bio, 
+          avatar_url, 
+          points, 
+          university, 
+          show_university, 
+          gender,
+          major,
+          punctuality,
+          ideal_location,
+          ideal_departure_time,
+          birth_date,
+          phone_number,
+          show_phone,
+          created_at
+        `)
         .eq("id", user.id)
         .maybeSingle();
       if (error) {
@@ -67,13 +87,14 @@ export default function ProfilePage() {
           data = insert.data as any;
         } else if (insert.error) {
           console.error("Error creating profile:", insert.error);
-          setError("Could not load your profile.");
         }
       }
 
       if (data) {
         setProfileData({
+          username: data.username || "",
           nickname: data.nickname || "",
+          full_name: data.full_name || null,
           bio: data.bio || "",
           avatar_url: data.avatar_url || "",
           email: user.email || "",
@@ -81,6 +102,14 @@ export default function ProfilePage() {
           university: data.university || "",
           show_university: typeof (data as any).show_university === 'boolean' ? (data as any).show_university : true,
           gender: data.gender ?? null,
+          major: data.major || null,
+          punctuality: data.punctuality || null,
+          ideal_location: data.ideal_location || null,
+          ideal_departure_time: data.ideal_departure_time || null,
+          birth_date: data.birth_date || null,
+          phone_number: data.phone_number || null,
+          show_phone: data.show_phone || false,
+          created_at: data.created_at || null,
         });
       }
       setLoading(false);
@@ -94,45 +123,15 @@ export default function ProfilePage() {
     router.replace("/");
   };
 
-  // --- 2. RE-WIRED: Save data back to the 'profiles' table ---
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setMessage(null);
-    if (!profileData || !user) return;
-
-    // First try updating with show_university; if the column doesn't exist, retry without it
-    const base = {
-      nickname: profileData.nickname,
-      bio: profileData.bio,
-      updated_at: new Date(),
-    } as any;
-
-    // Settings-only fields (university/show_university) are NOT updated here.
-    let { error: updateError } = await supabase.from("profiles").update(base).eq("id", user.id);
-
-    if (updateError) {
-      setError(updateError.message);
-      toast.error(updateError.message || 'Failed to update profile');
-    } else {
-      setMessage("Profile updated successfully!");
-      toast.success('Profile updated');
-    }
-  };
-  
-  // Helper function to update the single profile state object
-  const handleInputChange = (field: keyof ProfileData, value: string) => {
-    if (profileData) {
-      setProfileData({ ...profileData, [field]: value });
-    }
-  };
+  // --- 2. Profile is READ-ONLY - No save functionality ---
+  // Users should use Settings page to edit their profile
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-[60vh]"><p className="text-muted-foreground">Loading profile…</p></div>;
   }
 
   if (!profileData) {
-    return <div className="flex items-center justify-center min-h-[60vh]"><p className="text-destructive">{error || "Could not find profile."}</p></div>;
+    return <div className="flex items-center justify-center min-h-[60vh]"><p className="text-destructive">Could not find profile.</p></div>;
   }
 
   // --- YOUR ORIGINAL JSX (with data sources re-wired) ---
@@ -144,9 +143,14 @@ export default function ProfilePage() {
           <Button asChild variant="outline" className="glass-button">
             <Link href="/dashboard">← Back to Dashboard</Link>
           </Button>
-          <Button variant="secondary" onClick={handleSignOut} className="hover:bg-destructive/10 hover:text-destructive transition-colors">
-            Sign out
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild variant="default">
+              <Link href="/settings">✏️ Edit Profile</Link>
+            </Button>
+            <Button variant="secondary" onClick={handleSignOut} className="hover:bg-destructive/10 hover:text-destructive transition-colors">
+              Sign out
+            </Button>
+          </div>
         </div>
 
   {/* Main content with improved layout */}
@@ -168,15 +172,14 @@ export default function ProfilePage() {
                 </div>
                 
                 <div className="flex-1 space-y-6">
-                  {/* Enhanced Name Section */}
+                  {/* Enhanced Name Section - READ ONLY */}
                   <div className="space-y-2">
-                    <Input
-                      value={profileData.nickname}
-                      onChange={(e) => handleInputChange('nickname', e.target.value)}
-                      className="text-3xl font-bold h-auto p-0 border-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent placeholder:text-muted-foreground/50"
-                      placeholder="Enter your nickname"
-                    />
-                    <div className="flex items-center gap-2">
+                    <h1 className="text-3xl font-bold">
+                      {profileData.full_name || profileData.nickname || "Anonymous User"}
+                    </h1>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm text-muted-foreground">@{profileData.username}</span>
+                      <span className="text-muted-foreground">•</span>
                       <span className="text-muted-foreground">{profileData.email}</span>
                       {profileData.gender && <GenderBadge gender={profileData.gender} />}
                       {typeof profileData.points === 'number' && (
@@ -187,70 +190,74 @@ export default function ProfilePage() {
                       )}
                     </div>
                   </div>
-                  {/* Enhanced Bio Section */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-foreground">About Me</label>
-                    <Textarea
-                      value={profileData.bio}
-                      onChange={(e) => handleInputChange('bio', e.target.value)}
-                      placeholder="Tell people a bit about yourself... What do you enjoy? What's your travel style?"
-                      className="resize-none min-h-[100px] bg-background/50 border-border/50 focus:border-primary/50 transition-colors"
-                      rows={4}
-                    />
+                  
+                  {/* Bio Section - READ ONLY */}
+                  {profileData.bio && (
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-foreground">About Me</label>
+                      <p className="text-muted-foreground whitespace-pre-wrap">
+                        {profileData.bio}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Additional Profile Information - READ ONLY */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {profileData.major && (
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-muted-foreground">Major</label>
+                        <p className="text-sm font-semibold">{profileData.major}</p>
+                      </div>
+                    )}
+                    
+                    {profileData.punctuality && (
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-muted-foreground">Punctuality</label>
+                        <p className="text-sm font-semibold capitalize">{profileData.punctuality.replace('-', ' ')}</p>
+                      </div>
+                    )}
+                    
+                    {profileData.ideal_location && (
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-muted-foreground">Ideal Pickup Location</label>
+                        <p className="text-sm font-semibold">{profileData.ideal_location}</p>
+                      </div>
+                    )}
+                    
+                    {profileData.ideal_departure_time && (
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-muted-foreground">Ideal Departure Time</label>
+                        <p className="text-sm font-semibold">{profileData.ideal_departure_time}</p>
+                      </div>
+                    )}
                   </div>
-                  {/* Enhanced University Display */}
-                  {profileData.university && (
+                  
+                  {/* University Display - READ ONLY */}
+                  {profileData.university && profileData.show_university && (
                     <div className="p-4 bg-accent/30 rounded-lg border border-accent/50">
                       <label className="block text-sm font-medium text-foreground mb-1">University</label>
                       <p className="text-base font-semibold text-primary">{profileData.university}</p>
                       <p className="text-xs text-muted-foreground mt-1">Visible to other users</p>
                     </div>
                   )}
-
-                  {/* Contact number moved to Settings page */}
-                  {/* Enhanced Transport Preferences */}
-                  <div className="space-y-3">
-                    <label className="block text-sm font-medium text-foreground">Preferred Transport</label>
-                    <ToggleGroup type="single" defaultValue="auto" className="justify-start">
-                      <ToggleGroupItem value="auto" className="data-[state=on]:bg-primary/20 data-[state=on]:text-primary">
-                        🚗 Car
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="bike" className="data-[state=on]:bg-primary/20 data-[state=on]:text-primary">
-                        🚲 Bike
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="public" className="data-[state=on]:bg-primary/20 data-[state=on]:text-primary">
-                        🚌 Public
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="walk" className="data-[state=on]:bg-primary/20 data-[state=on]:text-primary">
-                        🚶‍♂️ Walk
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
-                  {/* Enhanced Action Buttons */}
-                  <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-border/50">
-                    <Button onClick={handleSave} className="bg-primary hover:bg-primary/90 font-medium">
-                      💾 Save Profile
-                    </Button>
-                    <Button variant="outline" className="hover:bg-accent/50">
-                      👥 Add Connection
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      asChild
-                      className="ml-auto opacity-70 hover:opacity-100"
-                    >
-                      <Link href={user ? `/report?type=user&id=${user.id}` : "/report"}>
-                        🚨 Report Issue
-                      </Link>
-                    </Button>
-                  </div>
+                  
+                  {/* Member Since */}
+                  {profileData.created_at && (
+                    <div className="pt-4 border-t border-border/50">
+                      <p className="text-xs text-muted-foreground">
+                        Member since {new Date(profileData.created_at).toLocaleDateString('en-US', { 
+                          month: 'long', 
+                          year: 'numeric' 
+                        })}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Right column cards: Connections + Metrics */}
+          {/* Right column card: Connections */}
           <Card className="bg-card/60 backdrop-blur-[6.2px] border border-white/10 shadow-xl">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2">
@@ -267,43 +274,7 @@ export default function ProfilePage() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Dummy Ratings card (placeholder) */}
-          <Card className="bg-card/60 backdrop-blur-[6.2px] border border-white/10 shadow-xl">
-            <CardHeader className="pb-2">
-              <CardTitle>Ratings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {(() => {
-                const rating = 4.6; // placeholder
-                const total = 5;
-                const full = Math.floor(rating);
-                const stars = Array.from({ length: total }, (_, i) => (
-                  <Star key={i} className={`w-5 h-5 ${i < full ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
-                ));
-                return (
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1">{stars}</div>
-                    <span className="text-sm text-muted-foreground">{rating.toFixed(1)} / 5.0</span>
-                  </div>
-                );
-              })()}
-              <p className="text-xs text-muted-foreground mt-3">This is a placeholder. Real ratings will appear once rides and feedback are enabled.</p>
-            </CardContent>
-          </Card>
-
-          {/* Points card (Leaderboard) */}
-          <Card className="bg-card/60 backdrop-blur-[6.2px] border border-white/10 shadow-xl">
-            <CardHeader className="pb-2">
-              <CardTitle>Leaderboard Points</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-primary">{profileData.points}</p>
-              <p className="text-xs text-muted-foreground mt-1">Earn more points by hosting rides and participating.</p>
-            </CardContent>
-          </Card>
       </div>
-  {/* Floating Host (+) button removed here; shown only on Dashboard */}
       </div>
     </div>
   );

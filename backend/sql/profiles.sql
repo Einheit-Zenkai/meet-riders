@@ -19,6 +19,10 @@ create table public.profiles (
   "isGenderOnly" boolean null,
   "rideOptions" text null,
   "expiresIn" text null,
+  phone_number text null,
+  show_phone boolean null default false,
+  username text not null,
   constraint profiles_pkey primary key (id),
+  constraint profiles_username_key unique (username),
   constraint profiles_id_fkey foreign KEY (id) references auth.users (id) on delete CASCADE
 ) TABLESPACE pg_default;

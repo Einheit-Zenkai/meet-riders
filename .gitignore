@@ -6,4 +6,4 @@ package-lock.json
 docs/sql/
 
 .next/trace
-frontend/bun.lock
+bun.lock

@@ -14,6 +14,7 @@ import useAuthStore from "@/stores/authStore";
 
 type Profile = {
   id: string;
+  username: string;
   nickname: string | null;
   bio: string | null;
   avatar_url: string | null;
@@ -53,7 +54,7 @@ export default function PublicProfilePage() {
       // 1) Fetch the profile being viewed
       const { data: p, error: pErr } = await supabase
         .from("profiles")
-  .select("id, nickname, bio, avatar_url, points, university, show_university, gender")
+  .select("id, username, nickname, bio, avatar_url, points, university, show_university, gender")
         .eq("id", viewedId)
         .single();
 
@@ -140,6 +141,7 @@ export default function PublicProfilePage() {
   }
 
   const nickname = profile.nickname || "Unnamed";
+  const username = profile.username || "no-username";
   const points = profile.points ?? 0;
 
   return (
@@ -159,6 +161,7 @@ export default function PublicProfilePage() {
               <AvatarFallback><User className="w-10 h-10" /></AvatarFallback>
             </Avatar>
             <h1 className="text-2xl font-bold flex items-center gap-2">{nickname} {profile.gender && <GenderBadge gender={profile.gender} />}</h1>
+            <p className="text-sm text-muted-foreground mt-1">@{username}</p>
 
             {!isOwnProfile && !blockedByThem && (
               <div className="mt-4 flex items-center gap-3">

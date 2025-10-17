@@ -75,6 +75,7 @@ export interface PartyMember {
 
 export interface Profile {
     id: string; // same as host_id in Party
+    username: string;
     full_name: string | null;
     major: string | null;
     bio: string | null;

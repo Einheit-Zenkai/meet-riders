@@ -16,6 +16,8 @@ export const SettingsForm = ({ imageFile, setInitialImagePreview }: SettingsForm
     loading,
     error,
     setError,
+    username,
+    setUsername,
     nickname,
     setNickname,
     bio,
@@ -45,6 +47,7 @@ export const SettingsForm = ({ imageFile, setInitialImagePreview }: SettingsForm
   const handleSave = async () => {
     await saveSettings(
       {
+        username,
         nickname,
         bio,
         punctuality,
@@ -77,6 +80,8 @@ export const SettingsForm = ({ imageFile, setInitialImagePreview }: SettingsForm
         </CardHeader>
         <CardContent className="space-y-6">
           <BasicInfoSection
+            username={username}
+            setUsername={setUsername}
             nickname={nickname}
             setNickname={setNickname}
             bio={bio}

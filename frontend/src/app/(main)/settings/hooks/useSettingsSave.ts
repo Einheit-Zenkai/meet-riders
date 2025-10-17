@@ -15,6 +15,7 @@ export const useSettingsSave = () => {
 
   const saveSettings = async (
     profileData: {
+      username: string;
       nickname: string;
       bio: string;
       punctuality: string;
@@ -34,6 +35,33 @@ export const useSettingsSave = () => {
     setSaveLoading(true);
     setError('');
     setMessage('');
+
+    // Validate username is not empty
+    if (!profileData.username || profileData.username.trim() === '') {
+      setError('Username is required');
+      setSaveLoading(false);
+      return;
+    }
+
+    // Check if username is already taken by another user
+    const { data: existingUser, error: checkError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', profileData.username)
+      .neq('id', user.id)
+      .maybeSingle();
+
+    if (checkError) {
+      setError('Error checking username availability');
+      setSaveLoading(false);
+      return;
+    }
+
+    if (existingUser) {
+      setError('Username is already taken. Please choose a different one.');
+      setSaveLoading(false);
+      return;
+    }
 
     let avatar_url: string | null = null;
     
@@ -73,6 +101,7 @@ export const useSettingsSave = () => {
 
     // Prepare profile data for save
     const profileDataToSave: Record<string, any> = {
+      username: profileData.username,
       nickname: profileData.nickname,
       bio: profileData.bio,
       punctuality: profileData.punctuality,
@@ -97,7 +126,12 @@ export const useSettingsSave = () => {
       .eq('id', user.id);
 
     if (updateError) {
-      setError(updateError.message);
+      // Handle specific error for username uniqueness constraint
+      if (updateError.message.includes('profiles_username_key') || updateError.code === '23505') {
+        setError('Username is already taken. Please choose a different one.');
+      } else {
+        setError(updateError.message);
+      }
     } else {
       setMessage('Settings saved');
       // Redirect to dashboard after successful save

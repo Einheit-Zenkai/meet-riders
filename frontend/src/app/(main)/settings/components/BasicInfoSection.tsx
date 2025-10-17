@@ -6,6 +6,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from '@/components/ui/textarea';
 
 interface BasicInfoSectionProps {
+  username: string;
+  setUsername: (value: string) => void;
   nickname: string;
   setNickname: (value: string) => void;
   bio: string;
@@ -23,6 +25,8 @@ interface BasicInfoSectionProps {
 }
 
 export const BasicInfoSection = ({
+  username,
+  setUsername,
   nickname,
   setNickname,
   bio,
@@ -38,6 +42,13 @@ export const BasicInfoSection = ({
   idealDepartureTime,
   setIdealDepartureTime,
 }: BasicInfoSectionProps) => {
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Username validation: alphanumeric, underscore, hyphen, lowercase
+    const validUsername = value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    setUsername(validUsername);
+  };
+
   const handleNicknameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const validNickname = value.replace(/[^a-zA-Z0-9_.]/g, '');
@@ -50,6 +61,20 @@ export const BasicInfoSection = ({
 
   return (
     <>
+      <div className="space-y-2">
+        <Label htmlFor="username">Username</Label>
+        <Input 
+          id="username" 
+          placeholder="e.g. john_doe or rollnumber123" 
+          value={username} 
+          onChange={handleUsernameChange}
+          required
+        />
+        <p className="text-xs text-muted-foreground">
+          Your unique identifier. For students: use your roll number. Others: choose a unique username.
+        </p>
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="nickname">Nickname</Label>
         <Input 

@@ -26,6 +26,7 @@ export const useProfile = () => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   
   // Profile states
+  const [username, setUsername] = useState('');
   const [nickname, setNickname] = useState('');
   const [bio, setBio] = useState('');
   const [punctuality, setPunctuality] = useState('on-time');
@@ -67,6 +68,7 @@ export const useProfile = () => {
       if (error) {
         setError(error.message);
       } else if (profile) {
+        setUsername(profile.username || '');
         setNickname(profile.nickname || '');
         setBio(profile.bio || '');
         setPunctuality(profile.punctuality || 'on-time');
@@ -109,6 +111,8 @@ export const useProfile = () => {
     setError,
     avatarUrl,
     // Profile data
+    username,
+    setUsername,
     nickname,
     setNickname,
     bio,
