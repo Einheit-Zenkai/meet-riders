@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import useAuthStore from "@/stores/authStore";
+import Image from "next/image";
 
 interface PartyJoinedOverlayProps {
   party: Party;
@@ -92,7 +93,7 @@ export default function PartyJoinedOverlay({ party, onClose, onAfterLeave }: Par
               <div className="flex items-center gap-3">
                 <Avatar className="w-12 h-12">
                   {party.host_profile?.avatar_url ? (
-                    <img src={party.host_profile.avatar_url} alt="Host avatar" className="w-full h-full object-cover rounded-full" />
+                    <Image src={party.host_profile.avatar_url} alt="Host avatar" width={48} height={48} className="w-full h-full object-cover rounded-full" />
                   ) : (
                     <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                       {getInitials(party.host_profile?.nickname || party.host_profile?.full_name)}
@@ -154,7 +155,7 @@ export default function PartyJoinedOverlay({ party, onClose, onAfterLeave }: Par
                     <div key={m.id} className="flex items-center gap-3 p-2 rounded hover:bg-muted/40 justify-between">
                       <Avatar className="w-8 h-8">
                         {m.profile?.avatar_url ? (
-                          <img src={m.profile.avatar_url} className="w-full h-full object-cover rounded-full" alt="avatar" />
+                          <Image src={m.profile.avatar_url} width={32} height={32} className="w-full h-full object-cover rounded-full" alt="avatar" />
                         ) : (
                           <AvatarFallback className="bg-secondary/20 text-secondary-foreground font-semibold">
                             {getInitials(m.profile?.nickname || m.profile?.full_name)}

@@ -140,6 +140,7 @@ export default function CurrentPartyPage() {
         // normalize to Profile type
         const norm: Profile = {
           id: profile.id,
+          username: profile.username,
           full_name: profile.full_name,
           major: profile.major,
           bio: profile.bio,

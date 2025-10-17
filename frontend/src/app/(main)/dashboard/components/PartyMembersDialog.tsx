@@ -8,6 +8,7 @@ import { Party, PartyMember } from "../types";
 import { toast } from "sonner";
 import { partyMemberService } from "../services/partyMemberService";
 import useAuthStore from "@/stores/authStore";
+import Image from "next/image";
 
 interface PartyMembersDialogProps {
   party: Party;
@@ -105,9 +106,11 @@ export default function PartyMembersDialog({ party, children }: PartyMembersDial
           <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg">
             <Avatar className="w-10 h-10">
               {party.host_profile?.avatar_url ? (
-                <img 
+                <Image
                   src={party.host_profile.avatar_url} 
                   alt="Host avatar" 
+                  width={40}
+                  height={40}
                   className="w-full h-full object-cover rounded-full"
                 />
               ) : (
@@ -163,9 +166,11 @@ export default function PartyMembersDialog({ party, children }: PartyMembersDial
               <div key={member.id} className="flex items-center gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors">
                 <Avatar className="w-10 h-10">
                   {member.profile?.avatar_url ? (
-                    <img 
+                    <Image
                       src={member.profile.avatar_url} 
                       alt="Member avatar" 
+                      width={40}
+                      height={40}
                       className="w-full h-full object-cover rounded-full"
                     />
                   ) : (

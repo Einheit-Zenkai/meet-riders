@@ -39,7 +39,7 @@ export default function RidesList() {
       {activeParties.length === 0 ? (
         <EmptyRidesState />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+        <div className="flex flex-wrap gap-4">
           {activeParties.map((party) => (
             <DashboardPartyCard key={party.id} party={party} />
           ))}

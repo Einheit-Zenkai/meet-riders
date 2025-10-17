@@ -13,6 +13,7 @@ import { User, Bus, Car, TramFront, Bike, Footprints, Mars, Venus } from 'lucide
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/utils/supabase/client';
+import Image from 'next/image';
 
 const transportModes = [
   { id: 'walking', label: 'Walking', icon: <Footprints className="h-4 w-4 mr-2"/> },
@@ -155,7 +156,7 @@ export default function UserCreatePage() {
               <p className="text-sm text-muted-foreground mb-4 text-center">For Students: Use your Roll Number. <br /> Others: Use your Username.</p>
               <Dialog>
                 <DialogTrigger asChild><button type="button" className="cursor-pointer"><Avatar className="w-32 h-32 text-muted-foreground border-2 border-dashed"><AvatarImage src={imagePreview || ''} alt="User profile" /><AvatarFallback className="flex flex-col items-center justify-center"><User className="h-12 w-12" /><span>Upload</span></AvatarFallback></Avatar></button></DialogTrigger>
-                {imagePreview && (<DialogContent className="max-w-md p-0"><img src={imagePreview} alt="Selected preview" className="w-full h-full object-contain rounded-lg" /></DialogContent>)}
+                {imagePreview && (<DialogContent className="max-w-md p-0"><Image src={imagePreview} alt="Selected preview" width={500} height={500} className="w-full h-full object-contain rounded-lg" /></DialogContent>)}
               </Dialog>
               <Button variant="outline" className="mt-4" onClick={handleAvatarClick}>{imagePreview ? "Change Image" : "Select Image"}</Button>
               <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*" />

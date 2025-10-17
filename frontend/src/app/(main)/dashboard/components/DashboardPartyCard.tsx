@@ -13,6 +13,7 @@ import { createClient } from "@/utils/supabase/client";
 import { partyMemberService } from "../services/partyMemberService";
 import PartyMembersDialog from "./PartyMembersDialog";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 import dynamic from "next/dynamic";
 // Dynamically import RideMap to avoid SSR issues
@@ -243,131 +244,150 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
     };
 
     return (
-        <Card className="transition-all duration-300 hover:shadow-lg relative overflow-hidden bg-card/60 backdrop-blur-[6.2px]" 
+        <div className="transition-all rounded-lg duration-300 hover:shadow-lg relative overflow-hidden bg-card/60 backdrop-blur-[6.2px]" 
               style={{
                   boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
                   border: '1px solid rgba(255, 255, 255, 0.1)'
               }}>
-            {/* Overlay removed */}
-            <div className="p-6">
-                {/* Header Row */}
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                        <button onClick={() => setShowProfileDialog(true)} className="focus:outline-none">
-                          <Avatar className="w-12 h-12">
-                              {party.host_profile?.avatar_url ? (
-                                  <img 
-                                      src={party.host_profile.avatar_url} 
-                                      alt="Host avatar" 
-                                      className="w-full h-full object-cover rounded-full"
-                                  />
-                              ) : (
-                                  <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                                      {getHostInitials()}
-                                  </AvatarFallback>
-                              )}
-                          </Avatar>
-                        </button>
-                        {/* Host Profile Popup Dialog */}
-                        {showProfileDialog && party.host_profile && (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                                <div className="bg-card rounded-lg shadow-lg p-8 max-w-md w-full relative">
-                                    <button className="absolute top-2 right-2 text-xl" onClick={() => setShowProfileDialog(false)}>&times;</button>
-                                    <div className="flex flex-col items-center gap-3">
-                                        <Avatar className="w-20 h-20">
-                                            {party.host_profile.avatar_url ? (
-                                                <img src={party.host_profile.avatar_url} alt="Host avatar" className="w-full h-full object-cover rounded-full" />
-                                            ) : (
-                                                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-2xl">
-                                                    {getHostInitials()}
-                                                </AvatarFallback>
-                                            )}
-                                        </Avatar>
-                                        <h2 className="text-xl font-bold mt-2">{party.host_profile.nickname || party.host_profile.full_name || 'Anonymous Host'}</h2>
-                                        {party.host_profile.university && (
-                                            <div className="text-sm text-muted-foreground">{party.host_profile.university}</div>
-                                        )}
-                                        {party.host_profile.gender && (
-                                            <div className="text-sm text-muted-foreground">Gender: {party.host_profile.gender}</div>
-                                        )}
-                                        {party.host_profile.points !== null && party.host_profile.points !== undefined && (
-                                            <div className="text-sm text-muted-foreground">Points: {party.host_profile.points}</div>
-                                        )}
-                                        {party.host_profile.bio && (
-                                            <div className="text-sm text-muted-foreground mt-2 text-center">{party.host_profile.bio}</div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                                <h3 className="font-semibold text-lg leading-relaxed">
-                                    {getHostDisplayName()}
-                                </h3>
-                                {isExpired && (
-                                    <span className="bg-destructive/10 text-destructive px-2 py-0.5 rounded text-xs font-medium">
-                                        EXPIRED
-                                    </span>
+                <CardHeader className='hidden'></CardHeader>
+            <div className="p-3">
+                {/* Host Profile Popup Dialog */}
+                {showProfileDialog && party.host_profile && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                        <div className="bg-card rounded-lg shadow-lg p-6 max-w-md w-full relative">
+                            <button className="absolute top-2 right-2 text-xl" onClick={() => setShowProfileDialog(false)}>&times;</button>
+                            <div className="flex flex-col items-center gap-2">
+                                <Avatar className="w-20 h-20">
+                                    {party.host_profile.avatar_url ? (
+                                        <Image src={party.host_profile.avatar_url} alt="Host avatar" width={80} height={80} className="w-full h-full object-cover rounded-full" />
+                                    ) : (
+                                        <AvatarFallback className="bg-primary/10 text-primary font-semibold text-2xl">
+                                            {getHostInitials()}
+                                        </AvatarFallback>
+                                    )}
+                                </Avatar>
+                                <h2 className="text-xl font-bold mt-2">{party.host_profile.nickname || party.host_profile.full_name || 'Anonymous Host'}</h2>
+                                {party.host_profile.university && (
+                                    <div className="text-sm text-muted-foreground">{party.host_profile.university}</div>
                                 )}
-                            </div>
-                            {/* Host info in one compact line */}
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground leading-relaxed">
-                                {party.host_profile?.gender && (
-                                    <span className="capitalize">{party.host_profile.gender}</span>
+                                {party.host_profile.gender && (
+                                    <div className="text-sm text-muted-foreground">Gender: {party.host_profile.gender}</div>
                                 )}
-                                {party.host_profile?.points !== null && party.host_profile?.points !== undefined && (
-                                    <>
-                                        {party.host_profile?.gender && <span>•</span>}
-                                        <span className="text-primary font-medium">
-                                            {party.host_profile.points} pts
-                                        </span>
-                                    </>
+                                {party.host_profile.points !== null && party.host_profile.points !== undefined && (
+                                    <div className="text-sm text-muted-foreground">Points: {party.host_profile.points}</div>
                                 )}
-                                {party.host_profile?.university && party.display_university && (
-                                    <>
-                                        {(party.host_profile?.gender || party.host_profile?.points !== null) && <span>•</span>}
-                                        <div className="flex items-center gap-1">
-                                            <Star className="w-3 h-3" />
-                                            <span>{party.host_profile.university}</span>
-                                        </div>
-                                    </>
+                                {party.host_profile.bio && (
+                                    <div className="text-sm text-muted-foreground mt-2 text-center">{party.host_profile.bio}</div>
                                 )}
                             </div>
                         </div>
                     </div>
-                    
-                    {/* Timer with edit icon for host */}
-                    <div className="text-right px-2 flex flex-col items-end">
-                        <div className="flex items-center gap-1">
-                            <div className="text-base font-bold text-primary leading-relaxed">
-                                        {isExpired ? '--:--' : formatTimeLeft(timeLeft)}
+                )}
+
+                {/* Main Grid Layout: Left Column (Host Info) + Right Column (Party Details) */}
+                <div className="grid grid-cols-1 lg:grid-cols-[120px_1fr] gap-3">
+                    {/* Left Column: Host Info */}
+                    <div className="flex lg:flex-col items-center lg:items-center gap-2 lg:gap-1.5">
+                        <button onClick={() => setShowProfileDialog(true)} className="focus:outline-none flex-shrink-0">
+                            <Avatar className="w-12 h-12 lg:w-14 lg:h-14">
+                                {party.host_profile?.avatar_url ? (
+                                    <Image
+                                        src={party.host_profile.avatar_url} 
+                                        alt="Host avatar" 
+                                        width={56}
+                                        height={56}
+                                        className="w-full h-full object-cover rounded-full"
+                                    />
+                                ) : (
+                                    <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+                                        {getHostInitials()}
+                                    </AvatarFallback>
+                                )}
+                            </Avatar>
+                        </button>
+                        
+                        <div className="flex-1 lg:flex-none lg:w-full text-left lg:text-center space-y-0.5">
+                            <div className="flex lg:flex-col items-center lg:items-center gap-1.5 lg:gap-0.5">
+                                <h3 className="font-bold text-sm truncate max-w-full">
+                                    {getHostDisplayName()}
+                                </h3>
+                                {isExpired && (
+                                    <span className="bg-destructive/10 text-destructive px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap">
+                                        EXPIRED
+                                    </span>
+                                )}
                             </div>
-                            {isHost && !isExpired && (
-                                <button
-                                    className="ml-1 p-1 rounded hover:bg-accent/40 transition-colors"
-                                    title="Edit expiry time"
-                                    aria-label="Edit expiry time"
-                                    onClick={() => setEditingExpiry((v) => !v)}
-                                >
-                                    <Pencil className="w-4 h-4 text-muted-foreground" />
-                                </button>
-                            )}
+                            <div className="text-[11px] text-muted-foreground space-y-0">
+                                {party.host_profile?.gender && (
+                                    <div className="capitalize">{party.host_profile.gender}</div>
+                                )}
+                                {party.host_profile?.points !== null && party.host_profile?.points !== undefined && (
+                                    <div className="text-primary font-medium">
+                                        {party.host_profile.points} pts
+                                    </div>
+                                )}
+                                {party.host_profile?.university && party.display_university && (
+                                    <div className="flex items-center gap-1 lg:justify-center">
+                                        <Star className="w-3 h-3 flex-shrink-0" />
+                                        <span className="text-xs truncate">{party.host_profile.university}</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                        <div className="text-sm text-muted-foreground leading-relaxed">
-                            {isExpired ? 'ended' : ''}
+                    </div>
+
+                    {/* Right Column: Party Details */}
+                    <div className="space-y-2.5 min-w-0">
+                        {/* Timer and Route in one row for desktop */}
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            {/* Route Info */}
+                            <div className="flex-1 min-w-0 bg-muted/30 rounded-lg p-2">
+                                <div className="flex items-start gap-1.5">
+                                    <MapPin className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1 min-w-0 text-xs space-y-0.5">
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-[11px] text-muted-foreground font-medium flex-shrink-0">From:</span>
+                                            <span className="truncate flex-1">{party.meetup_point}</span>
+                                        </div>
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-[11px] text-muted-foreground font-medium flex-shrink-0">To:</span>
+                                            <span className="truncate font-semibold flex-1">{party.drop_off}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* Timer */}
+                            <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1 sm:w-[90px] flex-shrink-0">
+                                <div className="flex items-center gap-0.5">
+                                    <div className="text-lg sm:text-xl font-bold text-primary tabular-nums">
+                                        {isExpired ? '--:--' : formatTimeLeft(timeLeft)}
+                                    </div>
+                                    {isHost && !isExpired && (
+                                        <button
+                                            className="p-0.5 rounded hover:bg-accent/40 transition-colors"
+                                            title="Edit expiry time"
+                                            onClick={() => setEditingExpiry((v) => !v)}
+                                        >
+                                            <Pencil className="w-3 h-3 text-muted-foreground" />
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                    {isExpired ? 'Ended' : 'Remaining'}
+                                </div>
+                            </div>
                         </div>
+                        
+                        {/* Expiry Editor */}
                         {isHost && !isExpired && editingExpiry && (
-                            <div className="flex items-center gap-2 mt-2">
+                            <div className="flex flex-wrap items-center gap-2 p-2 bg-muted/50 rounded-lg">
                                 <select
-                                    className="border rounded px-2 py-1"
+                                    className="border rounded px-3 py-1.5 text-sm"
                                     value={newExpiryMinutes ?? ""}
-                                    onChange={e => {
-                                        const value = e.target.value;
-                                        setNewExpiryMinutes(value ? Number(value) : null);
-                                    }}
+                                    onChange={e => setNewExpiryMinutes(e.target.value ? Number(e.target.value) : null)}
                                 >
-                                    <option value="">Select expiry</option>
+                                    <option value="">Select new expiry</option>
                                     {EXPIRY_OPTIONS.map(opt => (
                                         <option key={opt.minutes} value={opt.minutes}>{opt.label}</option>
                                     ))}
@@ -378,122 +398,107 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
                                 <Button size="sm" variant="ghost" onClick={() => setEditingExpiry(false)}>Cancel</Button>
                             </div>
                         )}
-                    </div>
-                </div>
 
-
-                {/* Route Info - More Compact */}
-                <div className="space-y-3 mb-5 px-1">
-                    <div className="flex items-start gap-3">
-                        <MapPin className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-1" />
-                        <div className="min-w-0 flex-1 text-base">
-                            <div className="flex items-center gap-2 mb-2">
-                                <span className="font-medium text-muted-foreground">From:</span>
-                                <span className="truncate leading-relaxed">{party.meetup_point}</span>
+                        {/* Map (conditionally shown) */}
+                        {party.start_coords && party.dest_coords && (
+                            <div className="rounded-lg overflow-hidden">
+                                <RideMap start={party.start_coords} dest={party.dest_coords} height={140} />
                             </div>
-                            <div className="flex items-center gap-2">
-                                <span className="font-medium text-muted-foreground">To:</span>
-                                <span className="truncate font-medium leading-relaxed">{party.drop_off}</span>
+                        )}
+                        
+                        {/* Host Comments */}
+                        {party.user_is_member && party.host_comments && (
+                            <div className="p-2 bg-accent/40 rounded-lg border border-accent">
+                                <p className="font-semibold text-[11px] mb-0.5">Host Comments</p>
+                                <p className="text-xs whitespace-pre-line">{party.host_comments}</p>
+                            </div>
+                        )}
+
+                        {/* Bottom Row: Details + Actions */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t">
+                            <div className="flex items-center gap-3 text-xs">
+                                <PartyMembersDialog party={party}>
+                                    <button className="flex items-center gap-1 hover:text-primary transition-colors">
+                                        <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                                        <span className="font-medium">
+                                            {(party.current_member_count || 0) + 1}/{party.party_size}
+                                        </span>
+                                    </button>
+                                </PartyMembersDialog>
+                                
+                                <div className="flex items-center gap-1">
+                                    <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                                    <span className="text-[11px]">{getRideOptionsDisplay()}</span>
+                                </div>
+                                
+                                {party.is_friends_only && (
+                                    <div className="bg-accent/70 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                                        🔒 Friends
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-1.5">
+                                {isHost ? (
+                                    <>
+                                        <Button 
+                                            variant="destructive" 
+                                            size="sm"
+                                            onClick={handleCancelParty}
+                                            className="h-8 text-xs"
+                                        >
+                                            Cancel Party
+                                        </Button>
+                                        <Button variant="outline" size="sm" className="h-8 px-2" onClick={handleShareParty}>
+                                            <Share2 className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <>
+                                        {party.user_is_member ? (
+                                            <Button 
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handleLeaveParty}
+                                                disabled={isLeaving}
+                                                className="h-8 text-xs"
+                                            >
+                                                {isLeaving ? 'Leaving...' : 'Leave Party'}
+                                            </Button>
+                                        ) : (
+                                            <Button 
+                                                size="sm"
+                                                onClick={handleJoinParty}
+                                                disabled={isExpired || isJoining || (party.current_member_count || 0) >= party.party_size}
+                                                className="h-8 text-xs"
+                                                variant={isExpired || (party.current_member_count || 0) >= party.party_size ? "outline" : "default"}
+                                            >
+                                                {isJoining 
+                                                    ? 'Joining...' 
+                                                    : isExpired 
+                                                    ? 'Expired' 
+                                                    : (party.current_member_count || 0) >= party.party_size 
+                                                    ? 'Full' 
+                                                    : 'Join Party'
+                                                }
+                                            </Button>
+                                        )}
+                                        <Button 
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setAlertOn(!alertOn)}
+                                            className="h-8 px-2"
+                                        >
+                                            {alertOn ? <BellOff className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
-                    {/* Map showing start/destination if available */}
-                    {party.start_coords && party.dest_coords && (
-                        <div className="my-3">
-                            <RideMap start={party.start_coords} dest={party.dest_coords} height={220} />
-                        </div>
-                    )}
-                    {/* Host Comments for joined users */}
-                    {party.user_is_member && party.host_comments && (
-                        <div className="mt-2 p-3 bg-accent/40 rounded border text-base text-foreground">
-                            <span className="font-semibold">Host Comments:</span>
-                            <div className="mt-1 whitespace-pre-line">{party.host_comments}</div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Details Row */}
-                <div className="flex items-center justify-between text-base mb-5 px-1">
-                    <div className="flex items-center gap-4">
-                        <PartyMembersDialog party={party}>
-                            <button className="flex items-center gap-2 hover:text-primary transition-colors">
-                                <Users className="w-5 h-5 text-muted-foreground" />
-                                <span className="leading-relaxed">
-                                    {(party.current_member_count || 0) + 1}/{party.party_size}
-                                </span>
-                            </button>
-                        </PartyMembersDialog>
-                        <div className="flex items-center gap-2">
-                            <Clock className="w-5 h-5 text-muted-foreground" />
-                            <span className="text-sm leading-relaxed">{getRideOptionsDisplay()}</span>
-                        </div>
-                    </div>
-                    
-                    {party.is_friends_only && (
-                        <div className="bg-accent/70 px-3 py-1.5 rounded text-xs font-medium">
-                            🔒 Friends only
-                        </div>
-                    )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-3 px-1">
-                    {isHost ? (
-                        <>
-                            <Button 
-                                variant="destructive" 
-                                size="sm" 
-                                onClick={handleCancelParty}
-                                className="flex-1 h-10 font-medium"
-                            >
-                                Cancel Party
-                            </Button>
-                            <Button variant="outline" size="sm" className="h-10 px-3" onClick={handleShareParty}>
-                                <Share2 className="w-5 h-5" />
-                            </Button>
-                        </>
-                    ) : (
-                        <>
-                            {party.user_is_member ? (
-                                <Button 
-                                    variant="outline"
-                                    onClick={handleLeaveParty}
-                                    disabled={isLeaving}
-                                    className="flex-1 h-10 font-medium"
-                                    size="sm"
-                                >
-                                    {isLeaving ? 'Leaving...' : 'Leave Party'}
-                                </Button>
-                            ) : (
-                                <Button 
-                                    onClick={handleJoinParty}
-                                    disabled={isExpired || isJoining || (party.current_member_count || 0) >= party.party_size}
-                                    className="flex-1 h-10 font-medium"
-                                    size="sm"
-                                    variant={isExpired || (party.current_member_count || 0) >= party.party_size ? "outline" : "default"}
-                                >
-                                    {isJoining 
-                                        ? 'Joining...' 
-                                        : isExpired 
-                                        ? 'Expired' 
-                                        : (party.current_member_count || 0) >= party.party_size 
-                                        ? 'Full' 
-                                        : 'Join Party'
-                                    }
-                                </Button>
-                            )}
-                            <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => setAlertOn(!alertOn)}
-                                className="h-10 px-3"
-                            >
-                                {alertOn ? <BellOff className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
-                            </Button>
-                        </>
-                    )}
                 </div>
             </div>
-        </Card>
+        </div>
     );
 }
