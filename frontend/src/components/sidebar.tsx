@@ -9,7 +9,7 @@ export default function Sidebar() {
     { href: "/profile", icon: User, label: "Profile" },
     { href: "/hostparty", icon: Plus, label: "Host Party" },
     { href: "/soi", icon: CalendarClock, label: "Show of Interest" },
-    { href: "/friends", icon: Users, label: "Friends" },
+    { href: "/connections", icon: Users, label: "Connections" },
     { href: "/current-party", icon: LayoutGrid, label: "Current Party" },
     // { href: "/leaderboard", icon: Trophy, label: "Leaderboard" },
     // { href: "/map", icon: MapIcon, label: "Map" },

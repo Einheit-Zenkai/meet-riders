@@ -19,7 +19,13 @@ import { createClient } from '@/utils/supabase/client';
 
 // Zod schema for form validation
 const signupSchema = z.object({
-  email: z.email('Please enter a valid email address'),
+  username: z
+    .string()
+    .min(3, 'Username must be at least 3 characters long')
+    .max(30, 'Username must be at most 30 characters long')
+    .regex(/^[a-z0-9_-]+$/, 'Username can only contain lowercase letters, numbers, hyphens, and underscores')
+    .transform(val => val.toLowerCase()),
+  email: z.string().email('Please enter a valid email address'),
   password: z
     .string()
     .min(8, 'Password must be at least 8 characters long'),
@@ -39,6 +45,7 @@ export default function SignupPage() {
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
+      username: '',
       email: '',
       password: '',
       confirmPassword: '',
@@ -50,23 +57,82 @@ export default function SignupPage() {
     setIsSubmitting(true);
 
     try {
-      // Call Supabase to sign up the user
-      const { error: signUpError } = await supabase.auth.signUp({
+      // Step 1: Check if username is already taken
+      const { data: existingUsername, error: usernameCheckError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', data.username)
+        .maybeSingle();
+
+      if (usernameCheckError && usernameCheckError.code !== 'PGRST116') {
+        // PGRST116 is "no rows returned", which is what we want
+        throw usernameCheckError;
+      }
+
+      if (existingUsername) {
+        toast.error('Username Already Taken', {
+          description: 'This username is already in use. Please choose a different one.',
+        });
+        form.setError('username', {
+          type: 'manual',
+          message: 'This username is already taken',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Step 2: Attempt to sign up the user
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
+        options: {
+          data: {
+            username: data.username,
+          }
+        }
       });
 
       if (signUpError) {
-        toast.error('Sign Up Failed', {
-          description: signUpError.message,
-        });
-      } else {
+        console.error('Sign up error:', signUpError);
+        // Check for specific email already exists error
+        if (signUpError.message.toLowerCase().includes('already registered') || 
+            signUpError.message.toLowerCase().includes('already exists') ||
+            signUpError.message.toLowerCase().includes('user already registered')) {
+          toast.error('Email Already Registered', {
+            description: 'This email is already registered. Please use a different email or try logging in.',
+          });
+          form.setError('email', {
+            type: 'manual',
+            message: 'This email is already registered',
+          });
+        } else {
+          toast.error('Sign Up Failed', {
+            description: signUpError.message,
+          });
+        }
+        setIsSubmitting(false);
+        return;
+      }
+
+
+      // Profile is now created by the trigger, so we can remove the manual insert.
+      // We just need to check for the user object.
+      if (signUpData.user) {
+        // Success!
         toast.success('Account Created Successfully!', {
-          description: 'Please check your email for a verification link.',
+          description: 'Please check your email for a verification link before logging in.',
         });
         form.reset(); // Clear the form on success
+      } else if (!signUpError) {
+        // Handle case where user is not null, but also no error.
+        // This can happen with email confirmation enabled.
+        toast.info('Please check your email', {
+          description: 'A confirmation link has been sent to your email address.',
+        });
+        form.reset();
       }
     } catch (err) {
+      console.error('Signup error:', err);
       toast.error('Unexpected Error', {
         description: 'An unexpected error occurred. Please try again.',
       });
@@ -92,6 +158,36 @@ export default function SignupPage() {
         {/* Form */}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Username Field */}
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-foreground text-sm font-bold">
+                    Username
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      placeholder="john_doe or rollnumber123"
+                      {...field}
+                      disabled={isSubmitting}
+                      onChange={(e) => {
+                        // Convert to lowercase and remove invalid characters
+                        const value = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                        field.onChange(value);
+                      }}
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    For students: use your roll number. Others: choose a unique username.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             {/* Email Field */}
             <FormField
               control={form.control}
