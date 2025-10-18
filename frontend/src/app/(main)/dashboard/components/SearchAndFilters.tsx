@@ -104,7 +104,7 @@ export default function SearchAndFilters() {
                 checked={showFriendsOnly}
                 onChange={e => setShowFriendsOnly(e.target.checked)}
               />
-              <span className="text-sm text-foreground">Friends&apos; Parties only</span>
+              <span className="text-sm text-foreground">Connections&apos; Parties only</span>
             </div>
             <div className="flex items-center gap-2">
               <input

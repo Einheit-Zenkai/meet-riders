@@ -119,7 +119,7 @@ export default function PartyCard({ party }: PartyCardProps) {
                                     ))}
                                     {party.isFriendsOnly && (
                                         <span className="flex items-center text-xs font-semibold bg-secondary px-2 py-1 rounded-full">
-                                            <UserIcon className="w-4 h-4 mr-1"/>Friends
+                                            <UserIcon className="w-4 h-4 mr-1"/>Connections
                                         </span>
                                     )}
                                     {party.displayUniversity && party.hostUniversity && (

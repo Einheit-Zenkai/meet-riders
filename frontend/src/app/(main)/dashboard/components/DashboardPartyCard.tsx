@@ -433,7 +433,7 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
                                 
                                 {party.is_friends_only && (
                                     <div className="bg-accent/70 px-1.5 py-0.5 rounded text-[10px] font-medium">
-                                        🔒 Friends
+                                        🔒 Connections
                                     </div>
                                 )}
                             </div>

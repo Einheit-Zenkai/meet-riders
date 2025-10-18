@@ -119,6 +119,31 @@ const useDashboardDataStore = create<DashboardDataState>((set, get) => ({
 
       const hostIds = [...new Set(partiesData.map((party) => party.host_id))];
 
+      // Determine which hosts are "connections" with the viewer (either direction)
+      const connectedHostIds = new Set<string>();
+      if (hostIds.length > 0) {
+        const { data: relFromMe } = await supabase
+          .from("user_relationships")
+          .select("receiver_id, status")
+          .eq("initiator_id", user.id)
+          .in("receiver_id", hostIds)
+          .eq("status", "connected");
+        relFromMe?.forEach((r: any) => connectedHostIds.add(r.receiver_id));
+
+        const { data: relToMe } = await supabase
+          .from("user_relationships")
+          .select("initiator_id, status")
+          .eq("receiver_id", user.id)
+          .in("initiator_id", hostIds)
+          .eq("status", "connected");
+        relToMe?.forEach((r: any) => connectedHostIds.add(r.initiator_id));
+      }
+
+      // Enforce visibility: connections-only parties appear only if viewer is connected to host
+      const visiblePartiesData = (partiesData || []).filter((p: any) => {
+        return !p.is_friends_only || connectedHostIds.has(p.host_id);
+      });
+
       const { data: profilesData, error: profilesError } = await supabase
         .from("profiles")
         .select(`
@@ -145,7 +170,7 @@ const useDashboardDataStore = create<DashboardDataState>((set, get) => ({
         profilesMap.set(profile.id, profile as Profile);
       });
 
-      const partyIds = partiesData.map((party) => party.id as string);
+  const partyIds = visiblePartiesData.map((party) => party.id as string);
 
       const memberCounts = await Promise.all(
         partyIds.map(async (partyId) => {
@@ -170,7 +195,7 @@ const useDashboardDataStore = create<DashboardDataState>((set, get) => ({
         userMemberships?.map((membership) => membership.party_id) || []
       );
 
-      const transformedParties = partiesData.map((party) => ({
+  const transformedParties = visiblePartiesData.map((party) => ({
         ...party,
         created_at: new Date(party.created_at),
         updated_at: party.updated_at ? new Date(party.updated_at) : new Date(party.created_at),

@@ -270,7 +270,7 @@ export default function HostPartyPage() {
                   checked={isFriendsOnly}
                   onChange={(e) => setIsFriendsOnly(e.target.checked)}
                 />
-                <span className="text-foreground">Friends only (Private Party)</span>
+                <span className="text-foreground">Connections only (Private Party)</span>
               </label>
               <label className="flex items-center space-x-3 cursor-pointer">
                 <input

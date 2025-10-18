@@ -289,7 +289,7 @@ export default function PartyDetailsPage() {
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                        {party.is_friends_only && restrictionBadge("Friends only")}
+                        {party.is_friends_only && restrictionBadge("Connections only")}
                         {party.is_gender_only && restrictionBadge("Gender restricted")}
                         {!party.is_active && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-3 py-1 text-xs font-semibold text-destructive">
