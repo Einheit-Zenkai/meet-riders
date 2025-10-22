@@ -1,4 +1,4 @@
-CREATE TABLE party_requests (
+            CREATE TABLE party_requests (
     request_id SERIAL PRIMARY KEY,
     party_id INT NOT NULL,
     user_id INT NOT NULL,
