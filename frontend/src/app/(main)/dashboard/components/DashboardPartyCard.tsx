@@ -18,6 +18,7 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 // Dynamically import RideMap to avoid SSR issues
 const RideMap = dynamic(() => import("@/components/RideMap"), { ssr: false });
+import { supabase } from '@/lib/supabaseClient';
 
 interface DashboardPartyCardProps {
     party: Party;
@@ -130,14 +131,25 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
 
     const handleJoinParty = async () => {
         if (!user || isHost || party.user_is_member) return;
-        
+
         setIsJoining(true);
         try {
+            // Join the party
             const result = await partyMemberService.joinParty(party.id);
-            
+
             if (result.success) {
-                toast.success(`Joined party to ${party.drop_off}`);
-                router.push('/current-party');
+                // Insert a party request into Supabase
+                const { data, error } = await supabase
+                    .from('party_requests')
+                    .insert([{ party_id: party.id, user_id: user.id, status: 'Pending' }]);
+
+                if (error) {
+                    console.error('Error creating party request:', error);
+                    toast.error('Failed to send party request');
+                } else {
+                    toast.success(`Joined party to ${party.drop_off}`);
+                    router.push('/current-party');
+                }
             } else {
                 toast.error(result.error || 'Failed to join party');
             }
