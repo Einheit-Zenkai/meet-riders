@@ -134,24 +134,38 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
 
         setIsJoining(true);
         try {
-            // Join the party
-            const result = await partyMemberService.joinParty(party.id);
-
-            if (result.success) {
-                // Insert a party request into Supabase
-                const { data, error } = await supabase
+            if (party.is_friends_only) {
+                // If there's already a pending request, avoid duplicates
+                const { data: existing } = await supabase
+                  .from('party_requests')
+                  .select('id, status')
+                  .eq('party_id', party.id)
+                  .eq('user_id', user.id)
+                  .order('created_at', { ascending: false })
+                  .limit(1);
+                if (existing && existing.length && existing[0].status === 'pending') {
+                    toast.info('Join request already pending');
+                    return;
+                }
+                // Request-based join flow: create a pending request and do not join yet
+                const { error } = await supabase
                     .from('party_requests')
-                    .insert([{ party_id: party.id, user_id: user.id, status: 'Pending' }]);
-
+                    .insert([{ party_id: party.id, user_id: user.id, status: 'pending' }]);
                 if (error) {
                     console.error('Error creating party request:', error);
-                    toast.error('Failed to send party request');
+                    toast.error('Failed to send join request');
                 } else {
-                    toast.success(`Joined party to ${party.drop_off}`);
-                    router.push('/current-party');
+                    toast.success('Request sent to host');
                 }
             } else {
-                toast.error(result.error || 'Failed to join party');
+                // Public party: join immediately
+                const result = await partyMemberService.joinParty(party.id);
+                if (result.success) {
+                    toast.success(`Joined party to ${party.drop_off}`);
+                    router.push('/current-party');
+                } else {
+                    toast.error(result.error || 'Failed to join party');
+                }
             }
         } catch (error) {
             console.error('Error joining party:', error);

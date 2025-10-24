@@ -1,16 +1,20 @@
 import { create } from "zustand";
 
 export interface NotificationItem {
-  id: string; // make it unique e.g. `live-start:${partyId}`
+  id: string; // make it unique e.g. `live-start:${partyId}` or `join-request:${requestId}`
   message: string;
   timestamp: Date;
   read: boolean;
   href?: string; // optional navigation target
+  // Optional categorization and payload for richer UIs (accept/decline buttons, etc.)
+  type?: 'join_request' | 'info' | 'success' | 'error';
+  meta?: Record<string, any>;
 }
 
 interface NotificationsState {
   notifications: NotificationItem[];
   add: (n: NotificationItem) => void;
+  remove: (id: string) => void;
   markRead: (id: string) => void;
   markAllRead: () => void;
   unreadCount: () => number;
@@ -23,6 +27,9 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     if (state.notifications.some((x) => x.id === n.id)) return state; // de-dup
     return { notifications: [n, ...state.notifications] };
   }),
+  remove: (id) => set((state) => ({
+    notifications: state.notifications.filter((n) => n.id !== id),
+  })),
   markRead: (id) => set((state) => ({
     notifications: state.notifications.map((n) => n.id === id ? { ...n, read: true } : n),
   })),

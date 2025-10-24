@@ -30,6 +30,7 @@ export default function CurrentPartyPage() {
   const [members, setMembers] = useState<PartyMember[]>([]);
   const [hostProfile, setHostProfile] = useState<Profile | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pendingRequest, setPendingRequest] = useState<null | { partyId: string; drop_off?: string; created_at: Date }>(null);
 
   const selectedParty = useMemo(
     () => (selectedId ? parties.find(p => p.id === selectedId) || null : null),
@@ -96,6 +97,30 @@ export default function CurrentPartyPage() {
 
         setParties(casted);
         setSelectedId((casted[0]?.id) ?? null);
+
+        // If the user has no current party, check for a pending join request and surface it
+        if (!casted.length) {
+          const { data: req } = await supabase
+            .from('party_requests')
+            .select('party_id, created_at')
+            .eq('user_id', user.id)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(1);
+          if (req && req.length) {
+            const partyId = String(req[0].party_id);
+            const { data: p } = await supabase
+              .from('parties')
+              .select('drop_off')
+              .eq('id', partyId)
+              .single();
+            setPendingRequest({ partyId, drop_off: p?.drop_off, created_at: new Date(req[0].created_at) });
+          } else {
+            setPendingRequest(null);
+          }
+        } else {
+          setPendingRequest(null);
+        }
       } finally {
         setLoading(false);
       }
@@ -268,6 +293,11 @@ export default function CurrentPartyPage() {
           <CardContent className="py-12 text-center space-y-3">
             <h1 className="text-xl font-semibold">No party in progress</h1>
             <p className="text-muted-foreground">You aren’t in any party right now.</p>
+            {pendingRequest && (
+              <div className="mt-2 text-sm p-3 rounded border bg-accent/20">
+                Join request pending {pendingRequest.drop_off ? `for ${pendingRequest.drop_off}` : ''}. You’ll be notified once the host accepts.
+              </div>
+            )}
             <Button asChild>
               <Link href="/dashboard">Browse parties</Link>
             </Button>

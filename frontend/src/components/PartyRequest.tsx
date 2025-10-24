@@ -10,24 +10,28 @@ interface PartyRequestProps {
 const supabase = createClient();
 
 const PartyRequest: React.FC<PartyRequestProps> = ({ partyId, userId, hostId }) => {
-  const [status, setStatus] = useState("pending");
+  const [status, setStatus] = useState<"idle" | "pending" | "accepted" | "declined">("idle");
 
   const sendRequest = async () => {
     try {
       const { error } = await supabase.from("party_requests").insert({
         party_id: partyId,
         user_id: userId,
+        status: 'pending',
       });
       if (error) throw error;
-      setStatus("sent");
+      setStatus("pending");
     } catch (error) {
       console.error("Failed to send request:", error);
     }
   };
 
-  const updateRequest = async (requestId: number, newStatus: string) => {
+  const updateRequest = async (requestId: number, newStatus: "accepted" | "declined") => {
     try {
-      const { error } = await supabase.from("party_requests").update({ status: newStatus }).eq("request_id", requestId);
+      const { error } = await supabase
+        .from("party_requests")
+        .update({ status: newStatus })
+        .or(`id.eq.${requestId},request_id.eq.${requestId}`);
       if (error) throw error;
       setStatus(newStatus);
     } catch (error) {
@@ -45,7 +49,10 @@ const PartyRequest: React.FC<PartyRequestProps> = ({ partyId, userId, hostId }) 
           .eq("user_id", userId);
         if (error) throw error;
         if (data && data.length > 0) {
-          setStatus(data[0].status);
+          const s = (data[0].status || '').toLowerCase();
+          if (s === 'accepted' || s === 'declined' || s === 'pending') {
+            setStatus(s as any);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch requests:", error);
@@ -57,10 +64,14 @@ const PartyRequest: React.FC<PartyRequestProps> = ({ partyId, userId, hostId }) 
 
   return (
     <div>
-      {status === "pending" && <button onClick={sendRequest}>Send Request</button>}
-      {status === "sent" && <p>Request has been sent.</p>}
-      {status === "accepted" && <p>You are in the party!</p>}
-      {status === "declined" && <p>Host declined your request.</p>}
+      {status === "idle" && (
+        <button onClick={sendRequest} className="px-3 py-1 rounded border bg-accent/30 hover:bg-accent/50">
+          Send Join Request
+        </button>
+      )}
+      {status === "pending" && <p className="text-sm text-muted-foreground">Request pending…</p>}
+      {status === "accepted" && <p className="text-sm text-green-600">You are in the party!</p>}
+      {status === "declined" && <p className="text-sm text-red-600">Host declined your request.</p>}
     </div>
   );
 };

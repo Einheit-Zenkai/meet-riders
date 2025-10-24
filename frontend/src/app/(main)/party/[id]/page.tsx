@@ -12,6 +12,7 @@ import useAuthStore from "@/stores/authStore";
 import useDashboardDataStore from "@/stores/dashboardDataStore";
 import { partyMemberService } from "@/app/(main)/dashboard/services/partyMemberService";
 import type { Party, PartyMember } from "@/app/(main)/dashboard/types";
+import { createClient } from "@/utils/supabase/client";
 
 const formatTimeLeft = (expiresAt?: Date) => {
     if (!expiresAt) return "--:--";
@@ -117,18 +118,45 @@ export default function PartyDetailsPage() {
     const handleJoinParty = async () => {
         if (!party || !user || isHost || isMember) return;
         setActionBusy(true);
-        const result = await partyMemberService.joinParty(party.id);
-        if (result.success) {
-            toast.success("Joined party");
-            await refreshParties();
-                            if (result.member) {
-                                const newMember = result.member;
-                                setMembers((prev) => [...prev, newMember]);
+        try {
+            if (party.is_friends_only) {
+                const supabase = createClient();
+                const { data: existing } = await supabase
+                  .from('party_requests')
+                  .select('id, status')
+                  .eq('party_id', party.id)
+                  .eq('user_id', user.id)
+                  .order('created_at', { ascending: false })
+                  .limit(1);
+                if (existing && existing.length && existing[0].status === 'pending') {
+                    toast.info('Join request already pending');
+                    return;
+                }
+                const { error } = await supabase
+                    .from('party_requests')
+                    .insert([{ party_id: party.id, user_id: user.id, status: 'pending' }]);
+                if (error) {
+                    console.error('Error creating party request:', error);
+                    toast.error('Failed to send join request');
+                } else {
+                    toast.success('Request sent to host');
+                }
+            } else {
+                const result = await partyMemberService.joinParty(party.id);
+                if (result.success) {
+                    toast.success("Joined party");
+                    await refreshParties();
+                    if (result.member) {
+                        const newMember = result.member;
+                        setMembers((prev) => [...prev, newMember]);
                     }
-        } else if (result.error) {
-            toast.error(result.error);
+                } else if (result.error) {
+                    toast.error(result.error);
+                }
+            }
+        } finally {
+            setActionBusy(false);
         }
-        setActionBusy(false);
     };
 
     const handleLeaveParty = async () => {
