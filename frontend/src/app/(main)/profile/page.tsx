@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,13 @@ type ProfileData = {
   created_at?: string | null;
 };
 
+type MiniProfile = {
+  id: string;
+  username: string;
+  full_name: string | null;
+  avatar_url?: string | null;
+};
+
 export default function ProfilePage() {
   const supabase = createClient();
   const router = useRouter();
@@ -41,6 +48,14 @@ export default function ProfilePage() {
   
   // A single state to hold all the profile data for easier management
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [connections, setConnections] = useState<{
+    id: number;
+    requester_id: string;
+    addressee_id: string;
+    requester: MiniProfile;
+    addressee: MiniProfile;
+  }[]>([]);
+  const connectionsCount = useMemo(() => connections.length, [connections]);
 
   // --- 1. RE-WIRED: Fetch data from the 'profiles' table ---
   useEffect(() => {
@@ -115,7 +130,18 @@ export default function ProfilePage() {
       setLoading(false);
     };
 
+    const fetchConnections = async () => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("connections")
+        .select("*, requester:requester_id(id, username, full_name, avatar_url), addressee:addressee_id(id, username, full_name, avatar_url)")
+        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+        .eq("status", "accepted");
+      if (!error && data) setConnections(data as any);
+    };
+
     fetchProfile();
+    fetchConnections();
   }, [user, supabase]);
 
   const handleSignOut = async () => {
@@ -252,6 +278,29 @@ export default function ProfilePage() {
                       </p>
                     </div>
                   )}
+
+                  {/* Dummy Ratings */}
+                  <div className="mt-6 p-4 bg-accent/30 rounded-lg border border-accent/50">
+                    <label className="block text-sm font-medium text-foreground mb-2">Ratings</label>
+                    {(() => {
+                      const rating = 4.4; // placeholder avg rating
+                      const total = 5;
+                      const full = Math.floor(rating);
+                      const stars = Array.from({ length: total }, (_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-5 h-5 ${i < full ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+                        />
+                      ));
+                      return (
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">{stars}</div>
+                          <span className="text-sm text-muted-foreground">{rating.toFixed(1)} / 5.0</span>
+                        </div>
+                      );
+                    })()}
+                    <p className="text-xs text-muted-foreground mt-2">Placeholder ratings. Real feedback will arrive with ride history.</p>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -261,17 +310,41 @@ export default function ProfilePage() {
           <Card className="bg-card/60 backdrop-blur-[6.2px] border border-white/10 shadow-xl">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2">
-                👥 Connections
+                👥 Connections{typeof connectionsCount === 'number' ? ` (${connectionsCount})` : ''}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/30 flex items-center justify-center">
-                  <span className="text-2xl">🤝</span>
+              {connections.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/30 flex items-center justify-center">
+                    <span className="text-2xl">🤝</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-2">No connections yet</p>
+                  <p className="text-xs text-muted-foreground">Start connecting with fellow riders!</p>
                 </div>
-                <p className="text-sm text-muted-foreground mb-2">No connections yet</p>
-                <p className="text-xs text-muted-foreground">Start connecting with fellow riders!</p>
-              </div>
+              ) : (
+                <div className="space-y-3">
+                  {connections.map((conn) => {
+                    const meId = user!.id;
+                    const other = conn.requester_id === meId ? conn.addressee : conn.requester;
+                    return (
+                      <div key={conn.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/40">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="size-8">
+                            <AvatarImage src={other.avatar_url ?? undefined} />
+                            <AvatarFallback>{(other.username || '?').slice(0,1).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <div className="leading-tight">
+                            <div className="font-medium">{other.full_name || other.username}</div>
+                            <div className="text-xs text-muted-foreground">@{other.username}</div>
+                          </div>
+                        </div>
+                        <Link href={`/profile/id/${other.id}`} className="text-xs text-primary hover:underline">View</Link>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
       </div>

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ShieldAlert, User, Star } from "lucide-react";
+import { ShieldAlert, User, Star, Users } from "lucide-react";
 import GenderBadge from "@/components/GenderBadge";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
@@ -36,6 +36,7 @@ export default function PublicProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [status, setStatus] = useState<RelationshipStatus>(null);
   const [blockedByThem, setBlockedByThem] = useState<boolean>(false);
+  const [connectionsCount, setConnectionsCount] = useState<number>(0);
   const viewedId = String(params?.id || "");
 
   const isOwnProfile = useMemo(() => !!me && me.id === viewedId, [me, viewedId]);
@@ -64,6 +65,14 @@ export default function PublicProfilePage() {
         return;
       }
       setProfile(p as Profile);
+
+      // Count accepted connections for this user
+      const { count } = await supabase
+        .from("connections")
+        .select("id", { count: 'exact', head: true })
+        .or(`requester_id.eq.${viewedId},addressee_id.eq.${viewedId}`)
+        .eq("status", "accepted");
+      setConnectionsCount(count || 0);
 
       // 2) Fetch relationship where I am the initiator looking at them
       if (!isOwnProfile) {
@@ -247,6 +256,15 @@ export default function PublicProfilePage() {
                   </CardContent>
                 </Card>
               )}
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"> <Users className="w-4 h-4"/> Connections</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-primary">{connectionsCount}</p>
+                </CardContent>
+              </Card>
 
               <Card>
                 <CardHeader>
