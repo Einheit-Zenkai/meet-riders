@@ -39,84 +39,87 @@ export default function SearchAndFilters() {
   }, [showFilters]);
 
   return (
-    <div className="flex-1 relative" ref={filtersRef}>
+    <div className="relative" ref={filtersRef}>
       <input
         type="text"
-        className="w-full p-3 pr-11 rounded-full bg-[rgba(255,255,255,0.63)] dark:bg-[rgba(15,15,15,0.48)] text-foreground placeholder:text-muted-foreground shadow-[0_4px_30px_rgba(0,0,0,0.1)] focus:outline-none focus:ring-2 focus:ring-ring border border-[rgba(255,255,255,0.27)] backdrop-blur-[2.2px] "
+        className="w-full px-5 py-3 pr-12 rounded-full bg-card/60 text-foreground placeholder:text-muted-foreground shadow-[0_4px_30px_rgba(0,0,0,0.12)] focus:outline-none focus:ring-2 focus:ring-primary/50 border border-white/10 backdrop-blur-[6px]"
         style={{ WebkitBackdropFilter: "blur(2.2px)" }}
         placeholder="Search destination (e.g., MG Road, North Gate)"
         value={destinationQuery}
         onChange={(e) => setDestinationQuery(e.target.value)}
       />
-      
-      <button
-        className="absolute right-1 top-1/2 -translate-y-1/2 p-2 rounded-md hover:bg-accent"
-        title="Filters"
-        onClick={() => setShowFilters(!showFilters)}
-      >
-        <Filter className="w-4 h-4" />
-      </button>
 
-      {showFilters && (
-        <div
-          className="absolute z-50 mt-2 w-80 rounded-[16px] border border-[rgba(255,255,255,0.27)] bg-[rgba(255,255,255,0.63)] shadow-[0_4px_30px_rgba(0,0,0,0.1)] backdrop-blur-[2.2px] p-3"
-          style={{ WebkitBackdropFilter: "blur(2.2px)" }}
+      {/* Button wrapper to anchor dropdown directly below the funnel icon */}
+      <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+        <button
+          className="p-2 rounded-full hover:bg-foreground/10"
+          title="Filters"
+          onClick={() => setShowFilters(!showFilters)}
         >
-          <div className="space-y-2">
-            <label htmlFor="timeWindow" className="text-sm font-medium text-muted-foreground">
-              Expiring within
-            </label>
-            <select
-              id="timeWindow"
-              className="w-full p-2 border rounded-md bg-background"
-              value={timeWindowMins}
-              onChange={(e) => setTimeWindowMins(e.target.value as TimeWindow)}
-            >
-              <option value="any">Any time</option>
-              <option value="10">10 minutes</option>
-              <option value="15">15 minutes</option>
-              <option value="30">30 minutes</option>
-              <option value="60">1 hour</option>
-            </select>
-            
-            <div className="flex items-center gap-2 pt-1">
-              <input 
-                type="checkbox" 
-                disabled 
-                checked={sameDepartment}
-                onChange={(e) => setSameDepartment(e.target.checked)}
-              />
-              <span className="text-sm text-muted-foreground">Same department (coming soon)</span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <input 
-                type="checkbox" 
-                disabled 
-                checked={sameYear}
-                onChange={(e) => setSameYear(e.target.checked)}
-              />
-              <span className="text-sm text-muted-foreground">Same year (coming soon)</span>
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              <input
-                type="checkbox"
-                checked={showFriendsOnly}
-                onChange={e => setShowFriendsOnly(e.target.checked)}
-              />
-              <span className="text-sm text-foreground">Connections&apos; Parties only</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={showMyUniversityOnly}
-                onChange={e => setShowMyUniversityOnly(e.target.checked)}
-              />
-              <span className="text-sm text-foreground">My University only</span>
+          <Filter className="w-4 h-4 text-foreground" />
+        </button>
+
+        {showFilters && (
+          <div
+            className="absolute top-full right-0 z-50 mt-2 w-80 rounded-xl border border-white/10 bg-card/60 shadow-lg backdrop-blur-[6px] p-3"
+            style={{ WebkitBackdropFilter: "blur(6px)" }}
+          >
+            <div className="space-y-2">
+              <label htmlFor="timeWindow" className="text-sm font-medium text-muted-foreground">
+                Expiring within
+              </label>
+              <select
+                id="timeWindow"
+                className="w-full p-2 border rounded-full bg-background/70 text-foreground"
+                value={timeWindowMins}
+                onChange={(e) => setTimeWindowMins(e.target.value as TimeWindow)}
+              >
+                <option value="any">Any time</option>
+                <option value="10">10 minutes</option>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="60">1 hour</option>
+              </select>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  disabled
+                  checked={sameDepartment}
+                  onChange={(e) => setSameDepartment(e.target.checked)}
+                />
+                <span className="text-sm text-muted-foreground">Same department (coming soon)</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  disabled
+                  checked={sameYear}
+                  onChange={(e) => setSameYear(e.target.checked)}
+                />
+                <span className="text-sm text-muted-foreground">Same year (coming soon)</span>
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  checked={showFriendsOnly}
+                  onChange={e => setShowFriendsOnly(e.target.checked)}
+                />
+                <span className="text-sm text-foreground">Connections&apos; Parties only</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={showMyUniversityOnly}
+                  onChange={e => setShowMyUniversityOnly(e.target.checked)}
+                />
+                <span className="text-sm text-foreground">My University only</span>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

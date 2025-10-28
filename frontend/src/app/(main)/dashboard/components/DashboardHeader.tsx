@@ -13,8 +13,9 @@ export default function DashboardHeader({ welcomeName }: DashboardHeaderProps) {
   return (
     <div className="flex flex-col gap-3 mb-4">
       <div className="flex items-center gap-3">
-        <SearchAndFilters />
-        
+        <div className="flex-1">
+          <SearchAndFilters />
+        </div>
         <NotificationsDropdown />
         <ThemeToggle />
         <LogoutButton />
