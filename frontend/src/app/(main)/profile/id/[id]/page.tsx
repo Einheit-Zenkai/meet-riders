@@ -37,6 +37,7 @@ export default function PublicProfilePage() {
   const [status, setStatus] = useState<RelationshipStatus>(null);
   const [blockedByThem, setBlockedByThem] = useState<boolean>(false);
   const [connectionsCount, setConnectionsCount] = useState<number>(0);
+  const [acceptedConnId, setAcceptedConnId] = useState<number | null>(null);
   const viewedId = String(params?.id || "");
 
   const isOwnProfile = useMemo(() => !!me && me.id === viewedId, [me, viewedId]);
@@ -46,11 +47,7 @@ export default function PublicProfilePage() {
       if (!viewedId) return;
       setLoading(true);
 
-      // If not logged in, send to login (consistent with existing pages)
-      if (!me) {
-        router.replace("/login");
-        return;
-      }
+      // Allow viewing without forcing login; we will guard actions below
 
       // 1) Fetch the profile being viewed
       const { data: p, error: pErr } = await supabase
@@ -75,7 +72,7 @@ export default function PublicProfilePage() {
       setConnectionsCount(count || 0);
 
       // 2) Fetch relationship where I am the initiator looking at them
-      if (!isOwnProfile) {
+      if (!isOwnProfile && me) {
         const { data: rel } = await supabase
           .from("user_relationships")
           .select("status")
@@ -92,6 +89,17 @@ export default function PublicProfilePage() {
           .eq("receiver_id", me.id)
           .maybeSingle();
         setBlockedByThem(rev?.status === "blocked");
+
+        // 4) Check if there is an accepted connection in 'connections' table (either direction)
+        const { data: conn } = await supabase
+          .from("connections")
+          .select("id")
+          .or(`requester_id.eq.${me.id},addressee_id.eq.${me.id}`)
+          .or(`requester_id.eq.${viewedId},addressee_id.eq.${viewedId}`)
+          .eq("status", "accepted")
+          .limit(1)
+          .maybeSingle();
+        setAcceptedConnId(conn?.id ?? null);
       }
 
       setLoading(false);
@@ -128,6 +136,57 @@ export default function PublicProfilePage() {
     }
     toast.success('Removed');
     setStatus(null);
+  };
+
+  // --- Mutual connections (dropdown) ---
+  const [mutuals, setMutuals] = useState<Array<{ id: string; username: string; full_name: string | null; avatar_url: string | null }>>([]);
+  const [showMutuals, setShowMutuals] = useState(false);
+
+  useEffect(() => {
+    const loadMutuals = async () => {
+      if (!me || !viewedId || me.id === viewedId) {
+        setMutuals([]);
+        return;
+      }
+      // Fetch accepted connections for me
+      const meRes = await supabase
+        .from('connections')
+        .select('requester_id, addressee_id, requester:requester_id(id, username, full_name, avatar_url), addressee:addressee_id(id, username, full_name, avatar_url)')
+        .or(`requester_id.eq.${me.id},addressee_id.eq.${me.id}`)
+        .eq('status', 'accepted');
+      // Fetch accepted connections for viewed user
+      const themRes = await supabase
+        .from('connections')
+        .select('requester_id, addressee_id, requester:requester_id(id, username, full_name, avatar_url), addressee:addressee_id(id, username, full_name, avatar_url)')
+        .or(`requester_id.eq.${viewedId},addressee_id.eq.${viewedId}`)
+        .eq('status', 'accepted');
+
+      if (meRes.error || themRes.error) { setMutuals([]); return; }
+
+      const extractOthers = (rows: any[], baseId: string) => rows.map((r) => r.requester_id === baseId ? r.addressee : r.requester);
+      const meList = new Map<string, any>(extractOthers(meRes.data || [], me.id).map((p: any) => [p.id, p]));
+      const themList = new Map<string, any>(extractOthers(themRes.data || [], viewedId).map((p: any) => [p.id, p]));
+      const mutualIds: string[] = [];
+      for (const id of meList.keys()) if (themList.has(id)) mutualIds.push(id);
+      const mutualProfiles = mutualIds.map((id) => meList.get(id));
+      setMutuals(mutualProfiles);
+    };
+    loadMutuals();
+  }, [me, viewedId, supabase]);
+
+  const removeConnection = async () => {
+    if (!me || !profile) return;
+    // remove accepted connection in either direction
+    const { error } = await supabase
+      .from("connections")
+      .delete()
+      .or(`and(requester_id.eq.${me.id},addressee_id.eq.${profile.id}),and(requester_id.eq.${profile.id},addressee_id.eq.${me.id}))`);
+    if (error) {
+      toast.error(error.message || 'Failed to remove connection');
+      return;
+    }
+    toast.success('Connection removed');
+    setAcceptedConnId(null);
   };
 
   if (loading) {
@@ -171,13 +230,17 @@ export default function PublicProfilePage() {
             </Avatar>
             <h1 className="text-2xl font-bold flex items-center gap-2">{nickname} {profile.gender && <GenderBadge gender={profile.gender} />}</h1>
             <p className="text-sm text-muted-foreground mt-1">@{username}</p>
+            <p className="text-xs text-muted-foreground mt-1">Common travel: Auto • Bike</p>
 
             {!isOwnProfile && !blockedByThem && (
-              <div className="mt-4 flex items-center gap-3">
-                {status !== "connected" && status !== "blocked" && (
+              <div className="mt-4 flex items-center gap-2 flex-wrap justify-center">
+                {me && status !== "connected" && status !== "blocked" && (
                   <Button onClick={() => upsertRelationship("connected")}>Add Connection</Button>
                 )}
-                {status !== "blocked" && (
+                {me && acceptedConnId && (
+                  <Button variant="outline" onClick={removeConnection}>Remove Connection</Button>
+                )}
+                {me && status !== "blocked" && (
                   <Button variant="outline" onClick={() => {
                     if (confirm("Are you sure you want to block this user?")) upsertRelationship("blocked");
                   }}>Block</Button>
@@ -262,7 +325,30 @@ export default function PublicProfilePage() {
                   <CardTitle className="flex items-center gap-2"> <Users className="w-4 h-4"/> Connections</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-2xl font-bold text-primary">{connectionsCount}</p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <p className="text-2xl font-bold text-primary">{connectionsCount}</p>
+                    {me && (
+                      <div className="relative">
+                        <Button variant="outline" size="sm" onClick={() => setShowMutuals((s) => !s)}>
+                          Show mutuals ({mutuals.length})
+                        </Button>
+                        {showMutuals && (
+                          <div className="absolute z-50 mt-2 w-64 rounded-md border bg-card/95 backdrop-blur shadow-lg p-2">
+                            {mutuals.length === 0 ? (
+                              <p className="text-xs text-muted-foreground px-2 py-2">No mutuals yet</p>
+                            ) : (
+                              mutuals.map((m) => (
+                                <div key={m.id} className="flex items-center justify-between px-2 py-1 rounded hover:bg-muted/50">
+                                  <div className="text-sm">{m.full_name || m.username}</div>
+                                  <Link className="text-xs text-primary hover:underline" href={m.id === me.id ? '/profile' : `/profile/id/${m.id}`}>View</Link>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
 

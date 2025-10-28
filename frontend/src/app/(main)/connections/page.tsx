@@ -43,6 +43,9 @@ export default function ConnectionsPage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [usernameInput, setUsernameInput] = useState('');
+  const [sameUniversityOnly, setSameUniversityOnly] = useState(false);
+  const [myUniversity, setMyUniversity] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<Profile[]>([]);
 
   const [connections, setConnections] = useState<Connection[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<Connection[]>([]);
@@ -91,12 +94,33 @@ export default function ConnectionsPage() {
       if (user) {
         setUser(user as unknown as User);
         fetchData(user.id);
+        // Load my university for filtering
+        const { data: prof } = await supabase.from('profiles').select('university').eq('id', user.id).maybeSingle();
+        setMyUniversity((prof as any)?.university ?? null);
       } else {
         setLoading(false);
       }
     };
     getUserAndData();
   }, [supabase, fetchData]);
+
+  // Live suggestions when typing
+  useEffect(() => {
+    const run = async () => {
+      const q = usernameInput.trim();
+      if (!q) { setSuggestions([]); return; }
+      let query = supabase.from('profiles')
+        .select('id, username, full_name')
+        .ilike('username', `%${q}%`)
+        .limit(5);
+      if (sameUniversityOnly && myUniversity) {
+        query = query.eq('university', myUniversity);
+      }
+      const { data } = await query;
+      setSuggestions((data as any) || []);
+    }
+    run();
+  }, [usernameInput, sameUniversityOnly, myUniversity, supabase]);
 
 
   // --- HANDLERS ---
@@ -174,24 +198,46 @@ export default function ConnectionsPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 space-y-8">
+    <div className="p-4 md:p-8 space-y-8 max-w-4xl mx-auto">
       {/* 1. Add Connection Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Add Connection</CardTitle>
-          <CardDescription>
-            You can add other users by their unique username.
-          </CardDescription>
+      <Card className="bg-card/60 backdrop-blur border border-white/10">
+        <CardHeader className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+          <CardTitle className="text-2xl flex items-center gap-3">
+            Add Connection
+            <span className="text-sm font-normal text-muted-foreground hidden md:inline">You can add other users by their unique username.</span>
+          </CardTitle>
+          <CardDescription className="md:hidden">You can add other users by their unique username.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex w-full max-w-lg items-center space-x-2">
-            <Input
-              type="text"
-              placeholder="Enter a username..."
-              className="flex-1"
-              value={usernameInput}
-              onChange={(e) => setUsernameInput(e.target.value)}
-            />
+          <div className="flex w-full items-center gap-2">
+            <div className="relative flex-1">
+              <Input
+                type="text"
+                placeholder="Search username…"
+                className="w-full pr-12"
+                value={usernameInput}
+                onChange={(e) => setUsernameInput(e.target.value)}
+              />
+              {/* Filter toggle */}
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-sm px-2 py-1 rounded-md hover:bg-foreground/10"
+                title="Same university"
+                onClick={() => setSameUniversityOnly((v) => !v)}
+              >
+                {sameUniversityOnly ? 'Uni✓' : 'Uni'}
+              </button>
+              {/* Suggestions dropdown */}
+              {suggestions.length > 0 && (
+                <div className="absolute z-50 mt-2 w-full rounded-md border bg-card/95 backdrop-blur shadow-lg">
+                  {suggestions.map((s) => (
+                    <button key={s.id} type="button" className="w-full text-left px-3 py-2 hover:bg-muted" onClick={() => setUsernameInput(s.username)}>
+                      {s.full_name || s.username} <span className="text-xs text-muted-foreground">@{s.username}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <Button type="submit" onClick={handleSendRequest}>
               <UserPlus className="mr-2 h-4 w-4" /> Send Request
             </Button>
@@ -201,7 +247,7 @@ export default function ConnectionsPage() {
 
       {/* 2. Tabs for Connections and Requests */}
       <Tabs defaultValue="connections" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:w-[400px]">
+        <TabsList className="grid w-full grid-cols-2 md:w-[400px] mx-auto">
           <TabsTrigger value="connections">
             <UserCheck className="mr-2 h-4 w-4" /> Connections ({connections.length})
           </TabsTrigger>
@@ -212,22 +258,19 @@ export default function ConnectionsPage() {
 
         {/* Current Connections Tab */}
         <TabsContent value="connections">
-          <Card>
+          <Card className="bg-card/60 backdrop-blur border border-white/10">
             <CardHeader>
               <CardTitle>Your Connections</CardTitle>
               <CardDescription>
                 Users you are currently connected with.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5 min-h-64 p-6">
               {connections.length > 0 ? (
                 connections.map((conn) => {
                   const otherUser = conn.requester_id === user.id ? conn.addressee : conn.requester;
                   return (
-                    <div
-                      key={conn.id}
-                      className="flex items-center justify-between p-2 rounded-lg hover:bg-muted"
-                    >
+                    <div key={conn.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
                       <div className="flex items-center gap-4">
                         <Avatar>
                           <AvatarImage src={`https://avatar.vercel.sh/${otherUser.username}.png`} />
@@ -238,9 +281,17 @@ export default function ConnectionsPage() {
                           <p className="text-sm text-muted-foreground">@{otherUser.username}</p>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => handleDeleteRequest(conn.id, 'remove')}>
-                        <X className="mr-2 h-4 w-4" /> Remove
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button asChild variant="ghost" size="sm">
+                          <a href={`/profile/id/${otherUser.id}`}>See Profile</a>
+                        </Button>
+                        <Button asChild variant="ghost" size="sm">
+                          <a href={`/report?type=user&id=${otherUser.id}`}>🚩</a>
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDeleteRequest(conn.id, 'remove')}>
+                          <X className="mr-2 h-4 w-4" /> Remove
+                        </Button>
+                      </div>
                     </div>
                   );
                 })
@@ -255,7 +306,7 @@ export default function ConnectionsPage() {
 
         {/* Requests Tab */}
         <TabsContent value="requests">
-          <div className="space-y-6">
+          <div className="space-y-6 max-w-4xl mx-auto">
             {/* Incoming Requests */}
             <Card>
               <CardHeader>
@@ -264,7 +315,7 @@ export default function ConnectionsPage() {
                   Users who want to connect with you.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-5 min-h-40 p-6">
                 {incomingRequests.length > 0 ? (
                   incomingRequests.map((req) => (
                     <div
@@ -307,7 +358,7 @@ export default function ConnectionsPage() {
                   Users you've sent connection requests to.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-5 min-h-40 p-6">
                 {outgoingRequests.length > 0 ? (
                   outgoingRequests.map((req) => (
                     <div
