@@ -107,7 +107,7 @@ const useDashboardDataStore = create<DashboardDataState>((set, get) => ({
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Error fetching parties:", error);
+        console.error("Error fetching parties:", (error as any)?.message || error);
         set({ parties: [], partiesLoading: false });
         return "error";
       }
@@ -162,7 +162,7 @@ const useDashboardDataStore = create<DashboardDataState>((set, get) => ({
         .in("id", hostIds);
 
       if (profilesError) {
-        console.error("Error fetching profiles:", profilesError);
+        console.error("Error fetching profiles:", (profilesError as any)?.message || profilesError);
       }
 
       const profilesMap = new Map<string, Profile>();
@@ -211,7 +211,11 @@ const useDashboardDataStore = create<DashboardDataState>((set, get) => ({
       set({ parties: transformedParties, partiesLoading: false });
       return "ok";
     } catch (error) {
-      console.error("Failed to fetch parties:", error);
+      try {
+        console.error("Failed to fetch parties:", (error as any)?.message || JSON.stringify(error));
+      } catch {
+        console.error("Failed to fetch parties:", error);
+      }
       set({ parties: [], partiesLoading: false });
       return "error";
     }

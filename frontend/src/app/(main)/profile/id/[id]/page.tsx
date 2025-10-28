@@ -144,32 +144,64 @@ export default function PublicProfilePage() {
 
   useEffect(() => {
     const loadMutuals = async () => {
-      if (!me || !viewedId || me.id === viewedId) {
+      try {
+        if (!me || !viewedId || me.id === viewedId) {
+          setMutuals([]);
+          return;
+        }
+
+        // Fetch accepted connections for each user (IDs only) to avoid nested joins
+        const [meRes, themRes] = await Promise.all([
+          supabase
+            .from('connections')
+            .select('requester_id, addressee_id')
+            .or(`requester_id.eq.${me.id},addressee_id.eq.${me.id}`)
+            .eq('status', 'accepted'),
+          supabase
+            .from('connections')
+            .select('requester_id, addressee_id')
+            .or(`requester_id.eq.${viewedId},addressee_id.eq.${viewedId}`)
+            .eq('status', 'accepted'),
+        ]);
+
+        if (meRes.error || themRes.error) {
+          setMutuals([]);
+          return;
+        }
+
+        const idsFor = (rows: any[], baseId: string) =>
+          (rows || []).map((r) => (r.requester_id === baseId ? r.addressee_id : r.requester_id)) as string[];
+        const meIds = new Set<string>(idsFor(meRes.data || [], me.id).filter(Boolean));
+        const themIds = new Set<string>(idsFor(themRes.data || [], viewedId).filter(Boolean));
+        const mutualIds: string[] = [];
+        for (const id of meIds) if (themIds.has(id)) mutualIds.push(id);
+
+        if (mutualIds.length === 0) {
+          setMutuals([]);
+          return;
+        }
+
+        // Fetch profile details for mutual IDs
+        const { data: profiles, error } = await supabase
+          .from('profiles')
+          .select('id, username, nickname, avatar_url')
+          .in('id', mutualIds);
+
+        if (error || !profiles) {
+          setMutuals([]);
+          return;
+        }
+
+        const list = profiles.map((p: any) => ({
+          id: p.id,
+          username: p.username,
+          full_name: p.nickname ?? null,
+          avatar_url: p.avatar_url ?? null,
+        }));
+        setMutuals(list);
+      } catch (e) {
         setMutuals([]);
-        return;
       }
-      // Fetch accepted connections for me
-      const meRes = await supabase
-        .from('connections')
-        .select('requester_id, addressee_id, requester:requester_id(id, username, full_name, avatar_url), addressee:addressee_id(id, username, full_name, avatar_url)')
-        .or(`requester_id.eq.${me.id},addressee_id.eq.${me.id}`)
-        .eq('status', 'accepted');
-      // Fetch accepted connections for viewed user
-      const themRes = await supabase
-        .from('connections')
-        .select('requester_id, addressee_id, requester:requester_id(id, username, full_name, avatar_url), addressee:addressee_id(id, username, full_name, avatar_url)')
-        .or(`requester_id.eq.${viewedId},addressee_id.eq.${viewedId}`)
-        .eq('status', 'accepted');
-
-      if (meRes.error || themRes.error) { setMutuals([]); return; }
-
-      const extractOthers = (rows: any[], baseId: string) => rows.map((r) => r.requester_id === baseId ? r.addressee : r.requester);
-      const meList = new Map<string, any>(extractOthers(meRes.data || [], me.id).map((p: any) => [p.id, p]));
-      const themList = new Map<string, any>(extractOthers(themRes.data || [], viewedId).map((p: any) => [p.id, p]));
-      const mutualIds: string[] = [];
-      for (const id of meList.keys()) if (themList.has(id)) mutualIds.push(id);
-      const mutualProfiles = mutualIds.map((id) => meList.get(id));
-      setMutuals(mutualProfiles);
     };
     loadMutuals();
   }, [me, viewedId, supabase]);

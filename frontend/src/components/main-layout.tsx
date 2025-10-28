@@ -2,12 +2,22 @@
 
 import Sidebar from "@/components/sidebar";
 import MobileTabBar from "@/components/mobile-tab-bar";
+import MutualsDrawer from "@/components/mutuals-drawer";
+import { usePathname } from "next/navigation";
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
+  const pathname = usePathname();
+  const hideDrawer = [
+    "/current-party",
+    "/live-party",
+    "/hostparty",
+    "/settings",
+  ].some((p) => pathname?.startsWith(p));
+
   return (
     <div className="flex min-h-screen bg-background" >
       {/* Sidebar (hidden on mobile) */}
@@ -20,6 +30,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
           {children}
         </div>
       </main>
+      {/* Right mutuals drawer (hidden on specific routes) */}
+      {!hideDrawer && (
+        <MutualsDrawer />
+      )}
       {/* Mobile bottom navigation */}
       <div className="sm:hidden">
         <MobileTabBar />
