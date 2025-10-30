@@ -97,7 +97,7 @@ export default function PartyMembersDialog({ party, children }: PartyMembersDial
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="w-5 h-5" />
-            Party Members ({(party.current_member_count || 0) + 1}/{party.party_size})
+            Party Members ({(party.current_member_count || 0)}/{party.party_size})
           </DialogTitle>
         </DialogHeader>
         

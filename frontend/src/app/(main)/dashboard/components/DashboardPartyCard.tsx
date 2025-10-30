@@ -447,7 +447,7 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
                                     <button className="flex items-center gap-1 hover:text-primary transition-colors">
                                         <Users className="w-3.5 h-3.5 text-muted-foreground" />
                                         <span className="font-medium">
-                                            {(party.current_member_count || 0) + 1}/{party.party_size}
+                                            {(party.current_member_count || 0)}/{party.party_size}
                                         </span>
                                     </button>
                                 </PartyMembersDialog>

@@ -367,7 +367,7 @@ export default function CurrentPartyPage() {
                 })()}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center gap-3"><MapPin size={18} /><span className="font-medium">Meetup:</span> {selectedParty.meetup_point}</div>
-                  <div className="flex items-center gap-3"><Users size={18} /><span className="font-medium">Size:</span> {members.length}/{selectedParty.party_size}</div>
+                  <div className="flex items-center gap-3"><Users size={18} /><span className="font-medium">Size:</span> {members.filter(m => m.user_id !== selectedParty.host_id).length}/{selectedParty.party_size}</div>
                 </div>
 
                 {selectedParty.host_comments && (

@@ -250,12 +250,46 @@ export class PartyMemberService {
     try {
       const { data: { user } } = await this.supabase.auth.getUser();
       if (!user) return { success: false, error: 'Not authenticated' };
+      // Optional: sanity-check host authorization to avoid confusing RLS errors
+      const { data: partyRow, error: partyErr } = await this.supabase
+        .from('parties')
+        .select('host_id')
+        .eq('id', partyId)
+        .single();
+      if (partyErr) {
+        // Continue; RLS might block this but RPC may still work
+        console.warn('kickMember: failed to verify host_id, continuing to RPC:', (partyErr as any)?.message || partyErr);
+      } else if (partyRow && partyRow.host_id !== user.id) {
+        return { success: false, error: 'Only the host can kick members' };
+      }
+
+      // First try the generic RPC (may be overloaded in DB)
       const { error } = await this.supabase.rpc('kick_party_member', {
         p_party_id: partyId,
         p_member_user_id: memberUserId,
       });
-      if (error) return { success: false, error: error.message };
-      return { success: true };
+      if (!error) return { success: true };
+
+      const errMsg = (error as any)?.message || String(error);
+      // Handle ambiguous overload by trying a UUID-specific function if present
+      if (errMsg.toLowerCase().includes('choose the best candidate') || errMsg.toLowerCase().includes('ambiguous')) {
+        const { error: errUuid } = await this.supabase.rpc('kick_party_member_uuid' as any, {
+          p_party_id: partyId,
+          p_member_user_id: memberUserId,
+        });
+        if (!errUuid) return { success: true };
+        // Fallback: attempt a direct update if policies allow
+        const { error: updErr } = await this.supabase
+          .from('party_members')
+          .update({ status: 'kicked', left_at: new Date().toISOString() })
+          .eq('party_id', partyId)
+          .eq('user_id', memberUserId)
+          .eq('status', 'joined');
+        if (!updErr) return { success: true };
+        return { success: false, error: errUuid.message || updErr.message || 'Failed to kick member' };
+      }
+
+      return { success: false, error: errMsg };
     } catch (e: any) {
       return { success: false, error: e?.message || 'Failed to kick member' };
     }
