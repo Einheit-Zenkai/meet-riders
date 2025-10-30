@@ -134,38 +134,33 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
 
         setIsJoining(true);
         try {
-            if (party.is_friends_only) {
-                // If there's already a pending request, avoid duplicates
-                const { data: existing } = await supabase
-                  .from('party_requests')
-                  .select('id, status')
-                  .eq('party_id', party.id)
-                  .eq('user_id', user.id)
-                  .order('created_at', { ascending: false })
-                  .limit(1);
-                if (existing && existing.length && existing[0].status === 'pending') {
+            // Always request-based join flow: create a pending request and do not join yet
+            // Avoid duplicate pending requests
+            const { data: existing } = await supabase
+              .from('party_requests')
+              .select('id, status')
+              .eq('party_id', party.id)
+              .eq('user_id', user.id)
+              .order('created_at', { ascending: false })
+              .limit(1);
+            if (existing && existing.length && existing[0].status === 'pending') {
+                toast.info('Join request already pending');
+                return;
+            }
+            const { error } = await supabase
+                .rpc('create_join_request', { p_party_id: party.id });
+            if (error) {
+                const anyErr: any = error as any;
+                const code = anyErr?.code || anyErr?.details || '';
+                if (code?.toString?.().includes('23505') || (anyErr?.message || '').toLowerCase().includes('duplicate')) {
                     toast.info('Join request already pending');
                     return;
                 }
-                // Request-based join flow: create a pending request and do not join yet
-                const { error } = await supabase
-                    .from('party_requests')
-                    .insert([{ party_id: party.id, user_id: user.id, status: 'pending' }]);
-                if (error) {
-                    console.error('Error creating party request:', error);
-                    toast.error('Failed to send join request');
-                } else {
-                    toast.success('Request sent to host');
-                }
+                const errMsg = anyErr?.message || anyErr?.hint || anyErr?.details || 'Unknown error';
+                console.error('Error creating party request:', errMsg, anyErr);
+                toast.error('Failed to send join request');
             } else {
-                // Public party: join immediately
-                const result = await partyMemberService.joinParty(party.id);
-                if (result.success) {
-                    toast.success(`Joined party to ${party.drop_off}`);
-                    router.push('/current-party');
-                } else {
-                    toast.error(result.error || 'Failed to join party');
-                }
+                toast.success('Request sent to host');
             }
         } catch (error) {
             console.error('Error joining party:', error);

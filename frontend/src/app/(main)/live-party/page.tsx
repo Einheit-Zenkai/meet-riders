@@ -242,7 +242,7 @@ function LivePartyUI({
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const { sendLocation, locations, messages, sendChat, sendStatus, statuses } = useLiveChannel();
-  const [myStatus, setMyStatus] = useState<"on_my_way" | "at_meetup" | "in_cab" | "completed" | null>(null);
+  const [myStatus, setMyStatus] = useState<"on_my_way" | "at_meetup" | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<{ userId: string; name: string } | null>(null);
   const [reportReason, setReportReason] = useState<string>("");
@@ -283,7 +283,7 @@ function LivePartyUI({
   }, [shareOn, sendLocation, setShareOn]);
 
   const statusLabel = (s?: string) =>
-    s === 'on_my_way' ? 'On my way' : s === 'at_meetup' ? 'At meetup' : s === 'in_cab' ? 'In cab' : s === 'completed' ? 'Completed' : undefined;
+    s === 'on_my_way' ? 'On my way' : s === 'at_meetup' ? 'At meetup' : undefined;
 
   const handleShareMeetup = async () => {
     const title = `Ride to ${party.drop_off}`;
@@ -480,8 +480,6 @@ function LivePartyUI({
             {[
               { key: 'on_my_way', label: 'On my way' },
               { key: 'at_meetup', label: 'At meetup' },
-              { key: 'in_cab', label: 'In cab' },
-              { key: 'completed', label: 'Completed' },
             ].map((opt) => (
               <Button
                 key={opt.key}
@@ -500,13 +498,17 @@ function LivePartyUI({
             <div className="p-3 rounded border">
               <div className="text-sm font-medium mb-2">Host</div>
               <div className="flex items-center gap-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={hostProfile?.avatar_url || ""} />
-                  <AvatarFallback>{initials(hostProfile?.nickname || hostProfile?.full_name)}</AvatarFallback>
-                </Avatar>
+                <Link href={`/profile/id/${hostId}`} className="flex items-center">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={hostProfile?.avatar_url || ""} />
+                    <AvatarFallback>{initials(hostProfile?.nickname || hostProfile?.full_name)}</AvatarFallback>
+                  </Avatar>
+                </Link>
                 <div className="flex-1">
                   <div className="font-medium flex items-center gap-2">
-                    {hostProfile?.nickname || hostProfile?.full_name || "Host"}
+                    <Link href={`/profile/id/${hostId}`} className="hover:underline">
+                      {hostProfile?.nickname || hostProfile?.full_name || "Host"}
+                    </Link>
                     <Crown className="h-4 w-4 text-yellow-500" />
                     {hostProfile?.gender && (
                       <GenderBadge gender={hostProfile.gender} />
@@ -540,13 +542,17 @@ function LivePartyUI({
                 {members.map((m) => (
                   <div key={m.id} className="flex items-center justify-between py-2">
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={m.profile?.avatar_url || ""} />
-                        <AvatarFallback>{initials(m.profile?.nickname || m.profile?.full_name)}</AvatarFallback>
-                      </Avatar>
+                      <Link href={`/profile/id/${m.user_id}`} className="flex items-center">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={m.profile?.avatar_url || ""} />
+                          <AvatarFallback>{initials(m.profile?.nickname || m.profile?.full_name)}</AvatarFallback>
+                        </Avatar>
+                      </Link>
                       <div>
                         <div className="font-medium flex items-center gap-2">
-                          {m.profile?.nickname || m.profile?.full_name || "User"}
+                          <Link href={`/profile/id/${m.user_id}`} className="hover:underline">
+                            {m.profile?.nickname || m.profile?.full_name || "User"}
+                          </Link>
                           {m.user_id === hostId && <Crown className="h-3 w-3 text-yellow-500" />}
                           {m.profile?.gender && (
                             <GenderBadge gender={m.profile.gender} />

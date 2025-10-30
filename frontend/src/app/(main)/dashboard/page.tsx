@@ -6,6 +6,8 @@ import RidesList from "./components/RidesList";
 import LoadingScreen from "./components/LoadingScreen";
 import SoiList from "./components/SoiList";
 import { useDashboard } from "./hooks/useDashboard";
+import CurrentPartySection from "./components/CurrentPartySection";
+import HostRequestsPrompt from "./components/HostRequestsPrompt";
 
 export default function HomePage() {
   const { welcomeName, isLoading } = useDashboard();
@@ -17,12 +19,14 @@ export default function HomePage() {
   return (
     <div className=" min-h-dvh p-6">
       <HostButton />
+  <HostRequestsPrompt />
 
       <DashboardHeader
         welcomeName={welcomeName}
       />
 
       <div className="mt-6 space-y-10">
+        <CurrentPartySection />
         <RidesList />
 
         <div>

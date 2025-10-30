@@ -383,13 +383,15 @@ export default function CurrentPartyPage() {
                     {members.map(m => (
                       <div key={m.id} className="flex items-center justify-between p-3">
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={m.profile?.avatar_url || ''} />
-                            <AvatarFallback>{initials(m.profile?.nickname || m.profile?.full_name)}</AvatarFallback>
-                          </Avatar>
+                          <Link href={`/profile/id/${m.user_id}`} className="flex items-center">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={m.profile?.avatar_url || ''} />
+                              <AvatarFallback>{initials(m.profile?.nickname || m.profile?.full_name)}</AvatarFallback>
+                            </Avatar>
+                          </Link>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-medium">{m.profile?.nickname || m.profile?.full_name || 'User'}</span>
+                              <Link href={`/profile/id/${m.user_id}`} className="font-medium hover:underline">{m.profile?.nickname || m.profile?.full_name || 'User'}</Link>
                               {m.user_id === selectedParty.host_id && <Crown size={14} className="text-yellow-500" />}
                               {m.profile?.gender && (
                                 <GenderBadge gender={m.profile.gender} />

@@ -294,6 +294,121 @@ export class PartyMemberService {
       return { success: false, error: e?.message || 'Failed to kick member' };
     }
   }
+
+  /** Fetch pending join requests for parties hosted by the current user */
+  async getPendingRequestsForHost(): Promise<{
+    success: boolean;
+    requests?: Array<{ id: string; party_id: string; user_id: string; created_at: Date; userProfile?: any; party?: any }>;
+    error?: string;
+  }> {
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) return { success: false, error: 'Not authenticated' };
+
+      const nowIso = new Date().toISOString();
+      // 1) Find active parties I host
+      const { data: myParties, error: pErr } = await this.supabase
+        .from('parties')
+        .select('id, drop_off, meetup_point, expires_at, is_active')
+        .eq('host_id', user.id)
+        .eq('is_active', true)
+        .gt('expires_at', nowIso);
+      if (pErr) {
+        console.error('getPendingRequestsForHost: parties:', pErr);
+        return { success: false, error: 'Failed to fetch parties' };
+      }
+      const partyIds = (myParties || []).map((p: any) => p.id);
+      if (partyIds.length === 0) return { success: true, requests: [] };
+
+      // 2) Fetch pending requests for those parties
+      const { data: reqs, error: rErr } = await this.supabase
+        .from('party_requests')
+        .select('id, party_id, user_id, created_at, status')
+        .in('party_id', partyIds)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true });
+      if (rErr) {
+        console.error('getPendingRequestsForHost: requests:', rErr);
+        return { success: false, error: 'Failed to fetch requests' };
+      }
+      const requests = reqs || [];
+      if (requests.length === 0) return { success: true, requests: [] };
+
+      // 3) Fetch profiles for requesters
+      const userIds = [...new Set(requests.map((r: any) => r.user_id))];
+      let profilesMap: Record<string, any> = {};
+      if (userIds.length > 0) {
+        const { data: profs } = await this.supabase
+          .from('profiles')
+          .select('id, full_name, nickname, avatar_url, gender, university, show_university, points')
+          .in('id', userIds);
+        (profs || []).forEach((p: any) => { profilesMap[p.id] = p; });
+      }
+      const partiesMap: Record<string, any> = {};
+      (myParties || []).forEach((p: any) => { partiesMap[p.id] = p; });
+
+      const enriched = requests.map((r: any) => ({
+        id: r.id,
+        party_id: r.party_id,
+        user_id: r.user_id,
+        created_at: new Date(r.created_at),
+        userProfile: profilesMap[r.user_id],
+        party: partiesMap[r.party_id],
+      }));
+      return { success: true, requests: enriched };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Failed to load requests' };
+    }
+  }
+
+  /** Host-only: approve a pending request */
+  async approveRequest(requestId: string, partyId: string, requesterId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) return { success: false, error: 'Not authenticated' };
+
+      // Check eligibility via RPC (capacity/duplicate/expiry)
+      const { data: canJoin, error: checkError } = await this.supabase
+        .rpc('can_user_join_party', { p_party_id: partyId, p_user_id: requesterId });
+      if (checkError) {
+        console.error('approveRequest: can_user_join_party:', checkError);
+        return { success: false, error: 'Failed to verify capacity' };
+      }
+      if (!canJoin) return { success: false, error: 'Party full/expired or already a member' };
+
+      // Add as joined member
+      const { error: jErr } = await this.supabase
+        .from('party_members')
+        .insert({ party_id: partyId, user_id: requesterId, status: 'joined', contact_shared: false });
+      if (jErr) {
+        console.error('approveRequest: insert party_member:', jErr);
+        return { success: false, error: 'Failed to add member' };
+      }
+      // Mark request accepted
+      const { error: uErr } = await this.supabase
+        .from('party_requests')
+        .update({ status: 'accepted' })
+        .eq('id', requestId);
+      if (uErr) console.warn('approveRequest: update request failed (non-blocking):', uErr);
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Approve failed' };
+    }
+  }
+
+  /** Host-only: decline a pending request */
+  async declineRequest(requestId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await this.supabase
+        .from('party_requests')
+        .update({ status: 'declined' })
+        .eq('id', requestId);
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Decline failed' };
+    }
+  }
 }
 
 // Export a singleton instance
