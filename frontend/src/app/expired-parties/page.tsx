@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, RefreshCcw } from "lucide-react";
 import MainLayout from "@/components/main-layout";
+import { toast } from "sonner";
 
 export default function ExpiredPartiesPage() {
-  const { expiredParties, isRefreshing, refreshExpiredParties } = useExpiredPartiesStore();
+  const { expiredParties, isRefreshing, refreshExpiredParties, restoreExpiredParty } = useExpiredPartiesStore();
 
   useEffect(() => {
     // initial prune/refresh
@@ -30,7 +31,7 @@ export default function ExpiredPartiesPage() {
       {expiredParties.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            No expired parties in the last 10 minutes.
+            No expired parties in the last 5 minutes.
           </CardContent>
         </Card>
       ) : (
@@ -50,6 +51,26 @@ export default function ExpiredPartiesPage() {
                   {p.hostName && <div><span className="font-medium text-foreground">Host:</span> {p.hostName}</div>}
                   {(p.partySize || p.joinedCount) && (
                     <div><span className="font-medium text-foreground">Party size:</span> {p.joinedCount ?? 0}/{p.partySize ?? '-'} </div>
+                  )}
+                </div>
+                <div className="mt-4">
+                  {p.canRestore ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={async () => {
+                        const res = await restoreExpiredParty(p.id);
+                        if (res.success) {
+                          toast.success("Party restored");
+                        } else {
+                          toast.error(res.error || "Failed to restore");
+                        }
+                      }}
+                    >
+                      Restore
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">View only</span>
                   )}
                 </div>
               </CardContent>

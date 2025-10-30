@@ -13,6 +13,7 @@ interface SimpleParty {
   drop_off: string | null;
   meetup_point: string | null;
   expires_at: Date;
+  host_id?: string;
 }
 
 export default function CurrentPartySection() {
@@ -27,7 +28,7 @@ export default function CurrentPartySection() {
       setLoading(true);
       try {
         const nowIso = new Date().toISOString();
-        const fields = "id, drop_off, meetup_point, expires_at";
+  const fields = "id, drop_off, meetup_point, expires_at, host_id";
 
         // Parties you host
         const { data: hosting } = await supabase
@@ -61,12 +62,40 @@ export default function CurrentPartySection() {
         // Merge unique by id
         const map = new Map<string, any>();
         [...(hosting || []), ...joined].forEach((p: any) => map.set(p.id, p));
-        const merged = Array.from(map.values()).map((p: any) => ({
-          id: p.id,
-          drop_off: p.drop_off ?? null,
-          meetup_point: p.meetup_point ?? null,
-          expires_at: new Date(p.expires_at),
-        }));
+        const mergedRaw = Array.from(map.values());
+
+        // If I am the host for a party and it has zero non-host joined members, exclude it from Current Party
+        const allIds = mergedRaw.map((p: any) => p.id);
+        let nonHostCountByParty: Record<string, number> = {};
+        if (allIds.length) {
+          const { data: members } = await supabase
+            .from('party_members')
+            .select('party_id, user_id, status')
+            .in('party_id', allIds)
+            .eq('status', 'joined');
+          (members || []).forEach((m: any) => {
+            const party = mergedRaw.find((p: any) => p.id === m.party_id);
+            const hostId = party?.host_id;
+            if (hostId && m.user_id !== hostId) {
+              nonHostCountByParty[m.party_id] = (nonHostCountByParty[m.party_id] || 0) + 1;
+            }
+          });
+        }
+
+        const merged = mergedRaw
+          .filter((p: any) => {
+            const isHost = p.host_id === user.id;
+            const nonHost = nonHostCountByParty[p.id] || 0;
+            return !(isHost && nonHost === 0);
+          })
+          .map((p: any) => ({
+            id: p.id,
+            drop_off: p.drop_off ?? null,
+            meetup_point: p.meetup_point ?? null,
+            expires_at: new Date(p.expires_at),
+            host_id: p.host_id,
+          }));
+
         setParties(merged);
       } finally {
         setLoading(false);

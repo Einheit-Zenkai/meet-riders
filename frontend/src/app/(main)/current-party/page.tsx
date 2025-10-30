@@ -49,7 +49,7 @@ export default function CurrentPartyPage() {
       setLoading(true);
       try {
         // hosting party
-        const partyFields = `id, created_at, updated_at, host_id, party_size, duration_minutes, expires_at, meetup_point, drop_off, is_friends_only, is_gender_only, ride_options, host_comments, host_university, display_university, is_active`;
+  const partyFields = `id, created_at, updated_at, host_id, party_size, duration_minutes, expires_at, meetup_point, drop_off, is_friends_only, is_gender_only, ride_options, host_comments, host_university, display_university, is_active`;
 
         const { data: hosting, error: hostErr } = await supabase
           .from('parties')
@@ -80,8 +80,28 @@ export default function CurrentPartyPage() {
         }
 
         // merge unique by id
-        const merged = [...(hosting || []), ...joined]
+        const mergedRaw = [...(hosting || []), ...joined]
           .reduce((acc: any[], p: any) => acc.find(x => x.id === p.id) ? acc : acc.concat(p), []);
+
+        // For any party I host with zero non-host joined members, exclude from Current Party list
+        const allIds = mergedRaw.map((p: any) => p.id);
+        let nonHostCountByParty: Record<string, number> = {};
+        if (allIds.length) {
+          const { data: members } = await supabase
+            .from('party_members')
+            .select('party_id, user_id, status')
+            .in('party_id', allIds)
+            .eq('status', 'joined');
+          (members || []).forEach((m: any) => {
+            const party = mergedRaw.find((p: any) => p.id === m.party_id);
+            const hostId = party?.host_id;
+            if (hostId && m.user_id !== hostId) {
+              nonHostCountByParty[m.party_id] = (nonHostCountByParty[m.party_id] || 0) + 1;
+            }
+          });
+        }
+
+        const merged = mergedRaw.filter((p: any) => !(p.host_id === user.id && (nonHostCountByParty[p.id] || 0) === 0));
 
         // map to Party shape (dates)
         const casted: Party[] = merged.map((p: any) => ({
@@ -95,8 +115,8 @@ export default function CurrentPartyPage() {
           is_active: p.is_active,
         }));
 
-        setParties(casted);
-        setSelectedId((casted[0]?.id) ?? null);
+  setParties(casted);
+  setSelectedId((casted[0]?.id) ?? null);
 
         // If the user has no current party, check for a pending join request and surface it
         if (!casted.length) {
