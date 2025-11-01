@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import type { SoiParty, SoiMember } from "../types";
+import type { SoiParty } from "../types";
 import { soiMemberService } from "../services/soiMemberService";
 import { soiPartyService } from "../services/soiPartyService";
 import { toast } from "sonner";
@@ -39,11 +39,12 @@ export default function SoiList() {
     })();
   }, [supabase]);
 
-  useEffect(() => {
-    const fetchSOIs = async () => {
-      setLoading(true);
-      setError(null);
-      // active SOIs that haven't started more than 10 minutes ago
+  const fetchSOIs = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
+    if (!silent) setLoading(true);
+    setError(null);
+
+    try {
       const { data, error } = await supabase
         .from("soi_parties")
         .select("*")
@@ -53,7 +54,6 @@ export default function SoiList() {
 
       if (error) {
         setError(error.message);
-        setLoading(false);
         return;
       }
 
@@ -72,56 +72,129 @@ export default function SoiList() {
         is_active: r.is_active,
       } as SoiParty));
 
-      // fetch member counts via RPC and add +1 for host
-      const withCounts = await Promise.all(
-        list.map(async (item) => {
-          try {
-            const { data: countData, error: countErr } = await supabase.rpc('get_soi_member_count', { p_soi_id: item.id });
-            const count = typeof countData === 'number' ? countData : (countData?.count ?? 0);
-            return { ...item, current_member_count: (count || 0) + 1 } as SoiParty;
-          } catch {
-            return { ...item, current_member_count: 1 } as SoiParty;
-          }
-        })
-      );
+      const soiIds = list.map((item) => String(item.id));
+      const membershipSet = new Set<string>();
+      const membersBySoi = new Map<string, Array<{ user_id: string; status: string }>>();
 
-      setItems(withCounts);
-      setLoading(false);
-    };
+      if (soiIds.length) {
+        const { data: memberRows, error: memberError } = await supabase
+          .from("soi_members")
+          .select("soi_id, user_id, status")
+          .in("soi_id", soiIds);
+
+        if (!memberError && memberRows) {
+          for (const row of memberRows) {
+            if (row.status === "left" || row.status === "kicked") continue;
+            const soiId = String(row.soi_id);
+            const bucket = membersBySoi.get(soiId) ?? [];
+            bucket.push({ user_id: row.user_id, status: row.status });
+            membersBySoi.set(soiId, bucket);
+            if (userId && row.user_id === userId) {
+              membershipSet.add(soiId);
+            }
+          }
+        }
+      }
+
+      const decorated = list.map((item) => {
+        const viewerIsHost = Boolean(userId && userId === item.host_id);
+        const partyMembers = membersBySoi.get(String(item.id)) ?? [];
+        const hostAlreadyMember = partyMembers.some((member) => member.user_id === item.host_id);
+        const joinedCount = partyMembers.length;
+        const base = hostAlreadyMember ? 0 : 1;
+        return {
+          ...item,
+          current_member_count: Math.max(1, joinedCount + base),
+          user_is_member: viewerIsHost || membershipSet.has(String(item.id)),
+        } as SoiParty;
+      });
+
+      setItems(decorated);
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [supabase, userId]);
+
+  useEffect(() => {
     fetchSOIs();
-  }, [supabase]);
+  }, [fetchSOIs]);
 
   const handleJoin = async (id: number) => {
-    const res = await soiMemberService.join(id);
-  if (!res.success) return toast.error(res.error || 'Failed to join');
-  toast.success('Joined');
-    // refresh list
-    const idx = items.findIndex(x => x.id === id);
-    if (idx >= 0) {
-      const updated = [...items];
-      updated[idx] = { ...updated[idx], current_member_count: (updated[idx].current_member_count || 0) + 1 };
-      setItems(updated);
+    const idx = items.findIndex((x) => x.id === id);
+    if (idx < 0) return;
+
+    const current = items[idx];
+    if (current.user_is_member || (userId && current.host_id === userId)) {
+      toast.info("You're already in this SOI.");
+      return;
     }
+
+    if ((current.current_member_count || 0) >= current.party_size) {
+      toast.error("This SOI is full.");
+      return;
+    }
+
+    const res = await soiMemberService.join(id);
+    if (!res.success) {
+      if (res.error && res.error.toLowerCase().includes("already")) {
+        toast.info(res.error);
+        const updated = [...items];
+        updated[idx] = { ...current, user_is_member: true };
+        setItems(updated);
+      } else {
+        toast.error(res.error || "Failed to join");
+      }
+      return;
+    }
+
+    toast.success("Joined");
+    const updated = [...items];
+    updated[idx] = {
+      ...current,
+      current_member_count: Math.min(
+        current.party_size,
+        (current.current_member_count || 0) + 1
+      ),
+      user_is_member: true,
+    };
+    setItems(updated);
+    fetchSOIs({ silent: true });
   };
 
   const handleLeave = async (id: number) => {
-    const res = await soiMemberService.leave(id);
-  if (!res.success) return toast.error(res.error || 'Failed to leave');
-  toast.success('Left');
-    const idx = items.findIndex(x => x.id === id);
-    if (idx >= 0) {
-      const updated = [...items];
-      updated[idx] = { ...updated[idx], current_member_count: Math.max(0, (updated[idx].current_member_count || 0) - 1) };
-      setItems(updated);
+    const idx = items.findIndex((x) => x.id === id);
+    if (idx < 0) return;
+
+    const current = items[idx];
+    if (!current.user_is_member) {
+      toast.info("You're not part of this SOI.");
+      return;
     }
+
+    const res = await soiMemberService.leave(id);
+    if (!res.success) {
+      toast.error(res.error || "Failed to leave");
+      return;
+    }
+
+    toast.success("Left");
+    const updated = [...items];
+    updated[idx] = {
+      ...current,
+      current_member_count: Math.max(1, (current.current_member_count || 1) - 1),
+      user_is_member: false,
+    };
+    setItems(updated);
+    fetchSOIs({ silent: true });
   };
 
   const handleCancel = async (id: number) => {
     if (!confirm('Cancel this SOI? This will close it for everyone.')) return;
     const res = await soiPartyService.cancel(id);
-  if (!res.success) return toast.error(res.error || 'Failed to cancel SOI');
-  toast.success('SOI canceled');
-    setItems(prev => prev.filter(x => x.id !== id));
+    if (!res.success) return toast.error(res.error || 'Failed to cancel SOI');
+    toast.success('SOI canceled');
+    setItems((prev) => prev.filter((x) => x.id !== id));
+    fetchSOIs({ silent: true });
   };
 
   if (loading) return <div className="text-sm text-muted-foreground">Loading upcoming rides…</div>;
@@ -134,6 +207,7 @@ export default function SoiList() {
         const full = (s.current_member_count || 0) >= s.party_size;
         const countdown = formatCountdown(s.start_time);
         const isHost = userId && userId === s.host_id;
+        const isMember = Boolean(s.user_is_member);
         return (
           <div key={s.id} className="bg-card border rounded-lg p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -153,19 +227,22 @@ export default function SoiList() {
                 </button>
               ) : (
                 <>
-                  <button
-                    className={`px-4 py-2 rounded-md text-sm ${full ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}
-                    disabled={full}
-                    onClick={() => handleJoin(s.id)}
-                  >
-                    I'm in
-                  </button>
-                  <button
-                    className="px-4 py-2 rounded-md text-sm border hover:bg-accent"
-                    onClick={() => handleLeave(s.id)}
-                  >
-                    Change my mind
-                  </button>
+                  {!isMember ? (
+                    <button
+                      className={`px-4 py-2 rounded-md text-sm ${full ? "bg-muted text-muted-foreground cursor-not-allowed" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}
+                      disabled={full}
+                      onClick={() => handleJoin(s.id)}
+                    >
+                      {full ? "SOI full" : "I'm in"}
+                    </button>
+                  ) : (
+                    <button
+                      className="px-4 py-2 rounded-md text-sm border border-destructive text-destructive hover:bg-destructive/10"
+                      onClick={() => handleLeave(s.id)}
+                    >
+                      I've changed my mind
+                    </button>
+                  )}
                 </>
               )}
             </div>

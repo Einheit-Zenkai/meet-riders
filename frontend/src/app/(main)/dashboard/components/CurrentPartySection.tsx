@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { partyMemberService } from "../services/partyMemberService";
+import { useNotificationsStore } from "@/stores/notificationsStore";
 
 interface RequestRow {
   id: string;
@@ -33,6 +34,33 @@ export default function CurrentPartySection() {
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [busyIds, setBusyIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const addNotification = useNotificationsStore((s) => s.add);
+  const hasNotification = useNotificationsStore((s) => s.has);
+  const removeNotification = useNotificationsStore((s) => s.remove);
+
+  const pushNotificationsForRequests = useCallback((items: RequestRow[]) => {
+    items.forEach((request) => {
+      const notifId = `join-request:${request.id}`;
+      if (hasNotification(notifId)) return;
+
+      const riderName = request.userProfile?.nickname || request.userProfile?.full_name || "A rider";
+      const destination = request.party?.drop_off ? ` to ${request.party.drop_off}` : "";
+
+      addNotification({
+        id: notifId,
+        message: `${riderName} wants to join your party${destination}`,
+        timestamp: request.created_at instanceof Date ? request.created_at : new Date(request.created_at),
+        read: false,
+        type: "join_request",
+        meta: {
+          requestId: request.id,
+          partyId: request.party_id,
+          requesterId: request.user_id,
+          requesterName: riderName,
+        },
+      });
+    });
+  }, [addNotification, hasNotification]);
 
   const loadRequests = useCallback(async () => {
     if (!user) {
@@ -48,10 +76,12 @@ export default function CurrentPartySection() {
       setRequests([]);
       setError(result.error ?? "Failed to load requests");
     } else {
-      setRequests(result.requests ?? []);
+      const pending = result.requests ?? [];
+      setRequests(pending);
+      pushNotificationsForRequests(pending);
     }
     setLoading(false);
-  }, [user]);
+  }, [user, pushNotificationsForRequests]);
 
   useEffect(() => {
     loadRequests();
@@ -65,7 +95,10 @@ export default function CurrentPartySection() {
     }
     await loadRequests();
     setBusyIds((ids) => ids.filter((id) => id !== request.id));
-  }, [loadRequests]);
+    if (result.success) {
+      removeNotification(`join-request:${request.id}`);
+    }
+  }, [loadRequests, removeNotification]);
 
   const handleDecline = useCallback(async (request: RequestRow) => {
     setBusyIds((ids) => [...ids, request.id]);
@@ -75,7 +108,10 @@ export default function CurrentPartySection() {
     }
     await loadRequests();
     setBusyIds((ids) => ids.filter((id) => id !== request.id));
-  }, [loadRequests]);
+    if (result.success) {
+      removeNotification(`join-request:${request.id}`);
+    }
+  }, [loadRequests, removeNotification]);
 
   const getInitials = (profile?: RequestRow["userProfile"]) => {
     const base = profile?.nickname || profile?.full_name || "?";

@@ -35,15 +35,28 @@ export default function ShowInterestPage() {
     const init = async () => {
       if (!user) return;
 
-      // Check if already hosting an active SOI
-      const { data } = await supabase
+      // Check if already hosting a non-expired SOI
+      const { data: activeSois } = await supabase
         .from("soi_parties")
-        .select("id")
+        .select("id,start_time,expiry_timestamp")
         .eq("host_id", user.id)
-        .eq("is_active", true)
-        .limit(1)
-        .maybeSingle();
-      if (data) setIsAlreadyHosting(true);
+        .eq("is_active", true);
+
+      if (activeSois && Array.isArray(activeSois)) {
+        const nowMs = Date.now();
+        const startThreshold = nowMs - 10 * 60 * 1000; // align with dashboard window
+        const hasLiveSoi = activeSois.some((row: any) => {
+          const startMs = row?.start_time ? new Date(row.start_time).getTime() : Number.NaN;
+          const expiryMs = row?.expiry_timestamp ? new Date(row.expiry_timestamp).getTime() : null;
+          if (Number.isNaN(startMs)) return false;
+          const withinStartWindow = startMs >= startThreshold;
+          const notExpired = expiryMs == null || expiryMs > nowMs;
+          return withinStartWindow && notExpired;
+        });
+        setIsAlreadyHosting(hasLiveSoi);
+      } else {
+        setIsAlreadyHosting(false);
+      }
 
       // Load profile university + preference
       const { data: prof } = await supabase
