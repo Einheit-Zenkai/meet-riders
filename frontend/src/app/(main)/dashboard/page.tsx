@@ -9,7 +9,7 @@ import { useDashboard } from "./hooks/useDashboard";
 import CurrentPartySection from "./components/CurrentPartySection";
 
 export default function HomePage() {
-  const { welcomeName, isLoading } = useDashboard();
+  const { welcomeName, isLoading, hasActiveParty } = useDashboard();
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -17,7 +17,7 @@ export default function HomePage() {
 
   return (
     <div className=" min-h-dvh p-6">
-    <HostButton />
+      {!hasActiveParty && <HostButton />}
 
       <DashboardHeader
         welcomeName={welcomeName}

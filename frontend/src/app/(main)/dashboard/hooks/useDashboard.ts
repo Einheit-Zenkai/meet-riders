@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import useAuthStore from "@/stores/authStore";
 import useDashboardFiltersStore from "@/stores/dashboardFiltersStore";
@@ -19,6 +19,8 @@ export function useDashboard() {
   const welcomeName = useDashboardDataStore((state) => state.welcomeName);
   const isCheckingProfile = useDashboardDataStore((state) => state.isCheckingProfile);
   const partiesLoading = useDashboardDataStore((state) => state.partiesLoading);
+  const parties = useDashboardDataStore((state) => state.parties);
+  const [hasActiveParty, setHasActiveParty] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -65,11 +67,26 @@ export function useDashboard() {
     return () => clearInterval(interval);
   }, [user, loading, refreshParties]);
 
+  useEffect(() => {
+    if (!user || partiesLoading) {
+      setHasActiveParty(false);
+      return;
+    }
+    const active = parties.some((party) => {
+      const isHost = party.host_id === user.id;
+      const isMember = party.user_is_member;
+      const notExpired = party.expires_at && party.expires_at.getTime() > Date.now();
+      return notExpired && (isHost || isMember);
+    });
+    setHasActiveParty(active);
+  }, [parties, partiesLoading, user]);
+
   const isLoading = loading || isCheckingProfile || partiesLoading;
 
   return {
     welcomeName,
     isLoading,
+    hasActiveParty,
   };
 }
 
