@@ -1,133 +1,150 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { useCallback, useEffect, useState } from "react";
+import { MapPin } from "lucide-react";
 import useAuthStore from "@/stores/authStore";
-import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Users } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { partyMemberService } from "../services/partyMemberService";
 
-interface SimpleParty {
+interface RequestRow {
   id: string;
-  drop_off: string | null;
-  meetup_point: string | null;
-  expires_at: Date;
-  host_id?: string;
+  party_id: string;
+  user_id: string;
+  created_at: Date;
+  party?: {
+    drop_off: string | null;
+    meetup_point: string | null;
+  } | null;
+  userProfile?: {
+    id: string;
+    nickname: string | null;
+    full_name: string | null;
+    avatar_url: string | null;
+    gender: string | null;
+    university: string | null;
+  } | null;
 }
 
 export default function CurrentPartySection() {
   const user = useAuthStore((s) => s.user);
-  const supabase = useMemo(() => createClient(), []);
   const [loading, setLoading] = useState(true);
-  const [parties, setParties] = useState<SimpleParty[]>([]);
+  const [requests, setRequests] = useState<RequestRow[]>([]);
+  const [busyIds, setBusyIds] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadRequests = useCallback(async () => {
+    if (!user) {
+      setRequests([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    const result = await partyMemberService.getPendingRequestsForHost();
+    if (!result.success) {
+      setRequests([]);
+      setError(result.error ?? "Failed to load requests");
+    } else {
+      setRequests(result.requests ?? []);
+    }
+    setLoading(false);
+  }, [user]);
 
   useEffect(() => {
-    const load = async () => {
-      if (!user) { setParties([]); setLoading(false); return; }
-      setLoading(true);
-      try {
-        const nowIso = new Date().toISOString();
-  const fields = "id, drop_off, meetup_point, expires_at, host_id";
+    loadRequests();
+  }, [loadRequests]);
 
-        // Parties you host
-        const { data: hosting } = await supabase
-          .from("parties")
-          .select(fields)
-          .eq("host_id", user.id)
-          .eq("is_active", true)
-          .gt("expires_at", nowIso)
-          .order("expires_at", { ascending: true });
+  const handleApprove = useCallback(async (request: RequestRow) => {
+    setBusyIds((ids) => [...ids, request.id]);
+    const result = await partyMemberService.approveRequest(request.id, request.party_id, request.user_id);
+    if (!result.success) {
+      setError(result.error ?? "Failed to approve request");
+    }
+    await loadRequests();
+    setBusyIds((ids) => ids.filter((id) => id !== request.id));
+  }, [loadRequests]);
 
-        // Parties you joined
-        const { data: pm } = await supabase
-          .from("party_members")
-          .select("party_id")
-          .eq("user_id", user.id)
-          .eq("status", "joined");
-        const joinedIds = (pm || []).map((r: any) => r.party_id);
+  const handleDecline = useCallback(async (request: RequestRow) => {
+    setBusyIds((ids) => [...ids, request.id]);
+    const result = await partyMemberService.declineRequest(request.id);
+    if (!result.success) {
+      setError(result.error ?? "Failed to decline request");
+    }
+    await loadRequests();
+    setBusyIds((ids) => ids.filter((id) => id !== request.id));
+  }, [loadRequests]);
 
-        let joined: any[] = [];
-        if (joinedIds.length) {
-          const { data } = await supabase
-            .from("parties")
-            .select(fields)
-            .in("id", joinedIds)
-            .eq("is_active", true)
-            .gt("expires_at", nowIso)
-            .order("expires_at", { ascending: true });
-          joined = data || [];
-        }
+  const getInitials = (profile?: RequestRow["userProfile"]) => {
+    const base = profile?.nickname || profile?.full_name || "?";
+    return base
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+  };
 
-        // Merge unique by id
-        const map = new Map<string, any>();
-        [...(hosting || []), ...joined].forEach((p: any) => map.set(p.id, p));
-        const mergedRaw = Array.from(map.values());
+  if (loading) {
+    return null;
+  }
 
-        // If I am the host for a party and it has zero non-host joined members, exclude it from Current Party
-        const allIds = mergedRaw.map((p: any) => p.id);
-        let nonHostCountByParty: Record<string, number> = {};
-        if (allIds.length) {
-          const { data: members } = await supabase
-            .from('party_members')
-            .select('party_id, user_id, status')
-            .in('party_id', allIds)
-            .eq('status', 'joined');
-          (members || []).forEach((m: any) => {
-            const party = mergedRaw.find((p: any) => p.id === m.party_id);
-            const hostId = party?.host_id;
-            if (hostId && m.user_id !== hostId) {
-              nonHostCountByParty[m.party_id] = (nonHostCountByParty[m.party_id] || 0) + 1;
-            }
-          });
-        }
-
-        const merged = mergedRaw
-          .filter((p: any) => {
-            const isHost = p.host_id === user.id;
-            const nonHost = nonHostCountByParty[p.id] || 0;
-            return !(isHost && nonHost === 0);
-          })
-          .map((p: any) => ({
-            id: p.id,
-            drop_off: p.drop_off ?? null,
-            meetup_point: p.meetup_point ?? null,
-            expires_at: new Date(p.expires_at),
-            host_id: p.host_id,
-          }));
-
-        setParties(merged);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [supabase, user]);
+  if (!error && requests.length === 0) {
+    return null;
+  }
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold text-card-foreground mb-4">Current Party</h2>
-      {loading ? (
-        <Card><CardContent className="p-6 text-sm text-muted-foreground">Checking your current party…</CardContent></Card>
-      ) : parties.length === 0 ? (
-        <Card><CardContent className="p-6 text-sm text-muted-foreground">Youre not in a party right now.</CardContent></Card>
+      <h2 className="text-2xl font-semibold text-card-foreground mb-4">Current Party Requests</h2>
+      {error ? (
+        <Card><CardContent className="p-6 text-sm text-rose-600">{error}</CardContent></Card>
       ) : (
         <div className="grid grid-cols-1 gap-3">
-          {parties.map((p) => (
-            <Card key={p.id}>
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="text-base font-medium">Ride to {p.drop_off || "destination"}</div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-2">
-                    <MapPin className="h-4 w-4" /> {p.meetup_point || "Meetup TBD"}
+          {requests.map((request) => {
+            const partyDescription = request.party?.drop_off || "destination";
+            const meetup = request.party?.meetup_point || "Meetup TBD";
+            const profile = request.userProfile;
+            const busy = busyIds.includes(request.id);
+
+            return (
+              <Card key={request.id}>
+                <CardContent className="p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <Avatar className="h-10 w-10">
+                      {profile?.avatar_url ? (
+                        <AvatarImage src={profile.avatar_url} alt={profile?.nickname || profile?.full_name || "Rider"} />
+                      ) : (
+                        <AvatarFallback>{getInitials(profile)}</AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div className="space-y-1">
+                      <div className="text-sm font-medium">
+                        {profile?.nickname || profile?.full_name || "Rider"}
+                      </div>
+                      {profile?.university ? (
+                        <div className="text-xs text-muted-foreground">{profile.university}</div>
+                      ) : null}
+                      <div className="text-xs text-muted-foreground flex items-center gap-2">
+                        <MapPin className="h-3.5 w-3.5" /> {meetup}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Heading to {partyDescription}</div>
+                    </div>
                   </div>
-                </div>
-                <Button asChild>
-                  <Link href="/current-party">Open</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" disabled={busy} onClick={() => handleDecline(request)}>
+                      Decline
+                    </Button>
+                    <Button size="sm" disabled={busy} onClick={() => handleApprove(request)}>
+                      {busy ? "Processing…" : "Approve"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

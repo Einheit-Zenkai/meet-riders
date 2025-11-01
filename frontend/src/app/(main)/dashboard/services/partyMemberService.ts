@@ -305,37 +305,79 @@ export class PartyMemberService {
       const { data: { user } } = await this.supabase.auth.getUser();
       if (!user) return { success: false, error: 'Not authenticated' };
 
-      const nowIso = new Date().toISOString();
-      // 1) Find active parties I host
-      const { data: myParties, error: pErr } = await this.supabase
-        .from('parties')
-        .select('id, drop_off, meetup_point, expires_at, is_active')
-        .eq('host_id', user.id)
-        .eq('is_active', true)
-        .gt('expires_at', nowIso);
-      if (pErr) {
-        console.error('getPendingRequestsForHost: parties:', pErr);
-        return { success: false, error: 'Failed to fetch parties' };
-      }
-      const partyIds = (myParties || []).map((p: any) => p.id);
-      if (partyIds.length === 0) return { success: true, requests: [] };
+      let requests: any[] | null = null;
+      let lastError: any = null;
+      let partiesMap: Record<string, any> | null = null;
 
-      // 2) Fetch pending requests for those parties
-      const { data: reqs, error: rErr } = await this.supabase
-        .from('party_requests')
-        .select('id, party_id, user_id, created_at, status')
-        .in('party_id', partyIds)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: true });
-      if (rErr) {
-        console.error('getPendingRequestsForHost: requests:', rErr);
-        return { success: false, error: 'Failed to fetch requests' };
+      const rpcVariants = [
+        { p_host_id: user.id },
+        { host_id: user.id },
+        { p_host_uuid: user.id },
+        { host_uuid: user.id },
+        { host: user.id },
+        { user_id: user.id },
+      ];
+
+      for (const args of rpcVariants) {
+        const { data, error } = await this.supabase.rpc('get_pending_requests_for_host', args as any);
+        if (!error) {
+          requests = data || [];
+          lastError = null;
+          break;
+        }
+        lastError = error;
       }
-      const requests = reqs || [];
-      if (requests.length === 0) return { success: true, requests: [] };
+
+      if (!requests) {
+        const { data, error } = await this.supabase.rpc('get_pending_requests_for_host');
+        if (!error) {
+          requests = data || [];
+          lastError = null;
+        } else {
+          lastError = error;
+        }
+      }
+
+      if (!requests && lastError) {
+        const nowIso = new Date().toISOString();
+        const { data: hostParties, error: partiesErr } = await this.supabase
+          .from('parties')
+          .select('id, drop_off, meetup_point, expires_at, is_active')
+          .eq('host_id', user.id)
+          .eq('is_active', true)
+          .gt('expires_at', nowIso);
+        if (partiesErr) {
+          console.error('getPendingRequestsForHost: fallback parties error:', partiesErr, 'rpc error:', lastError);
+          return { success: false, error: 'Failed to fetch requests' };
+        }
+
+        const partyIds = (hostParties || []).map((p: any) => p.id);
+        if (partyIds.length === 0) return { success: true, requests: [] };
+
+        const { data: reqRows, error: reqErr } = await this.supabase
+          .from('party_requests')
+          .select('request_id, party_id, user_id, created_at, status')
+          .in('party_id', partyIds)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: true });
+
+        if (reqErr) {
+          console.error('getPendingRequestsForHost: fallback requests error:', reqErr, 'rpc error:', lastError);
+          return { success: false, error: 'Failed to fetch requests' };
+        }
+
+        requests = reqRows || [];
+        partiesMap = (hostParties || []).reduce((acc: Record<string, any>, p: any) => {
+          acc[String(p.id)] = p;
+          return acc;
+        }, {});
+      }
+
+      const requestsList = requests || [];
+      if (requestsList.length === 0) return { success: true, requests: [] };
 
       // 3) Fetch profiles for requesters
-      const userIds = [...new Set(requests.map((r: any) => r.user_id))];
+      const userIds = [...new Set(requestsList.map((r: any) => r.user_id))];
       let profilesMap: Record<string, any> = {};
       if (userIds.length > 0) {
         const { data: profs } = await this.supabase
@@ -344,17 +386,22 @@ export class PartyMemberService {
           .in('id', userIds);
         (profs || []).forEach((p: any) => { profilesMap[p.id] = p; });
       }
-      const partiesMap: Record<string, any> = {};
-      (myParties || []).forEach((p: any) => { partiesMap[p.id] = p; });
 
-      const enriched = requests.map((r: any) => ({
-        id: r.id,
-        party_id: r.party_id,
-        user_id: r.user_id,
-        created_at: new Date(r.created_at),
-        userProfile: profilesMap[r.user_id],
-        party: partiesMap[r.party_id],
-      }));
+      const enriched = requestsList.map((r: any) => {
+        const fallbackId = `${r.party_id}-${r.user_id}-${r.created_at || r.timestamp || Date.now()}`;
+        const partyDetails = partiesMap?.[String(r.party_id)] || r.party || null;
+        return {
+          id: String(r.id ?? r.request_id ?? fallbackId),
+          party_id: String(r.party_id),
+          user_id: String(r.user_id),
+          created_at: new Date(r.created_at || r.timestamp || Date.now()),
+          userProfile: profilesMap[String(r.user_id)],
+          party: {
+            drop_off: partyDetails?.drop_off ?? r.drop_off ?? null,
+            meetup_point: partyDetails?.meetup_point ?? r.meetup_point ?? null,
+          },
+        };
+      });
       return { success: true, requests: enriched };
     } catch (e: any) {
       return { success: false, error: e?.message || 'Failed to load requests' };
@@ -366,6 +413,10 @@ export class PartyMemberService {
     try {
       const { data: { user } } = await this.supabase.auth.getUser();
       if (!user) return { success: false, error: 'Not authenticated' };
+
+      const normalizedRequestId = Number.isFinite(Number(requestId))
+        ? Number(requestId)
+        : requestId;
 
       // Check eligibility via RPC (capacity/duplicate/expiry)
       const { data: canJoin, error: checkError } = await this.supabase
@@ -388,7 +439,7 @@ export class PartyMemberService {
       const { error: uErr } = await this.supabase
         .from('party_requests')
         .update({ status: 'accepted' })
-        .eq('id', requestId);
+        .eq('request_id', normalizedRequestId);
       if (uErr) console.warn('approveRequest: update request failed (non-blocking):', uErr);
       return { success: true };
     } catch (e: any) {
@@ -399,10 +450,13 @@ export class PartyMemberService {
   /** Host-only: decline a pending request */
   async declineRequest(requestId: string): Promise<{ success: boolean; error?: string }> {
     try {
+      const normalizedRequestId = Number.isFinite(Number(requestId))
+        ? Number(requestId)
+        : requestId;
       const { error } = await this.supabase
         .from('party_requests')
         .update({ status: 'declined' })
-        .eq('id', requestId);
+        .eq('request_id', normalizedRequestId);
       if (error) return { success: false, error: error.message };
       return { success: true };
     } catch (e: any) {

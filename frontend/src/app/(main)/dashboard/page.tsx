@@ -7,7 +7,6 @@ import LoadingScreen from "./components/LoadingScreen";
 import SoiList from "./components/SoiList";
 import { useDashboard } from "./hooks/useDashboard";
 import CurrentPartySection from "./components/CurrentPartySection";
-import HostRequestsPrompt from "./components/HostRequestsPrompt";
 
 export default function HomePage() {
   const { welcomeName, isLoading } = useDashboard();
@@ -18,8 +17,7 @@ export default function HomePage() {
 
   return (
     <div className=" min-h-dvh p-6">
-      <HostButton />
-  <HostRequestsPrompt />
+    <HostButton />
 
       <DashboardHeader
         welcomeName={welcomeName}

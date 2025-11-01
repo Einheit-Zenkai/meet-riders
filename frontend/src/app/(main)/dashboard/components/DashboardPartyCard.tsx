@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Party } from "../types";
@@ -18,7 +18,6 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 // Dynamically import RideMap to avoid SSR issues
 const RideMap = dynamic(() => import("@/components/RideMap"), { ssr: false });
-import { supabase } from '@/lib/supabaseClient';
 
 interface DashboardPartyCardProps {
     party: Party;
@@ -42,6 +41,7 @@ const formatTimeLeft = (ms: number): string => {
 
 export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
     const refreshParties = useDashboardDataStore((state) => state.refreshParties);
+    const supabaseClient = useMemo(() => createClient(), []);
     const [editingExpiry, setEditingExpiry] = useState(false);
     const [newExpiryMinutes, setNewExpiryMinutes] = useState<number | null>(null);
     const [updatingExpiry, setUpdatingExpiry] = useState(false);
@@ -53,8 +53,7 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
         setUpdatingExpiry(true);
         try {
             const newExpiryTimestamp = new Date(Date.now() + newExpiryMinutes * 60_000).toISOString();
-            const supabase = createClient();
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('parties')
                 .update({
                     duration_minutes: newExpiryMinutes,
@@ -136,7 +135,7 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
         try {
             // Always request-based join flow: create a pending request and do not join yet
             // Avoid duplicate pending requests
-            const { data: existing } = await supabase
+            const { data: existing } = await supabaseClient
               .from('party_requests')
               .select('id, status')
               .eq('party_id', party.id)
@@ -147,7 +146,7 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
                 toast.info('Join request already pending');
                 return;
             }
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .rpc('create_join_request', { p_party_id: party.id });
             if (error) {
                 const anyErr: any = error as any;
@@ -202,8 +201,7 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
         if (!confirmed) return;
 
         try {
-            const supabase = createClient();
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('parties')
                 .update({ is_active: false })
                 .eq('id', party.id)

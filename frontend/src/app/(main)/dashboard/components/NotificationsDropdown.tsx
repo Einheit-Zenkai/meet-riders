@@ -150,8 +150,11 @@ export default function NotificationsDropdown() {
       return;
     }
     const updater = supabase.from('party_requests').update({ status: 'accepted' });
+    const normalizedRequestId = requestId && Number.isFinite(Number(requestId))
+      ? Number(requestId)
+      : requestId;
     const { error: updateErr } = requestId
-      ? await updater.eq('id', requestId).select()
+      ? await updater.eq('request_id', normalizedRequestId).select()
       : await updater.eq('party_id', partyId).eq('user_id', requesterId).select();
     if (updateErr) {
       console.error('Failed to update request status:', updateErr);
@@ -164,8 +167,11 @@ export default function NotificationsDropdown() {
     if (!meta) return;
     const { partyId, requesterId, requestId } = meta as any;
     const updater = supabase.from('party_requests').update({ status: 'declined' });
+    const normalizedRequestId = requestId && Number.isFinite(Number(requestId))
+      ? Number(requestId)
+      : requestId;
     const { error } = requestId
-      ? await updater.eq('id', requestId)
+      ? await updater.eq('request_id', normalizedRequestId)
       : await updater.eq('party_id', partyId).eq('user_id', requesterId);
     if (error) {
       console.error('Failed to decline request:', error);

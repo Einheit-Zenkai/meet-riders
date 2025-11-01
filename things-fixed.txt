@@ -1,0 +1,6 @@
+fix: resolve issues with party requests and dashboard display
+
+- Fixed duplicated sidebar in host party page.
+- (TODO) Re-implemented Show of Interest feature.
+- Updated dashboard to show party requests instead of current parties when applicable.
+- Corrected SQL queries and authentication logic for party requests.
