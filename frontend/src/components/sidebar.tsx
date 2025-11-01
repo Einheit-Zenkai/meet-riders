@@ -1,125 +1,21 @@
-"use client";
-
-// src/components/Sidebar.tsx
-
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { User, Settings, Home, Users, Plus, Map as MapIcon, CalendarClock, Clock, type LucideIcon } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
-import useAuthStore from "@/stores/authStore";
-
-interface PartyFlags {
-  hosting: boolean;
-  member: boolean;
-  loaded: boolean;
-}
+import { User, Settings, Home, Users, Plus, Map as MapIcon, MapPin, LayoutGrid, Trophy, CalendarClock, Clock, Flag } from "lucide-react";
 
 export default function Sidebar() {
-  const { user } = useAuthStore();
-  const supabase = useMemo(() => createClient(), []);
-  const [partyFlags, setPartyFlags] = useState<PartyFlags>({ hosting: false, member: false, loaded: false });
-
-  useEffect(() => {
-    let active = true;
-
-    const loadStatus = async () => {
-      if (!user) {
-        if (active) {
-          setPartyFlags({ hosting: false, member: false, loaded: true });
-        }
-        return;
-      }
-
-      const nowIso = new Date().toISOString();
-
-      let hostingActive = false;
-      let memberActive = false;
-
-      try {
-        const { data: hostingRows, error: hostingError } = await supabase
-          .from("parties")
-          .select("id")
-          .eq("host_id", user.id)
-          .eq("is_active", true)
-          .gt("expires_at", nowIso)
-          .limit(1);
-
-        if (hostingError) {
-          console.error("Sidebar host party fetch error:", hostingError);
-        }
-
-        hostingActive = Boolean(hostingRows && hostingRows.length > 0);
-
-        const { data: membershipRows, error: membershipError } = await supabase
-          .from("party_members")
-          .select("party_id")
-          .eq("user_id", user.id)
-          .eq("status", "joined");
-
-        if (membershipError) {
-          console.error("Sidebar membership fetch error:", membershipError);
-        }
-
-        const joinedIds = (membershipRows || []).map((row) => row.party_id);
-        if (joinedIds.length > 0) {
-          const { data: activeJoined, error: activeJoinedError } = await supabase
-            .from("parties")
-            .select("id")
-            .in("id", joinedIds)
-            .eq("is_active", true)
-            .gt("expires_at", nowIso)
-            .limit(1);
-
-          if (activeJoinedError) {
-            console.error("Sidebar active membership fetch error:", activeJoinedError);
-          }
-
-          memberActive = Boolean(activeJoined && activeJoined.length > 0);
-        }
-      } catch (error) {
-        console.error("Sidebar party status check failed:", error);
-      }
-
-      if (active) {
-        setPartyFlags({ hosting: hostingActive, member: memberActive, loaded: true });
-      }
-    };
-
-    loadStatus();
-
-    const interval = setInterval(loadStatus, 30_000);
-
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, [supabase, user]);
-
-  const hasActiveParty = partyFlags.hosting || partyFlags.member;
-
-  const menuItems = useMemo(() => {
-    const items: Array<{ href: string; icon: LucideIcon; label: string }> = [
-      { href: "/dashboard", icon: Home, label: "Home" },
-      { href: "/profile", icon: User, label: "Profile" },
-    ];
-
-    if (!partyFlags.loaded || !hasActiveParty) {
-      items.push({ href: "/hostparty", icon: Plus, label: "Host Party" });
-    }
-
-    items.push(
-      { href: "/soi", icon: CalendarClock, label: "Show of Interest" },
-      { href: "/connections", icon: Users, label: "Connections" },
-    );
-
-    if (partyFlags.loaded && hasActiveParty) {
-      items.push({ href: "/live-party", icon: MapIcon, label: "Live Party" });
-    }
-
-    items.push({ href: "/expired-parties", icon: Clock, label: "Expired" });
-
-    return items;
-  }, [partyFlags.loaded, hasActiveParty]);
+  const menuItems = [
+    { href: "/dashboard", icon: Home, label: "Home" },
+    { href: "/profile", icon: User, label: "Profile" },
+    { href: "/hostparty", icon: Plus, label: "Host Party" },
+    { href: "/current-party", icon: LayoutGrid, label: "Current Party" },
+    { href: "/live-party", icon: MapPin, label: "Live Party" },
+    { href: "/soi", icon: CalendarClock, label: "Show of Interest" },
+    { href: "/connections", icon: Users, label: "Connections" },
+    // { href: "/party", icon: Users, label: "Party Hub" },
+    { href: "/leaderboard", icon: Trophy, label: "Leaderboard" },
+    // { href: "/map", icon: MapIcon, label: "Map" },
+    // { href: "/report", icon: Flag, label: "Report" },
+    { href: "/expired-parties", icon: Clock, label: "Expired" },
+  ];
 
   return (
     <div
