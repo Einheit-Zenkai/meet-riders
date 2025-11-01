@@ -131,6 +131,18 @@ export class PartyMemberService {
    */
   async getPartyMembers(partyId: string): Promise<{ success: boolean; members?: PartyMember[]; error?: string }> {
     try {
+      const { data: partyRow, error: partyError } = await this.supabase
+        .from('parties')
+        .select('host_id, created_at')
+        .eq('id', partyId)
+        .maybeSingle();
+
+      if (partyError) {
+        console.warn('Error fetching party host while loading members:', partyError);
+      }
+      const hostId: string | null = partyRow?.host_id ?? null;
+      const partyCreatedAt = partyRow?.created_at ? new Date(partyRow.created_at) : new Date();
+
       // 1) Fetch raw members without cross-table joins to avoid RLS/relationship issues
       const { data: memberRows, error: memberErr } = await this.supabase
         .from('party_members')
@@ -147,6 +159,9 @@ export class PartyMemberService {
 
       const members = memberRows || [];
       const userIds = members.map((m: any) => m.user_id).filter(Boolean);
+      if (hostId && !userIds.includes(hostId)) {
+        userIds.push(hostId);
+      }
 
       // 2) If there are members, fetch their profiles in a second query
       let profilesById: Record<string, any> = {};
@@ -168,6 +183,16 @@ export class PartyMemberService {
         }
       }
 
+      const transformProfile = (profile: any) => {
+        if (!profile) return undefined;
+        return {
+          ...profile,
+          created_at: profile.created_at ? new Date(profile.created_at) : null,
+          updated_at: profile.updated_at ? new Date(profile.updated_at) : null,
+          birth_date: profile.birth_date ? new Date(profile.birth_date) : null,
+        };
+      };
+
       // 3) Transform and attach profiles when available
       const transformedMembers: PartyMember[] = members.map((member: any) => {
         const profile = profilesById[member.user_id];
@@ -177,16 +202,29 @@ export class PartyMemberService {
           left_at: member.left_at ? new Date(member.left_at) : undefined,
           created_at: new Date(member.created_at),
           updated_at: new Date(member.updated_at),
-          profile: profile
-            ? {
-                ...profile,
-                created_at: profile.created_at ? new Date(profile.created_at) : null,
-                updated_at: profile.updated_at ? new Date(profile.updated_at) : null,
-                birth_date: profile.birth_date ? new Date(profile.birth_date) : null,
-              }
-            : undefined,
+          profile: transformProfile(profile),
         };
       });
+
+      if (hostId) {
+        const hostAlreadyIncluded = transformedMembers.some((member) => member.user_id === hostId);
+        if (!hostAlreadyIncluded) {
+          const hostProfile = transformProfile(profilesById[hostId]);
+          transformedMembers.unshift({
+            id: `host-${partyId}`,
+            party_id: partyId,
+            user_id: hostId,
+            status: 'joined',
+            joined_at: partyCreatedAt,
+            left_at: undefined,
+            pickup_notes: undefined,
+            contact_shared: false,
+            created_at: partyCreatedAt,
+            updated_at: partyCreatedAt,
+            profile: hostProfile,
+          });
+        }
+      }
 
       return { success: true, members: transformedMembers };
     } catch (error) {

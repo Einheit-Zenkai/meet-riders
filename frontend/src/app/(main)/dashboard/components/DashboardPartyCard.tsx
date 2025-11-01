@@ -11,6 +11,7 @@ import useAuthStore from "@/stores/authStore";
 import useDashboardDataStore from "@/stores/dashboardDataStore";
 import { createClient } from "@/utils/supabase/client";
 import { partyMemberService } from "../services/partyMemberService";
+import { getPartyOccupancy } from "@/lib/party";
 import PartyMembersDialog from "./PartyMembersDialog";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -440,7 +441,7 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
                                     <button className="flex items-center gap-1 hover:text-primary transition-colors">
                                         <Users className="w-3.5 h-3.5 text-muted-foreground" />
                                         <span className="font-medium">
-                                            {(party.current_member_count || 0)}/{party.party_size}
+                                            {getPartyOccupancy(party)}/{party.party_size}
                                         </span>
                                     </button>
                                 </PartyMembersDialog>
@@ -489,15 +490,15 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
                                             <Button 
                                                 size="sm"
                                                 onClick={handleJoinParty}
-                                                disabled={isExpired || isJoining || (party.current_member_count || 0) >= party.party_size}
+                                                disabled={isExpired || isJoining || getPartyOccupancy(party) >= party.party_size}
                                                 className="h-8 text-xs"
-                                                variant={isExpired || (party.current_member_count || 0) >= party.party_size ? "outline" : "default"}
+                                                variant={isExpired || getPartyOccupancy(party) >= party.party_size ? "outline" : "default"}
                                             >
                                                 {isJoining 
                                                     ? 'Joining...' 
                                                     : isExpired 
                                                     ? 'Expired' 
-                                                    : (party.current_member_count || 0) >= party.party_size 
+                                                    : getPartyOccupancy(party) >= party.party_size 
                                                     ? 'Full' 
                                                     : 'Join Party'
                                                 }

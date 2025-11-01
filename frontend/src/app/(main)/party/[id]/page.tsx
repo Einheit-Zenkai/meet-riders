@@ -13,6 +13,7 @@ import useDashboardDataStore from "@/stores/dashboardDataStore";
 import { partyMemberService } from "@/app/(main)/dashboard/services/partyMemberService";
 import type { Party, PartyMember } from "@/app/(main)/dashboard/types";
 import { createClient } from "@/utils/supabase/client";
+import { getRemainingSlots } from "@/lib/party";
 
 const formatTimeLeft = (expiresAt?: Date) => {
     if (!expiresAt) return "--:--";
@@ -111,9 +112,8 @@ export default function PartyDetailsPage() {
 
     const openSeats = useMemo(() => {
         if (!party) return 0;
-        const currentCount = party.current_member_count ?? members.length;
-        return Math.max(0, party.party_size - currentCount);
-    }, [party, members.length]);
+        return getRemainingSlots(party, members);
+    }, [party, members]);
 
     const handleJoinParty = async () => {
         if (!party || !user || isHost || isMember) return;

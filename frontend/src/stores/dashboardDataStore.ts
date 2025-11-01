@@ -195,7 +195,14 @@ const useDashboardDataStore = create<DashboardDataState>((set, get) => ({
         userMemberships?.map((membership) => membership.party_id) || []
       );
 
-  const transformedParties = visiblePartiesData.map((party) => ({
+      const transformedParties = visiblePartiesData.map((party) => {
+        const baseCount = memberCountsMap.get(party.id) || 0;
+        const viewerIsHost = party.host_id === user.id;
+        const viewerIsMember = viewerIsHost || userMembershipSet.has(party.id);
+        // Show members excluding host in the main feed to align with join capacity display, but keep track that hosts count separately elsewhere.
+        const visibleCount = baseCount;
+
+        return {
         ...party,
         created_at: new Date(party.created_at),
         updated_at: party.updated_at ? new Date(party.updated_at) : new Date(party.created_at),
@@ -204,9 +211,10 @@ const useDashboardDataStore = create<DashboardDataState>((set, get) => ({
         is_active: Boolean(party.is_active),
         display_university: Boolean(party.display_university),
         host_profile: profilesMap.get(party.host_id),
-        current_member_count: memberCountsMap.get(party.id) || 0,
-        user_is_member: userMembershipSet.has(party.id),
-      })) as Party[];
+          current_member_count: visibleCount,
+        user_is_member: viewerIsMember,
+      };
+      }) as Party[];
 
       set({ parties: transformedParties, partiesLoading: false });
       return "ok";

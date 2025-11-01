@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Users, Crown } from 'lucide-react';
@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { partyMemberService } from "../services/partyMemberService";
 import useAuthStore from "@/stores/authStore";
 import Image from "next/image";
+import { getPartyOccupancy } from "@/lib/party";
 
 interface PartyMembersDialogProps {
   party: Party;
@@ -21,6 +22,10 @@ export default function PartyMembersDialog({ party, children }: PartyMembersDial
   const [isOpen, setIsOpen] = useState(false);
   const { user } = useAuthStore();
   const isHost = user?.id === party.host_id;
+  const visibleMembers = useMemo(
+    () => members.filter((member) => member.user_id !== party.host_id),
+    [members, party.host_id]
+  );
 
   const fetchMembers = useCallback(async () => {
     if (!isOpen) return;
@@ -86,7 +91,7 @@ export default function PartyMembersDialog({ party, children }: PartyMembersDial
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays}d ago`;
   };
-        
+
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -97,7 +102,7 @@ export default function PartyMembersDialog({ party, children }: PartyMembersDial
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="w-5 h-5" />
-            Party Members ({(party.current_member_count || 0)}/{party.party_size})
+            Party Members ({getPartyOccupancy(party, members)}/{party.party_size})
           </DialogTitle>
         </DialogHeader>
         
@@ -156,13 +161,13 @@ export default function PartyMembersDialog({ party, children }: PartyMembersDial
               <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">Join this party to see the member list</p>
             </div>
-          ) : members.length === 0 ? (
+          ) : visibleMembers.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground">
               <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No other members yet</p>
             </div>
           ) : (
-            members.map((member) => (
+            visibleMembers.map((member) => (
               <div key={member.id} className="flex items-center gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors">
                 <Avatar className="w-10 h-10">
                   {member.profile?.avatar_url ? (
