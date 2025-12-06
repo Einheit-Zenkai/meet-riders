@@ -4,9 +4,7 @@
     "jsx": "preserve",
     "incremental": true,
     "paths": {
-      "@/*": ["./src/*"],
-      "@meet-riders/shared": ["../packages/shared/src/index"],
-      "@meet-riders/shared/*": ["../packages/shared/src/*"]
+      "@/*": ["./src/*"]
     },
     "plugins": [
       {
