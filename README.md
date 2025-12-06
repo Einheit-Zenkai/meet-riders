@@ -36,8 +36,8 @@ Meet-Riders is packed with features designed to provide a seamless and secure tr
 
 ## Getting Started
 The app is still in development, but you can set up the dev server to see how it works.
-The frontend is built with Next.js and the backend is built with Supabase.
-You must run frontend and have a supabase backend with simmilar schema to test it out.
+The web client is built with Next.js (see `apps/web`) and the backend is powered by Supabase.
+You must run the web client and have a Supabase backend with a similar schema to test it out.
 
 Make sure you have the following installed:
 - [Git](https://git-scm.com/) (optional, for cloning the repo)
@@ -66,15 +66,17 @@ Make sure you have the following installed:
 4. Click **Open**.
 
 ### Step 3: Install Project Dependencies and Start the Project
- 1. From the VS Code terminal, navigate to the `frontend` directory:
-    ```bash
-    cd frontend
-    ```
- 2. Install the project dependencies using:
-    ```bash
-    pnpm install
-    ```
-3. Start the frontend server:
-    ```bash
-    pnpm dev
-    ```
+ 1. From the VS Code terminal, install workspace dependencies at the repository root:
+     ```bash
+     pnpm install
+     ```
+ 2. To work on the web client, move into `apps/web` and start the dev server:
+     ```bash
+     cd apps/web
+     pnpm dev
+     ```
+ 3. To work on the mobile client, open a new terminal, move into `apps/mobile`, and start Expo:
+     ```bash
+     cd ../../apps/mobile
+     pnpm start
+     ```

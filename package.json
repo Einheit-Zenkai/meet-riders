@@ -1,8 +1,13 @@
 {
   "name": "meet-riders-monorepo",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev:web": "pnpm --filter frontend dev",
+    "dev:web": "pnpm --filter web dev",
+    "dev:mobile": "pnpm --filter mobile start",
     "build": "pnpm --recursive build",
     "lint": "pnpm --recursive lint"
   },

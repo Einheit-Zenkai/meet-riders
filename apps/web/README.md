@@ -1,4 +1,4 @@
-## How to Run This Frontend Website App
+## How to Run the Web App
 
 ### Step 1: Download the Project
 
@@ -20,11 +20,11 @@
 
 ---
 
-### Step 2: Open the Frontend Folder in VS Code
+### Step 2: Open the Web App Folder in VS Code
 
 1. Open **Visual Studio Code**.
 2. Click **File > Open Folder**.
-3. Select the **frontend** folder inside the project directory you just unzipped or cloned.
+3. Select the **apps/web** folder inside the project directory you just unzipped or cloned.
 
 ---
 
@@ -76,5 +76,5 @@ Change files in `app/page.tsx` to update the page. Save changes and see them aut
     ```
     (Requires [Node.js](https://nodejs.org/) to be installed.)
 - **Port in use:** Close other apps using port 3000.
-- **Folder not found:** Double-check you opened the **frontend** folder in VS Code.
+- **Folder not found:** Double-check you opened the **apps/web** folder in VS Code.
 

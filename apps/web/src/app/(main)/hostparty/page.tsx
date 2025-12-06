@@ -1,4 +1,4 @@
-// frontend/src/app/hostparty/page.tsx
+// apps/web/src/app/(main)/hostparty/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";

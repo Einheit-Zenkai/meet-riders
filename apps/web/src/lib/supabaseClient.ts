@@ -1,4 +1,4 @@
-// Inside: frontend/src/lib/supabaseClient.ts
+// Inside: apps/web/src/lib/supabaseClient.ts
 
 import { createClient } from '@supabase/supabase-js'
 

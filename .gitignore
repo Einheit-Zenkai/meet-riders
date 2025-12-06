@@ -1,6 +1,14 @@
 .vscode/
 pnpm-lock.yaml
-frontend/pnpm-lock.yaml
+apps/web/pnpm-lock.yaml
+apps/mobile/.expo
+apps/mobile/.expo-shared
+apps/mobile/android/
+apps/mobile/ios/
+apps/mobile/dist/
+apps/mobile/web-build/
+apps/mobile/.env
+apps/mobile/.env.*
 node_modules/
 package-lock.json
 docs/sql/

@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "MeetRiders Mobile",
+    "slug": "meet-riders-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "meetriders",
+    "userInterfaceStyle": "automatic",
+    "platforms": ["android", "ios", "web"],
+    "splash": {
+      "backgroundColor": "#0f172a",
+      "resizeMode": "contain"
+    },
+    "android": {
+      "package": "com.meetriders.app",
+      "permissions": []
+    },
+    "ios": {
+      "supportsTablet": false
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "00000000-0000-0000-0000-000000000000"
+      }
+    }
+  }
+}

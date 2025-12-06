@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "allowJs": false,
+    "strict": true,
+    "types": ["react", "react-native"],
+    "baseUrl": "./",
+    "paths": {
+      "@meetriders/utils": ["../../packages/utils/src"],
+      "@meetriders/utils/*": ["../../packages/utils/src/*"]
+    }
+  },
+  "include": ["App.tsx", "index.js", "src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
