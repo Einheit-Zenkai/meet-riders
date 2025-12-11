@@ -42,15 +42,16 @@ const LoginScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 
   };
 
   return (
-    <LinearGradient colors={[palette.background, '#111f3a']} style={styles.container}>
+    <LinearGradient colors={[palette.background, palette.backgroundAlt]} style={styles.container}>
       <StatusBar style="light" />
       <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', android: undefined })} style={styles.content}>
-        <View>
+        <View style={styles.brandWrapper}>
           <Text style={styles.brand}>MeetRiders</Text>
-          <Text style={styles.tagline}>Commute together. Arrive together.</Text>
+          <Text style={styles.tagline}>Connect. Ride. Explore.</Text>
         </View>
 
-        <View style={styles.formCard}>
+        <View style={styles.formWrapper}>
+          <View style={styles.formCard}>
           <Text style={styles.sectionTitle}>Sign in</Text>
           <TextInput
             placeholder="Email"
@@ -82,6 +83,7 @@ const LoginScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 
               <Text style={styles.linkText}>Create account</Text>
             </TouchableOpacity>
           </View>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -91,15 +93,22 @@ const LoginScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 56,
+    paddingHorizontal: 20,
+    paddingVertical: 32,
   },
   content: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 32,
+  },
+  brandWrapper: {
+    alignItems: 'center',
+    gap: 12,
+    width: '100%',
   },
   brand: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: '700',
     color: palette.textPrimary,
   },
@@ -107,17 +116,24 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 16,
     color: palette.textSecondary,
+    textAlign: 'center',
+  },
+  formWrapper: {
+    width: '100%',
+    maxWidth: 420,
   },
   formCard: {
     backgroundColor: palette.surface,
-    borderRadius: 16,
-    padding: 24,
-    gap: 16,
+    borderRadius: 24,
+    padding: 26,
+    gap: 18,
+    borderWidth: 1,
+    borderColor: palette.outline,
     shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 10,
   },
   sectionTitle: {
     fontSize: 20,
@@ -125,23 +141,30 @@ const styles = StyleSheet.create({
     color: palette.textPrimary,
   },
   input: {
-    backgroundColor: palette.muted,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    backgroundColor: palette.surfaceAlt,
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
     color: palette.textPrimary,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: palette.outline,
   },
   primaryButton: {
     backgroundColor: palette.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: 14,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
   },
   primaryButtonText: {
     color: palette.textPrimary,
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 16,
   },
   inlineActions: {
@@ -151,7 +174,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     color: palette.accent,
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });
 
