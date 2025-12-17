@@ -16,6 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { login } from '../api/auth';
+import { fetchProfile } from '../api/profile';
 import { palette } from '../theme/colors';
 
 const LoginScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 'Login'>): JSX.Element => {
@@ -31,12 +32,27 @@ const LoginScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 
 
     try {
       setLoading(true);
-      const response = await login({ email, password });
+      const normalizedEmail = email.trim().toLowerCase();
+      const response = await login({ email: normalizedEmail, password });
       setLoading(false);
-      Alert.alert('Welcome back', `Signed in as ${response.user.email}`);
-      // Navigation to dashboard will be wired in a later iteration.
+      let routeName: keyof RootStackParamList = 'Home';
+      const profile = await fetchProfile();
+      const needsOnboarding = !profile || !profile.nickname;
+      if (needsOnboarding) {
+        routeName = 'Onboarding';
+      }
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: routeName, params: routeName === 'Home' ? { email: response.user.email } : undefined }],
+      });
     } catch (error) {
       setLoading(false);
+      if (error instanceof Error && error.message) {
+        Alert.alert('Sign-in failed', error.message);
+        return;
+      }
+
       Alert.alert('Sign-in failed', 'We could not sign you in. Please try again.');
     }
   };
@@ -71,7 +87,7 @@ const LoginScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 
             style={styles.input}
           />
 
-          <TouchableOpacity style={styles.primaryButton} onPress={onSubmit} disabled={loading}>
+          <TouchableOpacity style={[styles.primaryButton, loading && styles.primaryButtonDisabled]} onPress={onSubmit} disabled={loading}>
             {loading ? <ActivityIndicator color={palette.textPrimary} /> : <Text style={styles.primaryButtonText}>Continue</Text>}
           </TouchableOpacity>
 
@@ -110,7 +126,7 @@ const styles = StyleSheet.create({
   brand: {
     fontSize: 36,
     fontWeight: '700',
-    color: palette.textPrimary,
+    color: palette.primary,
   },
   tagline: {
     marginTop: 8,
@@ -161,6 +177,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 6,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.7,
   },
   primaryButtonText: {
     color: palette.textPrimary,

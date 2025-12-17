@@ -9,6 +9,7 @@ import {
   Platform,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
@@ -16,14 +17,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
+import { signup } from '../api/auth';
 
 const SignupScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 'Signup'>): JSX.Element => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const onSubmit = (): void => {
+  const onSubmit = async (): Promise<void> => {
     if (!username || !email || !password || !confirmPassword) {
       Alert.alert('Missing info', 'Please fill in every field to continue.');
       return;
@@ -34,8 +37,38 @@ const SignupScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList,
       return;
     }
 
-    // Supabase signup call will be wired in the integration milestone.
-    Alert.alert('Almost there', 'Account creation will be available after Supabase is connected.');
+    try {
+      setLoading(true);
+      const normalizedEmail = email.trim().toLowerCase();
+      const response = await signup({ username, email: normalizedEmail, password });
+      setLoading(false);
+
+      if (response.confirmationRequired) {
+        Alert.alert('Verify your email', 'Check your inbox for the confirmation link before logging in.');
+        navigation.goBack();
+        return;
+      }
+
+      Alert.alert('Account created', `Signed in as ${response.user.email}`);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Onboarding' }],
+      });
+    } catch (error: unknown) {
+      setLoading(false);
+
+      if (error instanceof Error && error.name === 'UsernameTaken') {
+        Alert.alert('Username already in use', 'Please pick a different username.');
+        return;
+      }
+
+      if (error instanceof Error && error.message) {
+        Alert.alert('Sign up failed', error.message);
+        return;
+      }
+
+      Alert.alert('Sign up failed', 'We could not create your account. Please try again.');
+    }
   };
 
   const handleUsernameChange = (value: string): void => {
@@ -102,8 +135,8 @@ const SignupScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList,
               />
             </View>
 
-            <TouchableOpacity style={styles.primaryButton} onPress={onSubmit}>
-              <Text style={styles.primaryButtonText}>Create Account</Text>
+            <TouchableOpacity style={[styles.primaryButton, loading && styles.primaryButtonDisabled]} onPress={onSubmit} disabled={loading}>
+              {loading ? <ActivityIndicator color={palette.textPrimary} /> : <Text style={styles.primaryButtonText}>Create Account</Text>}
             </TouchableOpacity>
 
             <View style={styles.footerRow}>
@@ -122,7 +155,7 @@ const SignupScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList,
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
   },
   flex: {
     flex: 1,
@@ -130,6 +163,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
+    alignItems: 'center',
     paddingVertical: 40,
   },
   card: {
@@ -144,6 +178,8 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 12 },
     elevation: 10,
+    width: '100%',
+    maxWidth: 420,
   },
   heading: {
     fontSize: 28,
@@ -184,6 +220,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 6,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.7,
   },
   primaryButtonText: {
     color: palette.textPrimary,
