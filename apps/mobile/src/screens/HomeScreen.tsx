@@ -125,7 +125,7 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.bottomItem}
-          onPress={() => Alert.alert('Profile', 'Profile editing will move here soon.')}
+          onPress={() => navigation.navigate('Profile')}
         >
           <Ionicons name="person-circle" size={26} color={palette.textSecondary} />
           <Text style={styles.bottomLabel}>Profile</Text>
@@ -169,6 +169,10 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
                   }
                   if (item.label === 'Host Party') {
                     navigation.navigate('HostParty');
+                    return;
+                  }
+                  if (item.label === 'Profile') {
+                    navigation.navigate('Profile');
                     return;
                   }
                   if (item.label === 'Settings') {

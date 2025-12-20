@@ -9,6 +9,7 @@ import HomeScreen from '../screens/HomeScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import HostPartyScreen from '../screens/HostPartyScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 import { palette } from '../theme/colors';
 
 export type RootStackParamList = {
@@ -19,6 +20,7 @@ export type RootStackParamList = {
   Home: { email: string } | undefined;
   HostParty: undefined;
   Settings: undefined;
+  Profile: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -47,6 +49,7 @@ const AppNavigator = (): JSX.Element => {
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="HostParty" component={HostPartyScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
