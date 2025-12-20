@@ -254,17 +254,6 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
     );
   }
 
-  if (!supabaseAvailable) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.errorLabel}>{errorMessage ?? 'Supabase client unavailable.'}</Text>
-        <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.primaryLabel}>Back</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
@@ -277,189 +266,203 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.sectionCard}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={48} color={palette.textSecondary} />
-          </View>
-          <Text style={styles.sectionTitle}>Profile Picture</Text>
-          <Text style={styles.sectionSubtitle}>Avatar upload from mobile will arrive soon.</Text>
-          {avatarUrl ? <Text style={styles.avatarHint}>Current avatar: {avatarUrl}</Text> : null}
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => Alert.alert('Coming soon', 'Avatar upload is not available in the mobile preview yet.')}
-          >
-            <Text style={styles.secondaryButtonText}>Select Image</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Settings</Text>
-
-          <View style={styles.formField}>
-            <Text style={styles.label}>Username</Text>
-            <TextInput
-              value={username}
-              onChangeText={(value) => setUsername(value.replace(/[^a-z0-9_-]/g, '').toLowerCase())}
-              placeholder="e.g. john_doe"
-              placeholderTextColor={palette.textSecondary}
-              style={styles.input}
-              autoCapitalize="none"
-            />
-            <Text style={styles.helperText}>
-              Your unique identifier. Students should use roll numbers.
-            </Text>
-          </View>
-
-          <View style={styles.formField}>
-            <Text style={styles.label}>Nickname</Text>
-            <TextInput
-              value={nickname}
-              onChangeText={(value) => setNickname(value.replace(/[^a-zA-Z0-9_.]/g, ''))}
-              placeholder="e.g. awesome_user"
-              placeholderTextColor={palette.textSecondary}
-              style={styles.input}
-            />
-          </View>
-
-          <View style={styles.formField}>
-            <Text style={styles.label}>Bio / About Me</Text>
-            <TextInput
-              value={bio}
-              onChangeText={setBio}
-              placeholder="Share something about yourself"
-              placeholderTextColor={palette.textSecondary}
-              style={[styles.input, styles.multilineInput]}
-              multiline
-            />
-          </View>
-
-          <View style={styles.formField}>
-            <Text style={styles.label}>University (optional)</Text>
-            <TextInput
-              value={university}
-              onChangeText={setUniversity}
-              placeholder="e.g. NIT Surat"
-              placeholderTextColor={palette.textSecondary}
-              style={styles.input}
-            />
-            <View style={styles.switchRow}>
-              <Switch value={showUniversity} onValueChange={setShowUniversity} />
-              <Text style={styles.switchLabel}>Display my university publicly</Text>
+        <View style={styles.contentWrapper}>
+          {!supabaseAvailable ? (
+            <View style={styles.offlineNotice}>
+              <Text style={styles.offlineTitle}>Offline preview</Text>
+              <Text style={styles.offlineSubtitle}>
+                Supabase credentials are not configured in this build. You can review settings but changes cannot be saved.
+              </Text>
+              <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.goBack()}>
+                <Text style={styles.secondaryButtonText}>Back to Home</Text>
+              </TouchableOpacity>
             </View>
+          ) : null}
+
+          <View style={styles.sectionCard}>
+            <View style={styles.avatarCircle}>
+              <Ionicons name="person" size={48} color={palette.textSecondary} />
+            </View>
+            <Text style={styles.sectionTitle}>Profile Picture</Text>
+            <Text style={styles.sectionSubtitle}>Avatar upload from mobile will arrive soon.</Text>
+            {avatarUrl ? <Text style={styles.avatarHint}>Current avatar: {avatarUrl}</Text> : null}
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => Alert.alert('Coming soon', 'Avatar upload is not available in the mobile preview yet.')}
+            >
+              <Text style={styles.secondaryButtonText}>Select Image</Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.formField}>
-            <Text style={styles.label}>Punctuality</Text>
-            <View style={styles.punctualityRow}>
-              {[
-                { id: 'on-time', label: 'Always on time' },
-                { id: 'usually-on-time', label: 'Usually on time' },
-                { id: 'flexible', label: 'Flexible' },
-              ].map((option) => (
-                <TouchableOpacity
-                  key={option.id}
-                  style={[styles.punctualityChip, punctuality === option.id && styles.punctualityChipActive]}
-                  onPress={() => setPunctuality(option.id)}
-                >
-                  <Text
-                    style={[styles.punctualityLabel, punctuality === option.id && styles.punctualityLabelActive]}
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Settings</Text>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Username</Text>
+              <TextInput
+                value={username}
+                onChangeText={(value) => setUsername(value.replace(/[^a-z0-9_-]/g, '').toLowerCase())}
+                placeholder="e.g. john_doe"
+                placeholderTextColor={palette.textSecondary}
+                style={styles.input}
+                autoCapitalize="none"
+              />
+              <Text style={styles.helperText}>
+                Your unique identifier. Students should use roll numbers.
+              </Text>
+            </View>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Nickname</Text>
+              <TextInput
+                value={nickname}
+                onChangeText={(value) => setNickname(value.replace(/[^a-zA-Z0-9_.]/g, ''))}
+                placeholder="e.g. awesome_user"
+                placeholderTextColor={palette.textSecondary}
+                style={styles.input}
+              />
+            </View>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Bio / About Me</Text>
+              <TextInput
+                value={bio}
+                onChangeText={setBio}
+                placeholder="Share something about yourself"
+                placeholderTextColor={palette.textSecondary}
+                style={[styles.input, styles.multilineInput]}
+                multiline
+              />
+            </View>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>University (optional)</Text>
+              <TextInput
+                value={university}
+                onChangeText={setUniversity}
+                placeholder="e.g. NIT Surat"
+                placeholderTextColor={palette.textSecondary}
+                style={styles.input}
+              />
+              <View style={styles.switchRow}>
+                <Switch value={showUniversity} onValueChange={setShowUniversity} />
+                <Text style={styles.switchLabel}>Display my university publicly</Text>
+              </View>
+            </View>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Punctuality</Text>
+              <View style={styles.punctualityRow}>
+                {[
+                  { id: 'on-time', label: 'Always on time' },
+                  { id: 'usually-on-time', label: 'Usually on time' },
+                  { id: 'flexible', label: 'Flexible' },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={[styles.punctualityChip, punctuality === option.id && styles.punctualityChipActive]}
+                    onPress={() => setPunctuality(option.id)}
                   >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[styles.punctualityLabel, punctuality === option.id && styles.punctualityLabelActive]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Ideal Pickup/Drop-off Location</Text>
+              <TextInput
+                value={idealLocation}
+                onChangeText={setIdealLocation}
+                placeholder="e.g. Main College Gate"
+                placeholderTextColor={palette.textSecondary}
+                style={styles.input}
+              />
+            </View>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Ideal time of leaving college</Text>
+              <TextInput
+                value={idealDepartureTime}
+                onChangeText={setIdealDepartureTime}
+                placeholder="HH:MM"
+                placeholderTextColor={palette.textSecondary}
+                style={styles.input}
+              />
+            </View>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Travel Preferences</Text>
+              <Text style={styles.helperTextSmall}>Tap to cycle through priority levels (1, 2, 3). Disliked options can be marked below.</Text>
+              <View style={styles.preferenceRow}>{preferenceChips}</View>
+            </View>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Not Preferred Modes</Text>
+              <Text style={styles.helperTextSmall}>Tap to toggle red for disliked rides.</Text>
+              <View style={styles.preferenceRow}>{dislikedRow}</View>
+            </View>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>Phone number (private by default)</Text>
+              <TextInput
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                placeholder="e.g. +91 98765 43210"
+                placeholderTextColor={palette.textSecondary}
+                style={styles.input}
+                keyboardType="phone-pad"
+              />
+              <View style={styles.switchRow}>
+                <Switch value={showPhone} onValueChange={setShowPhone} />
+                <Text style={styles.switchLabel}>Show my contact to people who join my ride</Text>
+              </View>
             </View>
           </View>
 
-          <View style={styles.formField}>
-            <Text style={styles.label}>Ideal Pickup/Drop-off Location</Text>
-            <TextInput
-              value={idealLocation}
-              onChangeText={setIdealLocation}
-              placeholder="e.g. Main College Gate"
-              placeholderTextColor={palette.textSecondary}
-              style={styles.input}
-            />
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Security</Text>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => navigation.navigate('ForgotPassword')}
+            >
+              <Text style={styles.secondaryButtonText}>Change Password</Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.formField}>
-            <Text style={styles.label}>Ideal time of leaving college</Text>
-            <TextInput
-              value={idealDepartureTime}
-              onChangeText={setIdealDepartureTime}
-              placeholder="HH:MM"
-              placeholderTextColor={palette.textSecondary}
-              style={styles.input}
-            />
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Danger Zone</Text>
+            <Text style={styles.helperTextSmall}>Deleting your account is permanent. This action is disabled in the preview build.</Text>
+            <TouchableOpacity
+              style={styles.dangerButton}
+              onPress={() => Alert.alert('Unavailable', 'Account deletion is handled from the web dashboard.')}
+            >
+              <Text style={styles.dangerButtonText}>Delete Account</Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.formField}>
-            <Text style={styles.label}>Travel Preferences</Text>
-            <Text style={styles.helperTextSmall}>Tap to cycle through priority levels (1, 2, 3). Disliked options can be marked below.</Text>
-            <View style={styles.preferenceRow}>{preferenceChips}</View>
-          </View>
+          {errorMessage ? <Text style={styles.errorLabel}>{errorMessage}</Text> : null}
 
-          <View style={styles.formField}>
-            <Text style={styles.label}>Not Preferred Modes</Text>
-            <Text style={styles.helperTextSmall}>Tap to toggle red for disliked rides.</Text>
-            <View style={styles.preferenceRow}>{dislikedRow}</View>
-          </View>
-
-          <View style={styles.formField}>
-            <Text style={styles.label}>Phone number (private by default)</Text>
-            <TextInput
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              placeholder="e.g. +91 98765 43210"
-              placeholderTextColor={palette.textSecondary}
-              style={styles.input}
-              keyboardType="phone-pad"
-            />
-            <View style={styles.switchRow}>
-              <Switch value={showPhone} onValueChange={setShowPhone} />
-              <Text style={styles.switchLabel}>Show my contact to people who join my ride</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Security</Text>
           <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => navigation.navigate('ForgotPassword')}
+            style={[styles.primaryButton, saving && styles.primaryButtonDisabled]}
+            onPress={handleSave}
+            disabled={saving}
           >
-            <Text style={styles.secondaryButtonText}>Change Password</Text>
+            {saving ? (
+              <ActivityIndicator color={palette.textPrimary} />
+            ) : (
+              <Text style={styles.primaryLabel}>Save Settings</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+            <Text style={styles.signOutLabel}>Sign out</Text>
           </TouchableOpacity>
         </View>
-
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Danger Zone</Text>
-          <Text style={styles.helperTextSmall}>Deleting your account is permanent. This action is disabled in the preview build.</Text>
-          <TouchableOpacity
-            style={styles.dangerButton}
-            onPress={() => Alert.alert('Unavailable', 'Account deletion is handled from the web dashboard.')}
-          >
-            <Text style={styles.dangerButtonText}>Delete Account</Text>
-          </TouchableOpacity>
-        </View>
-
-        {errorMessage ? <Text style={styles.errorLabel}>{errorMessage}</Text> : null}
-
-        <TouchableOpacity
-          style={[styles.primaryButton, saving && styles.primaryButtonDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color={palette.textPrimary} />
-          ) : (
-            <Text style={styles.primaryLabel}>Save Settings</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-          <Text style={styles.signOutLabel}>Sign out</Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -477,6 +480,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 40,
     paddingBottom: 16,
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
   },
   backButton: {
     flexDirection: 'row',
@@ -493,8 +499,31 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   content: {
-    paddingHorizontal: 20,
     paddingBottom: 40,
+    width: '100%',
+    alignItems: 'center',
+  },
+  contentWrapper: {
+    width: '100%',
+    maxWidth: 420,
+    paddingHorizontal: 20,
+  },
+  offlineNotice: {
+    backgroundColor: palette.surfaceAlt,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    marginBottom: 20,
+  },
+  offlineTitle: {
+    color: palette.textPrimary,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  offlineSubtitle: {
+    color: palette.textSecondary,
+    marginBottom: 12,
   },
   sectionCard: {
     backgroundColor: palette.surface,
