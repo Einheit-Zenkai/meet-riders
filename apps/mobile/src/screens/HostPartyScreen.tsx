@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Modal,
   Switch,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
@@ -18,28 +19,199 @@ import { Ionicons } from '@expo/vector-icons';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
 import { mobileMenuItems } from '../constants/menuItems';
+import { createParty, loadHostStatus, SupabaseUnavailableError } from '../api/party';
 
 const ridePreferences = ['On Foot', 'Auto', 'Cab', 'Bus', 'SUV'] as const;
-const expiryOptions = ['10', '15', '20', '30', '60'] as const;
+const expiryOptions = [10, 15, 20, 30, 60] as const;
 
 type RidePreference = (typeof ridePreferences)[number];
+type ExpiryOption = (typeof expiryOptions)[number];
 
 type HostPartyScreenProps = NativeStackScreenProps<RootStackParamList, 'HostParty'>;
 
 const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
+  const [loading, setLoading] = useState(true);
+  const [initializationError, setInitializationError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [hostId, setHostId] = useState<string | null>(null);
+  const [alreadyHosting, setAlreadyHosting] = useState(false);
+  const [hostUniversity, setHostUniversity] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [meetupPoint, setMeetupPoint] = useState('');
   const [destination, setDestination] = useState('');
   const [connectionsOnly, setConnectionsOnly] = useState(false);
-  const [showUniversity, setShowUniversity] = useState(true);
+  const [displayUniversity, setDisplayUniversity] = useState(false);
   const [maxPartySize, setMaxPartySize] = useState(2);
   const [comments, setComments] = useState('');
-  const [ridePreference, setRidePreference] = useState<RidePreference>('On Foot');
-  const [expiry, setExpiry] = useState<'10' | '15' | '20' | '30' | '60'>('10');
+  const [selectedRides, setSelectedRides] = useState<RidePreference[]>([]);
+  const [expiry, setExpiry] = useState<ExpiryOption>(10);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const initialize = async (): Promise<void> => {
+      try {
+        const status = await loadHostStatus();
+        if (!mounted) {
+          return;
+        }
+
+        setHostId(status.userId);
+        setAlreadyHosting(status.isHosting);
+        setHostUniversity(status.university);
+        setDisplayUniversity(Boolean(status.university) && status.showUniversityPreference);
+      } catch (error) {
+        if (!mounted) {
+          return;
+        }
+
+        if (error instanceof SupabaseUnavailableError) {
+          setInitializationError('Supabase is not configured; hosting is unavailable.');
+          Alert.alert('Offline mode', 'Supabase client is not configured. Hosting requires a Supabase setup.');
+        } else if (error instanceof Error) {
+          setInitializationError(error.message);
+          Alert.alert('Unable to load', error.message);
+        } else {
+          setInitializationError('An unknown error occurred while initializing host data.');
+          Alert.alert('Unable to load', 'An unknown error occurred while preparing the host screen.');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initialize();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const toggleRidePreference = (option: RidePreference): void => {
+    setSelectedRides((current) => {
+      if (current.includes(option)) {
+        return current.filter((ride) => ride !== option);
+      }
+
+      if (current.length >= 2) {
+        Alert.alert('Limit reached', 'You can select a maximum of two ride preferences.');
+        return current;
+      }
+
+      return [...current, option];
+    });
+  };
 
   const handleStartParty = (): void => {
-    Alert.alert('Party saved', 'Ride hosting will be wired soon.');
+    if (loading || initializationError) {
+      Alert.alert('Unavailable', initializationError ?? 'Please wait for the screen to finish loading.');
+      return;
+    }
+
+    if (!hostId) {
+      Alert.alert('Sign-in required', 'Please sign in again to host a party.');
+      return;
+    }
+
+    if (alreadyHosting) {
+      Alert.alert('Active party found', 'You already have an active party. End it before starting a new one.');
+      return;
+    }
+
+    if (!meetupPoint.trim() || !destination.trim()) {
+      Alert.alert('Missing information', 'Enter both the meetup point and the final destination.');
+      return;
+    }
+
+    if (maxPartySize < 2 || maxPartySize > 7) {
+      Alert.alert('Invalid party size', 'Party size should be between 2 and 7 riders.');
+      return;
+    }
+
+    if (selectedRides.length === 0) {
+      Alert.alert('Choose ride preferences', 'Select at least one preferred ride option.');
+      return;
+    }
+
+    const create = async (): Promise<void> => {
+      try {
+        setSubmitting(true);
+        const result = await createParty({
+          hostId,
+          meetupPoint: meetupPoint.trim(),
+          dropOff: destination.trim(),
+          partySize: maxPartySize,
+          rideOptions: selectedRides,
+          durationMinutes: expiry,
+          isFriendsOnly: connectionsOnly,
+          displayUniversity: displayUniversity && Boolean(hostUniversity),
+          hostUniversity,
+          hostComments: comments.trim() || undefined,
+        });
+
+        if (result.error) {
+          const message = result.error.message || 'Failed to create party. Please try again.';
+          if (message.toLowerCase().includes('active party')) {
+            setAlreadyHosting(true);
+            Alert.alert('Active party found', 'Let your existing party end or cancel it before creating another.');
+            return;
+          }
+
+          Alert.alert('Unable to create party', message);
+          return;
+        }
+
+        setAlreadyHosting(true);
+        Alert.alert('Party created', 'Your ride party is live! Redirecting to home.', [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('Home', { email: '' }),
+          },
+        ]);
+      } catch (error) {
+        if (error instanceof SupabaseUnavailableError) {
+          Alert.alert('Unavailable', 'Supabase client is not configured. Hosting requires Supabase.');
+        } else if (error instanceof Error) {
+          Alert.alert('Unable to create party', error.message);
+        } else {
+          Alert.alert('Unable to create party', 'An unknown error occurred.');
+        }
+      } finally {
+        setSubmitting(false);
+      }
+    };
+
+    create();
   };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={palette.primary} />
+        <Text style={styles.loadingLabel}>Loading host details…</Text>
+      </View>
+    );
+  }
+
+  if (alreadyHosting) {
+    return (
+      <View style={styles.root}>
+        <StatusBar style="light" />
+        <View style={styles.alreadyHostingCard}>
+          <Ionicons name="alert-circle" size={52} color={palette.primary} style={styles.alreadyHostingIcon} />
+          <Text style={styles.alreadyHostingTitle}>You're already hosting!</Text>
+          <Text style={styles.alreadyHostingCopy}>
+            You can only host one party at a time. Cancel your active party or wait for it to expire to start a new one.
+          </Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('Home', { email: '' })}>
+            <Text style={styles.primaryLabel}>Back to Home</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -98,12 +270,23 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
               </View>
               <View style={styles.toggleRow}>
                 <Switch
-                  value={showUniversity}
-                  onValueChange={setShowUniversity}
+                  value={displayUniversity}
+                  onValueChange={(value) => {
+                    if (!hostUniversity) {
+                      Alert.alert('Add university', 'Update your profile with a university to share it.');
+                      return;
+                    }
+
+                    setDisplayUniversity(value);
+                  }}
                   trackColor={{ false: palette.surfaceAlt, true: palette.primary }}
                   thumbColor={palette.textPrimary}
+                  disabled={!hostUniversity}
                 />
-                <Text style={styles.toggleLabel}>Display my university on this party</Text>
+                <Text style={styles.toggleLabel}>
+                  Display my university on this party
+                  {!hostUniversity ? ' (add your university in Profile)' : ''}
+                </Text>
               </View>
             </View>
 
@@ -111,14 +294,14 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
               <Text style={styles.label}>Max party size</Text>
               <View style={styles.partySizeControl}>
                 <TouchableOpacity
-                  onPress={() => setMaxPartySize((value) => Math.max(1, value - 1))}
+                  onPress={() => setMaxPartySize((value) => Math.max(2, value - 1))}
                   style={styles.sizeButton}
                 >
                   <Ionicons name="remove" size={20} color={palette.textPrimary} />
                 </TouchableOpacity>
                 <Text style={styles.partySizeValue}>{maxPartySize}</Text>
                 <TouchableOpacity
-                  onPress={() => setMaxPartySize((value) => Math.min(8, value + 1))}
+                  onPress={() => setMaxPartySize((value) => Math.min(7, value + 1))}
                   style={styles.sizeButton}
                 >
                   <Ionicons name="add" size={20} color={palette.textPrimary} />
@@ -145,12 +328,12 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
             <Text style={styles.label}>Ideal ride from destination</Text>
             <View style={styles.chipRow}>
               {ridePreferences.map((option) => {
-                const active = ridePreference === option;
+                const active = selectedRides.includes(option);
                 return (
                   <TouchableOpacity
                     key={option}
                     style={[styles.chip, active && styles.chipActive]}
-                    onPress={() => setRidePreference(option)}
+                    onPress={() => toggleRidePreference(option)}
                   >
                     <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{option}</Text>
                   </TouchableOpacity>
@@ -183,8 +366,16 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
           <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
             <Text style={styles.cancelLabel}>Cancel Party</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.primaryButton} onPress={handleStartParty}>
-            <Text style={styles.primaryLabel}>Start Party!</Text>
+          <TouchableOpacity
+            style={[styles.primaryButton, submitting && styles.primaryButtonDisabled]}
+            onPress={handleStartParty}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator color={palette.textPrimary} />
+            ) : (
+              <Text style={styles.primaryLabel}>Start Party!</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -221,12 +412,52 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
 };
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: palette.background,
+  },
+  loadingLabel: {
+    marginTop: 16,
+    color: palette.textSecondary,
+    fontSize: 16,
+  },
   root: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: palette.background,
     paddingVertical: 24,
+  },
+  alreadyHostingCard: {
+    width: '90%',
+    maxWidth: 420,
+    backgroundColor: palette.surface,
+    borderRadius: 28,
+    padding: 28,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 12 },
+    alignItems: 'center',
+  },
+  alreadyHostingIcon: {
+    marginBottom: 8,
+  },
+  alreadyHostingTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: palette.textPrimary,
+    marginBottom: 8,
+  },
+  alreadyHostingCopy: {
+    textAlign: 'center',
+    color: palette.textSecondary,
+    fontSize: 15,
+    marginBottom: 18,
   },
   container: {
     width: '90%',
@@ -302,7 +533,6 @@ const styles = StyleSheet.create({
   mapSection: {
     marginBottom: 24,
   },
-    marginBottom: 16,
   mapFrame: {
     height: 180,
     borderRadius: 24,
@@ -312,7 +542,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-    marginBottom: 16,
   mapPlaceholder: {
     color: palette.textSecondary,
     fontStyle: 'italic',
@@ -456,6 +685,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.7,
   },
   primaryLabel: {
     color: palette.textPrimary,

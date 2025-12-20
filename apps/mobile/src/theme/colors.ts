@@ -10,4 +10,5 @@ export const palette = {
   textSecondary: '#fbcfe8',
   muted: '#4a1d2b',
   outline: '#631f35',
+  danger: '#dc2626',
 };

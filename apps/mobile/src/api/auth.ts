@@ -3,6 +3,7 @@ import type { Session, User } from '@supabase/supabase-js';
 
 import { apiClient } from './client';
 import { getSupabaseClient } from '../lib/supabase';
+import { hasEnvVar } from '../lib/env';
 
 export interface LoginPayload {
   email: string;
@@ -37,9 +38,10 @@ const buildAuthResponse = (session: Session | null, user: User | null, fallbackE
 
 export const login = async (payload: LoginPayload): Promise<AuthResponse> => {
   const supabase = getSupabaseClient();
+  const hasRemoteApi = hasEnvVar('EXPO_PUBLIC_API_URL');
 
   if (!supabase) {
-    if (!process.env.EXPO_PUBLIC_API_URL) {
+    if (!hasRemoteApi) {
       return {
         token: 'dev-token',
         user: {
@@ -67,9 +69,10 @@ export const login = async (payload: LoginPayload): Promise<AuthResponse> => {
 
 export const signup = async (payload: SignupPayload): Promise<SignupResponse> => {
   const supabase = getSupabaseClient();
+  const hasRemoteApi = hasEnvVar('EXPO_PUBLIC_API_URL');
 
   if (!supabase) {
-    if (!process.env.EXPO_PUBLIC_API_URL) {
+    if (!hasRemoteApi) {
       return {
         token: 'dev-token',
         user: {

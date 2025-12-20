@@ -66,18 +66,6 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
     };
   }, []);
 
-  const handleSignOut = async (): Promise<void> => {
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
-
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Login' }],
-    });
-  };
-
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
@@ -125,10 +113,6 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
             <Text style={styles.sectionHelper}>No upcoming rides.</Text>
           </View>
         </ScrollView>
-
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-          <Text style={styles.signOutText}>Sign out</Text>
-        </TouchableOpacity>
       </View>
 
       <View style={styles.bottomBar}>
@@ -163,7 +147,7 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.bottomItem}
-          onPress={() => Alert.alert('Settings', 'Settings page coming soon!')}
+          onPress={() => navigation.navigate('Settings')}
         >
           <Ionicons name="settings" size={24} color={palette.textSecondary} />
           <Text style={styles.bottomLabel}>Settings</Text>
@@ -185,6 +169,10 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
                   }
                   if (item.label === 'Host Party') {
                     navigation.navigate('HostParty');
+                    return;
+                  }
+                  if (item.label === 'Settings') {
+                    navigation.navigate('Settings');
                     return;
                   }
                   Alert.alert(item.label, 'Navigation coming soon.');
@@ -331,16 +319,6 @@ const styles = StyleSheet.create({
   secondaryActionText: {
     color: palette.textPrimary,
     fontWeight: '600',
-  },
-  signOutButton: {
-    alignSelf: 'center',
-    paddingHorizontal: 24,
-    marginTop: 8,
-  },
-  signOutText: {
-    color: palette.textSecondary,
-    fontWeight: '600',
-    paddingVertical: 4,
   },
   bottomBar: {
     position: 'absolute',

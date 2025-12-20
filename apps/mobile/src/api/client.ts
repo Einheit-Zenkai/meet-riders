@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const baseURL = process.env.EXPO_PUBLIC_API_URL ?? 'https://api.meetriders.example.com';
+import { getEnvVar } from '../lib/env';
+
+const baseURL = getEnvVar('EXPO_PUBLIC_API_URL') ?? 'https://api.meetriders.example.com';
 
 export const apiClient = axios.create({
   baseURL,
