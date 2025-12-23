@@ -140,7 +140,7 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
 
         <TouchableOpacity
           style={styles.bottomItem}
-          onPress={() => Alert.alert('Connections', 'Connections list coming soon!')}
+          onPress={() => navigation.navigate('Connections')}
         >
           <Ionicons name="people" size={24} color={palette.textSecondary} />
           <Text style={styles.bottomLabel}>Connections</Text>
@@ -173,6 +173,10 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
                   }
                   if (item.label === 'Profile') {
                     navigation.navigate('Profile');
+                    return;
+                  }
+                  if (item.label === 'Connections') {
+                    navigation.navigate('Connections');
                     return;
                   }
                   if (item.label === 'Settings') {
