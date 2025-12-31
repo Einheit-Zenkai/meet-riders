@@ -175,6 +175,10 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
                     navigation.navigate('Profile');
                     return;
                   }
+                  if (item.label === 'Map') {
+                    navigation.navigate('Map');
+                    return;
+                  }
                   if (item.label === 'Connections') {
                     navigation.navigate('Connections');
                     return;

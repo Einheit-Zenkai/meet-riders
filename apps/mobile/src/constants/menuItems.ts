@@ -1,6 +1,7 @@
 export const mobileMenuItems = [
   { label: 'Home', icon: 'home' as const },
   { label: 'Profile', icon: 'person-circle' as const },
+  { label: 'Map', icon: 'map' as const },
   { label: 'Host Party', icon: 'add-circle' as const },
   { label: 'Current Party', icon: 'albums' as const },
   { label: 'Live Party', icon: 'radio' as const },

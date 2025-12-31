@@ -1,10 +1,11 @@
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { getEnvVar } from './env';
 
-type MaybeClient = ReturnType<typeof createClient> | null;
+type AnySupabaseClient = SupabaseClient<any, 'public', any>;
+type MaybeClient = AnySupabaseClient | null;
 
 const supabaseUrl = getEnvVar('EXPO_PUBLIC_SUPABASE_URL');
 const supabaseAnonKey = getEnvVar('EXPO_PUBLIC_SUPABASE_ANON_KEY');
@@ -18,7 +19,7 @@ const createSupabaseClient = (): MaybeClient => {
   }
 
   if (!cachedClient) {
-    cachedClient = createClient(supabaseUrl, supabaseAnonKey, {
+    cachedClient = createClient<any>(supabaseUrl, supabaseAnonKey, {
       auth: {
         storage: AsyncStorage,
         autoRefreshToken: true,

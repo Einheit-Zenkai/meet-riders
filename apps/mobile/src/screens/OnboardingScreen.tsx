@@ -149,12 +149,17 @@ const OnboardingScreen = ({ navigation }: NativeStackScreenProps<RootStackParamL
     try {
       setLoading(true);
       const payload: SaveProfilePayload = {
+        username: nickname.trim().toLowerCase().replace(/[^a-z0-9_-]/g, ''),
         nickname: nickname.trim(),
         bio: bio.trim(),
         gender,
         punctuality,
         idealLocation: idealLocation.trim(),
         idealDepartureTime,
+        university: '',
+        showUniversity: false,
+        phoneNumber: '',
+        showPhone: false,
         rideOptions: preferences,
       };
 

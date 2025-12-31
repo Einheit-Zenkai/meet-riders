@@ -13,10 +13,16 @@
     },
     "android": {
       "package": "com.meetriders.app",
-      "permissions": []
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "MeetRiders uses your location to center the map and help you pin pickup/drop-off points."
+      }
     },
     "web": {
       "bundler": "metro"
