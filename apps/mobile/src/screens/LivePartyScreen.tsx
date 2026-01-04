@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,139 +17,186 @@ import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
 import { getSupabaseClient } from '../lib/supabase';
 import { mobileMenuItems } from '../constants/menuItems';
-import { ActiveParty, cancelParty, fetchMyActiveParties, fetchPartyMembers, PartyMember } from '../api/party';
+import { fetchPartyMembers, PartyMember } from '../api/party';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'CurrentParty'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'LiveParty'>;
 
-const formatTime = (iso: string): string => {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+type PartyRow = {
+  id: string;
+  host_id: string;
+  party_size: number;
+  expires_at: string;
+  meetup_point: string;
+  drop_off: string;
+  host_comments: string | null;
+  is_active: boolean;
 };
 
-const initials = (label: string): string => {
-  const parts = label.split(' ').filter(Boolean);
+const initials = (name?: string | null): string => {
+  if (!name) return 'U';
+  const parts = name.split(' ').filter(Boolean);
   if (parts.length === 0) return 'U';
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
 };
 
-const memberLabel = (m: PartyMember): string => {
-  const full = m.profile.fullName?.trim();
-  if (full) return full;
-  return m.profile.username || 'Rider';
+const displayName = (m: PartyMember): string => {
+  return m.profile.fullName?.trim() || m.profile.username || 'Rider';
 };
 
-const genderIcon = (gender: string | null): { name: keyof typeof Ionicons.glyphMap; color: string } | null => {
-  const g = (gender ?? '').toLowerCase();
-  if (!g) return null;
-  if (g.startsWith('m')) return { name: 'male', color: '#38bdf8' };
-  if (g.startsWith('f')) return { name: 'female', color: '#fb7185' };
-  return { name: 'person', color: palette.textSecondary };
-};
-
-const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
-  const { width } = useWindowDimensions();
-  const isWide = width >= 900;
-
+const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
   const [loading, setLoading] = useState(true);
-  const [loadingMembers, setLoadingMembers] = useState(false);
-  const [parties, setParties] = useState<ActiveParty[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [membersLoading, setMembersLoading] = useState(false);
+
+  const [party, setParty] = useState<PartyRow | null>(null);
   const [members, setMembers] = useState<PartyMember[]>([]);
 
-  const selected = useMemo(() => parties.find((p) => p.id === selectedId) ?? null, [parties, selectedId]);
+  const partyIdParam = route.params?.partyId;
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await fetchMyActiveParties();
-      setParties(data);
-      setSelectedId((prev) => {
-        if (prev && data.some((p) => p.id === prev)) return prev;
-        return data[0]?.id ?? null;
-      });
-    } catch (error: any) {
-      console.error('Failed to load current parties', error);
-      Alert.alert('Current Parties', error.message || 'Failed to load current parties.');
-    } finally {
+  const loadParty = useCallback(async (): Promise<void> => {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      Alert.alert('Live Party', 'Supabase client is not configured.');
       setLoading(false);
+      return;
     }
-  }, []);
 
-  const loadMembers = useCallback(async (partyId: string) => {
-    try {
-      setLoadingMembers(true);
-      const data = await fetchPartyMembers(partyId);
-      setMembers(data);
-    } catch (error: any) {
-      console.error('Failed to load party members', error);
-      Alert.alert('Members', error.message || 'Failed to load members.');
-    } finally {
-      setLoadingMembers(false);
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError) {
+      Alert.alert('Live Party', userError.message);
+      setLoading(false);
+      return;
     }
-  }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+    if (!user) {
+      Alert.alert('Live Party', 'You must be signed in.');
+      setLoading(false);
+      return;
+    }
 
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const supabase = getSupabaseClient();
-        if (!supabase) return;
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        setCurrentUserId(user?.id ?? null);
-      } catch (error) {
-        console.error('Failed to read current user', error);
+    const partyFields = 'id, host_id, party_size, expires_at, meetup_point, drop_off, host_comments, is_active';
+    const nowIso = new Date().toISOString();
+
+    let target: PartyRow | null = null;
+
+    if (partyIdParam) {
+      const { data, error } = await supabase
+        .from('parties')
+        .select(partyFields)
+        .eq('id', partyIdParam)
+        .maybeSingle();
+
+      if (error) {
+        Alert.alert('Live Party', error.message);
+        setLoading(false);
+        return;
       }
-    };
+      target = (data as any) || null;
+    } else {
+      // Fallback: user's most recent expired party (host or joined) matching web behavior.
+      const { data: hosting } = await supabase
+        .from('parties')
+        .select(partyFields)
+        .eq('host_id', user.id)
+        .lte('expires_at', nowIso)
+        .order('expires_at', { ascending: false })
+        .limit(1);
 
-    loadUser();
-  }, []);
+      if (hosting && hosting.length > 0) {
+        target = hosting[0] as any;
+      } else {
+        const { data: memberRows } = await supabase
+          .from('party_members')
+          .select('party_id')
+          .eq('user_id', user.id)
+          .eq('status', 'joined');
+
+        const ids = (memberRows || []).map((r: any) => r.party_id).filter(Boolean);
+        if (ids.length) {
+          const { data: joined } = await supabase
+            .from('parties')
+            .select(partyFields)
+            .in('id', ids)
+            .lte('expires_at', nowIso)
+            .order('expires_at', { ascending: false })
+            .limit(1);
+
+          if (joined && joined.length > 0) {
+            target = joined[0] as any;
+          }
+        }
+      }
+    }
+
+    if (!target) {
+      Alert.alert('Live Party', 'No live party found yet.');
+      navigation.navigate('CurrentParty');
+      setLoading(false);
+      return;
+    }
+
+    setParty(target);
+    setLoading(false);
+  }, [navigation, partyIdParam]);
+
+  const loadMembers = useCallback(
+    async (partyId: string, hostId: string, expiresAt: string): Promise<void> => {
+      try {
+        setMembersLoading(true);
+        const mems = await fetchPartyMembers(partyId);
+        setMembers(mems);
+
+        const nonHost = mems.filter((m) => m.userId !== hostId);
+        const isExpired = new Date(expiresAt).getTime() <= Date.now();
+
+        // Web behavior: live party only available after at least one non-host member joins.
+        if (isExpired && nonHost.length === 0) {
+          Alert.alert('Live Party', 'Live party is available only after at least one member joins.');
+          navigation.navigate('CurrentParty');
+        }
+      } catch (error: any) {
+        console.error('Failed to load live party members', error);
+        Alert.alert('Live Party', error.message || 'Failed to load members.');
+      } finally {
+        setMembersLoading(false);
+      }
+    },
+    [navigation]
+  );
 
   useEffect(() => {
-    if (!selectedId) {
+    let mounted = true;
+    const go = async () => {
+      if (!mounted) return;
+      setLoading(true);
+      await loadParty();
+    };
+    go();
+    return () => {
+      mounted = false;
+    };
+  }, [loadParty]);
+
+  useEffect(() => {
+    if (!party) {
       setMembers([]);
       return;
     }
-    loadMembers(selectedId);
-  }, [selectedId, loadMembers]);
+    loadMembers(party.id, party.host_id, party.expires_at);
+  }, [party, loadMembers]);
 
-  const hostId = selected?.hostId ?? null;
-  const nonHostCount = useMemo(() => {
-    if (!hostId) return members.length;
-    return members.filter((m) => m.userId !== hostId).length;
-  }, [members, hostId]);
+  const host = useMemo(() => members.find((m) => m.userId === party?.host_id) ?? null, [members, party?.host_id]);
+  const nonHostMembers = useMemo(() => {
+    if (!party) return [];
+    return members.filter((m) => m.userId !== party.host_id);
+  }, [members, party]);
 
-  const canCancel = Boolean(selected && currentUserId && selected.hostId === currentUserId);
-
-  const handleCancel = async () => {
-    if (!selected) return;
-
-    Alert.alert('Cancel party', 'This will end your party immediately.', [
-      { text: 'Keep', style: 'cancel' },
-      {
-        text: 'Cancel party',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await cancelParty(selected.id);
-            await load();
-          } catch (error: any) {
-            console.error('Failed to cancel party', error);
-            Alert.alert('Cancel party', error.message || 'Failed to cancel party.');
-          }
-        },
-      },
-    ]);
-  };
+  const openMap = () => navigation.navigate('Map');
 
   return (
     <View style={styles.root}>
@@ -162,122 +208,116 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
             <View style={styles.menuStripe} />
           </Pressable>
 
-          <Text style={styles.title}>Current Parties</Text>
+          <Text style={styles.title}>Live Party</Text>
 
           <View style={styles.bellCircle}>
-            <Ionicons name="notifications" size={18} color={palette.textPrimary} />
+            <Ionicons name="radio" size={18} color={palette.textPrimary} />
           </View>
         </View>
 
         {loading ? (
           <View style={styles.loadingWrap}>
             <ActivityIndicator size="large" color={palette.primary} />
-            <Text style={styles.loadingText}>Loading parties…</Text>
+            <Text style={styles.loadingText}>Preparing live party…</Text>
           </View>
-        ) : parties.length === 0 ? (
+        ) : !party ? (
           <View style={styles.emptyWrap}>
-            <Text style={styles.emptyTitle}>No active parties</Text>
-            <Text style={styles.emptyText}>Host a party or join one to see it here.</Text>
+            <Text style={styles.emptyTitle}>No live party found</Text>
+            <Text style={styles.emptyText}>Try again after your party ends.</Text>
           </View>
         ) : (
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={[styles.scrollArea, isWide ? styles.scrollAreaWide : undefined]}
-            showsVerticalScrollIndicator={false}
-          >
+          <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Your Active Parties</Text>
-              <View style={styles.partyList}>
-                {parties.map((party) => {
-                  const active = party.id === selectedId;
-                  return (
-                    <Pressable
-                      key={party.id}
-                      style={[styles.partyItem, active ? styles.partyItemActive : undefined]}
-                      onPress={() => setSelectedId(party.id)}
-                    >
-                      <View style={styles.partyItemRow}>
-                        <Text style={styles.partyItemTitle} numberOfLines={1}>
-                          {party.dropOff}
-                        </Text>
-                        <Text style={styles.partyItemTime}>{formatTime(party.expiresAt)}</Text>
-                      </View>
-                      <Text style={styles.partyItemMeta} numberOfLines={1}>
-                        Meet: {party.meetupPoint}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+              <Text style={styles.cardTitle}>Ride to {party.drop_off}</Text>
+
+              <View style={styles.statRow}>
+                <View style={styles.statItem}>
+                  <Ionicons name="location-outline" size={18} color={palette.textSecondary} />
+                  <Text style={styles.statText} numberOfLines={1}>
+                    Meetup: {party.meetup_point}
+                  </Text>
+                </View>
+                <View style={styles.statItemRight}>
+                  <Ionicons name="people-outline" size={18} color={palette.textSecondary} />
+                  <Text style={styles.statText}>Size: {members.length}/{party.party_size}</Text>
+                </View>
               </View>
+
+              <View style={styles.sectionBox}>
+                <Text style={styles.sectionLabel}>Host notes</Text>
+                <Text style={styles.sectionValue}>{party.host_comments?.trim() || '—'}</Text>
+              </View>
+
+              <Pressable style={styles.mapButton} onPress={openMap}>
+                <Ionicons name="map-outline" size={18} color={palette.textPrimary} />
+                <Text style={styles.mapButtonText}>Open map</Text>
+              </Pressable>
             </View>
 
-            {selected ? (
-              <View style={styles.card}>
-                <Text style={styles.detailTitle}>Ride to {selected.dropOff}</Text>
-
-                <View style={styles.detailStatsRow}>
-                  <View style={styles.detailStat}>
-                    <Ionicons name="location-outline" size={18} color={palette.textSecondary} />
-                    <Text style={styles.detailStatText} numberOfLines={1}>
-                      Meetup: {selected.meetupPoint}
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Host</Text>
+              {membersLoading ? (
+                <View style={styles.inlineLoading}>
+                  <ActivityIndicator size="small" color={palette.primary} />
+                  <Text style={styles.loadingTextSmall}>Loading host…</Text>
+                </View>
+              ) : host ? (
+                <View style={styles.memberRow}>
+                  <View style={styles.memberAvatar}>
+                    <Text style={styles.memberAvatarText}>{initials(displayName(host))}</Text>
+                  </View>
+                  <View style={styles.memberMain}>
+                    <Text style={styles.memberName} numberOfLines={1}>
+                      {displayName(host)}
+                    </Text>
+                    <Text style={styles.memberHandle} numberOfLines={1}>
+                      @{host.profile.username}
                     </Text>
                   </View>
-
-                  <View style={styles.detailStatRight}>
-                    <Ionicons name="people-outline" size={18} color={palette.textSecondary} />
-                    <Text style={styles.detailStatText}>Size: {nonHostCount}/{selected.partySize}</Text>
-                  </View>
+                  <Ionicons name="star" size={16} color={palette.accent} />
                 </View>
+              ) : (
+                <Text style={styles.sectionValue}>Host profile unavailable.</Text>
+              )}
+            </View>
 
-                <View style={styles.sectionBox}>
-                  <Text style={styles.sectionLabel}>Host notes</Text>
-                  <Text style={styles.sectionValue}>{selected.hostComments?.trim() || '—'}</Text>
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Members</Text>
+              {membersLoading ? (
+                <View style={styles.inlineLoading}>
+                  <ActivityIndicator size="small" color={palette.primary} />
+                  <Text style={styles.loadingTextSmall}>Loading members…</Text>
                 </View>
-
-                <View style={styles.sectionBox}>
-                  <Text style={styles.sectionLabel}>Members</Text>
-                  {loadingMembers ? (
-                    <View style={styles.membersLoading}>
-                      <ActivityIndicator size="small" color={palette.primary} />
-                      <Text style={styles.membersLoadingText}>Loading members…</Text>
-                    </View>
-                  ) : members.length === 0 ? (
-                    <Text style={styles.sectionValue}>No members yet.</Text>
-                  ) : (
-                    <View style={styles.memberList}>
-                      {members.map((m) => {
-                        const label = memberLabel(m);
-                        const icon = genderIcon(m.profile.gender);
-                        return (
-                          <View key={m.userId} style={styles.memberRow}>
-                            <View style={styles.memberAvatar}>
-                              <Text style={styles.memberAvatarText}>{initials(label)}</Text>
-                            </View>
-                            <Text style={styles.memberName} numberOfLines={1}>
-                              {m.profile.username || label}
+              ) : nonHostMembers.length === 0 ? (
+                <Text style={styles.sectionValue}>No members yet.</Text>
+              ) : (
+                <View style={styles.memberList}>
+                  {nonHostMembers.map((m) => {
+                    const canShowPhone = Boolean(m.profile.showPhone && m.profile.phoneNumber);
+                    return (
+                      <View key={m.userId} style={styles.memberRow}>
+                        <View style={styles.memberAvatar}>
+                          <Text style={styles.memberAvatarText}>{initials(displayName(m))}</Text>
+                        </View>
+                        <View style={styles.memberMain}>
+                          <Text style={styles.memberName} numberOfLines={1}>
+                            {displayName(m)}
+                          </Text>
+                          <Text style={styles.memberHandle} numberOfLines={1}>
+                            @{m.profile.username}
+                          </Text>
+                          {canShowPhone ? (
+                            <Text style={styles.memberPhone} numberOfLines={1}>
+                              {m.profile.phoneNumber}
                             </Text>
-                            {m.isHost && (
-                              <Ionicons name="star" size={16} color={palette.accent} style={styles.memberBadge} />
-                            )}
-                            {icon && (
-                              <Ionicons name={icon.name} size={16} color={icon.color} style={styles.memberBadge} />
-                            )}
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
+                          ) : null}
+                        </View>
+                      </View>
+                    );
+                  })}
                 </View>
-
-                <Pressable
-                  style={[styles.cancelButton, !canCancel ? styles.cancelButtonDisabled : undefined]}
-                  onPress={handleCancel}
-                  disabled={!canCancel}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel party</Text>
-                </Pressable>
-              </View>
-            ) : null}
+              )}
+            </View>
           </ScrollView>
         )}
       </View>
@@ -334,6 +374,10 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
                   }
                   if (item.label === 'Show of Interest') {
                     navigation.navigate('ShowInterest');
+                    return;
+                  }
+                  if (item.label === 'Map') {
+                    navigation.navigate('Map');
                     return;
                   }
                   if (item.label === 'Connections') {
@@ -426,17 +470,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  scroll: {
-    flex: 1,
-  },
-  scrollArea: {
-    paddingBottom: 160,
-    gap: 16,
-  },
-  scrollAreaWide: {
-    maxWidth: 1100,
-    alignSelf: 'center',
-  },
   loadingWrap: {
     flex: 1,
     alignItems: 'center',
@@ -444,6 +477,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   loadingText: {
+    color: palette.textSecondary,
+    fontWeight: '600',
+  },
+  loadingTextSmall: {
     color: palette.textSecondary,
     fontWeight: '600',
   },
@@ -463,8 +500,12 @@ const styles = StyleSheet.create({
     color: palette.textSecondary,
     textAlign: 'center',
   },
-  body: {
+  scroll: {
     flex: 1,
+  },
+  scrollArea: {
+    paddingBottom: 160,
+    gap: 16,
   },
   card: {
     borderRadius: 24,
@@ -474,67 +515,30 @@ const styles = StyleSheet.create({
     padding: 18,
     gap: 14,
   },
-  sectionTitle: {
-    color: palette.textPrimary,
-    fontWeight: '800',
-    fontSize: 16,
-  },
-  partyList: {
-    gap: 12,
-  },
-  partyItem: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: palette.outline,
-    backgroundColor: palette.surfaceAlt,
-    padding: 12,
-  },
-  partyItemActive: {
-    borderColor: palette.primary,
-    backgroundColor: palette.backgroundAlt,
-  },
-  partyItemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  partyItemTitle: {
-    color: palette.textPrimary,
-    fontWeight: '800',
-    flex: 1,
-  },
-  partyItemTime: {
-    color: palette.textSecondary,
-    fontWeight: '700',
-  },
-  partyItemMeta: {
-    marginTop: 6,
-    color: palette.textSecondary,
-  },
-  detailTitle: {
+  cardTitle: {
     color: palette.textPrimary,
     fontWeight: '900',
     fontSize: 18,
   },
-  detailStatsRow: {
+  statRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: 14,
     flexWrap: 'wrap',
   },
-  detailStat: {
+  statItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     flex: 1,
   },
-  detailStatRight: {
+  statItemRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  detailStatText: {
+  statText: {
     color: palette.textPrimary,
     fontWeight: '700',
     flexShrink: 1,
@@ -558,18 +562,31 @@ const styles = StyleSheet.create({
     color: palette.textPrimary,
     fontWeight: '600',
   },
-  membersLoading: {
+  sectionTitle: {
+    color: palette.textPrimary,
+    fontWeight: '800',
+    fontSize: 16,
+  },
+  mapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: palette.primary,
+    borderRadius: 16,
+    paddingVertical: 12,
+  },
+  mapButtonText: {
+    color: palette.textPrimary,
+    fontWeight: '800',
+  },
+  inlineLoading: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  membersLoadingText: {
-    color: palette.textSecondary,
-    fontWeight: '600',
-  },
   memberList: {
     gap: 10,
-    marginTop: 4,
   },
   memberRow: {
     flexDirection: 'row',
@@ -597,27 +614,22 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontSize: 12,
   },
+  memberMain: {
+    flex: 1,
+  },
   memberName: {
     color: palette.textPrimary,
     fontWeight: '800',
-    flex: 1,
   },
-  memberBadge: {
-    marginLeft: 2,
+  memberHandle: {
+    color: palette.textSecondary,
+    fontWeight: '600',
+    marginTop: 2,
   },
-  cancelButton: {
-    alignSelf: 'flex-start',
-    borderRadius: 16,
-    backgroundColor: palette.danger,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  cancelButtonDisabled: {
-    opacity: 0.6,
-  },
-  cancelButtonText: {
-    color: palette.textPrimary,
-    fontWeight: '900',
+  memberPhone: {
+    color: palette.textSecondary,
+    fontWeight: '600',
+    marginTop: 2,
   },
   bottomBar: {
     position: 'absolute',
@@ -706,4 +718,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CurrentPartyScreen;
+export default LivePartyScreen;

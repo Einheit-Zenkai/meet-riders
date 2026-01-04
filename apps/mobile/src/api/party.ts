@@ -117,6 +117,8 @@ export type PartyMemberProfile = {
   fullName: string | null;
   gender: string | null;
   avatarUrl: string | null;
+  phoneNumber?: string | null;
+  showPhone?: boolean | null;
 };
 
 export type PartyMember = {
@@ -190,6 +192,8 @@ const mapProfileRow = (row: any): PartyMemberProfile => ({
   fullName: row?.full_name ?? null,
   gender: row?.gender ?? null,
   avatarUrl: row?.avatar_url ?? null,
+  phoneNumber: row?.phone_number ?? null,
+  showPhone: row?.show_phone ?? null,
 });
 
 export const fetchMyActiveParties = async (): Promise<ActiveParty[]> => {
@@ -246,7 +250,7 @@ export const fetchPartyMembers = async (partyId: string): Promise<PartyMember[]>
 
   const { data, error } = await supabase
     .from('party_members')
-    .select('user_id, status, profile:user_id(id, username, full_name, gender, avatar_url)')
+    .select('user_id, status, profile:user_id(id, username, full_name, gender, avatar_url, phone_number, show_phone)')
     .eq('party_id', partyId)
     .eq('status', 'joined');
 
@@ -264,7 +268,7 @@ export const fetchPartyMembers = async (partyId: string): Promise<PartyMember[]>
   if (hostId && !members.some((m) => m.userId === hostId)) {
     const hostProfileRes = await supabase
       .from('profiles')
-      .select('id, username, full_name, gender, avatar_url')
+      .select('id, username, full_name, gender, avatar_url, phone_number, show_phone')
       .eq('id', hostId)
       .maybeSingle();
 

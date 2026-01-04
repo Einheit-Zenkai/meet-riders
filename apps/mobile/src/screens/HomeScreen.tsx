@@ -175,6 +175,10 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
                       navigation.navigate('CurrentParty');
                       return;
                     }
+                    if (item.label === 'Live Party') {
+                      navigation.navigate('LiveParty');
+                      return;
+                    }
                   if (item.label === 'Show of Interest') {
                     navigation.navigate('ShowInterest');
                     return;

@@ -14,6 +14,7 @@ import ConnectionsScreen from '../screens/ConnectionsScreen';
 import MapScreen from '../screens/MapScreen';
 import ShowInterestScreen from '../screens/ShowInterestScreen';
 import CurrentPartyScreen from '../screens/CurrentPartyScreen';
+import LivePartyScreen from '../screens/LivePartyScreen';
 import { palette } from '../theme/colors';
 
 export type RootStackParamList = {
@@ -29,6 +30,7 @@ export type RootStackParamList = {
   Connections: undefined;
   Map: undefined;
   CurrentParty: undefined;
+  LiveParty: { partyId?: string } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -62,6 +64,7 @@ const AppNavigator = (): JSX.Element => {
         <Stack.Screen name="Connections" component={ConnectionsScreen} />
         <Stack.Screen name="Map" component={MapScreen} />
         <Stack.Screen name="CurrentParty" component={CurrentPartyScreen} />
+        <Stack.Screen name="LiveParty" component={LivePartyScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
