@@ -28,7 +28,12 @@ export type RootStackParamList = {
   Settings: undefined;
   Profile: undefined;
   Connections: undefined;
-  Map: undefined;
+  Map:
+    | {
+        start?: { latitude: number; longitude: number };
+        destination?: { latitude: number; longitude: number };
+      }
+    | undefined;
   CurrentParty: undefined;
   LiveParty: { partyId?: string } | undefined;
 };

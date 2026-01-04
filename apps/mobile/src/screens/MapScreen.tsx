@@ -8,7 +8,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import MapView, { type LongPressEvent, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type MapPressEvent } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
@@ -29,11 +29,14 @@ const defaultCoordinate: Coordinate = {
   longitude: 77.5946,
 };
 
-const MapScreen = ({ navigation }: MapScreenProps): JSX.Element => {
+const MapScreen = ({ navigation, route }: MapScreenProps): JSX.Element => {
   const [locating, setLocating] = useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [currentCoordinate, setCurrentCoordinate] = useState<Coordinate>(defaultCoordinate);
-  const [pinnedCoordinate, setPinnedCoordinate] = useState<Coordinate | null>(null);
+  const [startCoordinate, setStartCoordinate] = useState<Coordinate | null>(route.params?.start ?? null);
+  const [destinationCoordinate, setDestinationCoordinate] = useState<Coordinate | null>(
+    route.params?.destination ?? null
+  );
 
   useEffect(() => {
     let active = true;
@@ -74,30 +77,52 @@ const MapScreen = ({ navigation }: MapScreenProps): JSX.Element => {
 
   const region = useMemo(
     () => ({
-      latitude: pinnedCoordinate?.latitude ?? currentCoordinate.latitude,
-      longitude: pinnedCoordinate?.longitude ?? currentCoordinate.longitude,
+      latitude:
+        destinationCoordinate?.latitude ?? startCoordinate?.latitude ?? currentCoordinate.latitude,
+      longitude:
+        destinationCoordinate?.longitude ?? startCoordinate?.longitude ?? currentCoordinate.longitude,
       latitudeDelta: 0.02,
       longitudeDelta: 0.02,
     }),
-    [currentCoordinate, pinnedCoordinate]
+    [currentCoordinate, destinationCoordinate, startCoordinate]
   );
 
-  const handleLongPress = (event: LongPressEvent): void => {
+  const handlePress = (event: MapPressEvent): void => {
     const { coordinate } = event.nativeEvent;
-    setPinnedCoordinate({ latitude: coordinate.latitude, longitude: coordinate.longitude });
+    if (startCoordinate && destinationCoordinate) {
+      return;
+    }
+    const next = { latitude: coordinate.latitude, longitude: coordinate.longitude };
+    if (!startCoordinate) {
+      setStartCoordinate(next);
+      return;
+    }
+    setDestinationCoordinate(next);
   };
 
   const handleConfirmPin = (): void => {
-    if (!pinnedCoordinate) {
-      Alert.alert('Drop a pin', 'Long-press on the map to place a pin.');
+    if (!startCoordinate || !destinationCoordinate) {
+      Alert.alert('Set both points', 'Tap once to set Start, then tap again to set Destination.');
       return;
     }
 
     Alert.alert(
-      'Pinned location',
-      `Lat: ${pinnedCoordinate.latitude.toFixed(6)}\nLng: ${pinnedCoordinate.longitude.toFixed(6)}`
+      'Route pins',
+      `Start: ${startCoordinate.latitude.toFixed(6)}, ${startCoordinate.longitude.toFixed(6)}\n` +
+        `Destination: ${destinationCoordinate.latitude.toFixed(6)}, ${destinationCoordinate.longitude.toFixed(6)}`
     );
   };
+
+  const clearPins = (): void => {
+    setStartCoordinate(null);
+    setDestinationCoordinate(null);
+  };
+
+  const placementStep = startCoordinate
+    ? destinationCoordinate
+      ? 'Both points set'
+      : 'Tap to set Destination'
+    : 'Tap to set Start';
 
   return (
     <View style={styles.root}>
@@ -122,33 +147,54 @@ const MapScreen = ({ navigation }: MapScreenProps): JSX.Element => {
           style={StyleSheet.absoluteFillObject}
           provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
           initialRegion={region}
-          onLongPress={handleLongPress}
+          onPress={handlePress}
           showsUserLocation
           showsMyLocationButton
         >
-          {pinnedCoordinate ? <Marker coordinate={pinnedCoordinate} title="Pinned location" /> : null}
+          {startCoordinate ? (
+            <Marker coordinate={startCoordinate} title="Start" pinColor={palette.primary} />
+          ) : null}
+          {destinationCoordinate ? (
+            <Marker coordinate={destinationCoordinate} title="Destination" pinColor={palette.accent} />
+          ) : null}
+          {startCoordinate && destinationCoordinate ? (
+            <Polyline
+              coordinates={[startCoordinate, destinationCoordinate]}
+              strokeColor={palette.primary}
+              strokeWidth={4}
+            />
+          ) : null}
         </MapView>
 
         <View style={styles.bottomCard}>
           <View style={styles.bottomRow}>
             <Ionicons name="pin" size={18} color={palette.textPrimary} />
-            <Text style={styles.bottomTitle}>Drop a pin</Text>
+            <Text style={styles.bottomTitle}>Pick route points</Text>
           </View>
-          <Text style={styles.bottomSubtitle}>Long-press anywhere on the map to pin a location.</Text>
+          <Text style={styles.bottomSubtitle}>{placementStep}</Text>
 
           {locationError ? <Text style={styles.warningText}>{locationError}</Text> : null}
 
           <View style={styles.pinPreview}>
-            <Text style={styles.pinLabel}>Pinned:</Text>
+            <Text style={styles.pinLabel}>Start:</Text>
             <Text style={styles.pinValue}>
-              {pinnedCoordinate
-                ? `${pinnedCoordinate.latitude.toFixed(6)}, ${pinnedCoordinate.longitude.toFixed(6)}`
+              {startCoordinate
+                ? `${startCoordinate.latitude.toFixed(6)}, ${startCoordinate.longitude.toFixed(6)}`
+                : 'None'}
+            </Text>
+          </View>
+
+          <View style={styles.pinPreview}>
+            <Text style={styles.pinLabel}>Destination:</Text>
+            <Text style={styles.pinValue}>
+              {destinationCoordinate
+                ? `${destinationCoordinate.latitude.toFixed(6)}, ${destinationCoordinate.longitude.toFixed(6)}`
                 : 'None'}
             </Text>
           </View>
 
           <View style={styles.actionsRow}>
-            <TouchableOpacity style={styles.secondaryButton} onPress={() => setPinnedCoordinate(null)}>
+            <TouchableOpacity style={styles.secondaryButton} onPress={clearPins}>
               <Text style={styles.secondaryButtonText}>Clear</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.primaryButton} onPress={handleConfirmPin}>
