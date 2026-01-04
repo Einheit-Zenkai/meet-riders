@@ -293,23 +293,6 @@ const styles = StyleSheet.create({
     color: palette.textPrimary,
     fontWeight: '700',
   },
-  webNotice: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  webTitle: {
-    color: palette.textPrimary,
-    fontWeight: '700',
-    fontSize: 18,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  webSubtitle: {
-    color: palette.textSecondary,
-    textAlign: 'center',
-  },
 });
 
 export default MapScreen;

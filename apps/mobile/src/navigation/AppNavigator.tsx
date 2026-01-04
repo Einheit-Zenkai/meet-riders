@@ -12,6 +12,8 @@ import SettingsScreen from '../screens/SettingsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ConnectionsScreen from '../screens/ConnectionsScreen';
 import MapScreen from '../screens/MapScreen';
+import ShowInterestScreen from '../screens/ShowInterestScreen';
+import CurrentPartyScreen from '../screens/CurrentPartyScreen';
 import { palette } from '../theme/colors';
 
 export type RootStackParamList = {
@@ -21,10 +23,12 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Home: { email: string } | undefined;
   HostParty: undefined;
+  ShowInterest: undefined;
   Settings: undefined;
   Profile: undefined;
   Connections: undefined;
   Map: undefined;
+  CurrentParty: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -52,10 +56,12 @@ const AppNavigator = (): JSX.Element => {
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="HostParty" component={HostPartyScreen} />
+        <Stack.Screen name="ShowInterest" component={ShowInterestScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="Connections" component={ConnectionsScreen} />
         <Stack.Screen name="Map" component={MapScreen} />
+        <Stack.Screen name="CurrentParty" component={CurrentPartyScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

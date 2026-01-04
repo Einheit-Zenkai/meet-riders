@@ -164,10 +164,10 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
         }
 
         setAlreadyHosting(true);
-        Alert.alert('Party created', 'Your ride party is live! Redirecting to home.', [
+        Alert.alert('Party created', 'Your ride party is live! Opening Current Party.', [
           {
             text: 'OK',
-            onPress: () => navigation.navigate('Home', { email: '' }),
+            onPress: () => navigation.navigate('CurrentParty'),
           },
         ]);
       } catch (error) {
@@ -205,8 +205,8 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
           <Text style={styles.alreadyHostingCopy}>
             You can only host one party at a time. Cancel your active party or wait for it to expire to start a new one.
           </Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('Home', { email: '' })}>
-            <Text style={styles.primaryLabel}>Back to Home</Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('CurrentParty')}>
+            <Text style={styles.primaryLabel}>View Current Party</Text>
           </TouchableOpacity>
         </View>
       </View>
