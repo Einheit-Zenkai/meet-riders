@@ -2,10 +2,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -14,6 +16,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
+import { getSupabaseClient } from '../lib/supabase';
+import { mobileMenuItems } from '../constants/menuItems';
 import { ActiveParty, cancelParty, fetchMyActiveParties, fetchPartyMembers, PartyMember } from '../api/party';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CurrentParty'>;
@@ -48,6 +52,9 @@ const genderIcon = (gender: string | null): { name: keyof typeof Ionicons.glyphM
 const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -92,6 +99,23 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
   }, [load]);
 
   useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const supabase = getSupabaseClient();
+        if (!supabase) return;
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        setCurrentUserId(user?.id ?? null);
+      } catch (error) {
+        console.error('Failed to read current user', error);
+      }
+    };
+
+    loadUser();
+  }, []);
+
+  useEffect(() => {
     if (!selectedId) {
       setMembers([]);
       return;
@@ -105,7 +129,7 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
     return members.filter((m) => m.userId !== hostId).length;
   }, [members, hostId]);
 
-  const canCancel = Boolean(selected && hostId && selected.hostId === hostId && members.some((m) => m.isHost));
+  const canCancel = Boolean(selected && currentUserId && selected.hostId === currentUserId);
 
   const handleCancel = async () => {
     if (!selected) return;
@@ -129,63 +153,66 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
   };
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.topBar}>
-        <Pressable style={styles.topPill} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={18} color={palette.textPrimary} />
-          <Text style={styles.topPillText}>Back</Text>
-        </Pressable>
+    <View style={styles.root}>
+      <View style={styles.container}>
+        <View style={styles.headerRow}>
+          <Pressable style={styles.menuButton} onPress={() => setMenuOpen(true)}>
+            <View style={styles.menuStripe} />
+            <View style={styles.menuStripe} />
+            <View style={styles.menuStripe} />
+          </Pressable>
 
-        <Text style={styles.title}>Current Parties</Text>
+          <Text style={styles.title}>Current Parties</Text>
 
-        <View style={styles.topRight}>
           <View style={styles.bellCircle}>
             <Ionicons name="notifications" size={18} color={palette.textPrimary} />
           </View>
         </View>
-      </View>
 
-      {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={palette.primary} />
-          <Text style={styles.loadingText}>Loading parties…</Text>
-        </View>
-      ) : parties.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <Text style={styles.emptyTitle}>No active parties</Text>
-          <Text style={styles.emptyText}>Host a party or join one to see it here.</Text>
-        </View>
-      ) : (
-        <View style={[styles.body, { flexDirection: isWide ? 'row' : 'column' }]}>
-          <View style={[styles.sidebar, { width: isWide ? 320 : '100%' }]}>
-            <Text style={styles.sidebarTitle}>Your Active Parties</Text>
-            <ScrollView contentContainerStyle={styles.sidebarList} showsVerticalScrollIndicator={false}>
-              {parties.map((party) => {
-                const active = party.id === selectedId;
-                return (
-                  <Pressable
-                    key={party.id}
-                    style={[styles.partyItem, active ? styles.partyItemActive : undefined]}
-                    onPress={() => setSelectedId(party.id)}
-                  >
-                    <View style={styles.partyItemRow}>
-                      <Text style={styles.partyItemTitle} numberOfLines={1}>
-                        {party.dropOff}
-                      </Text>
-                      <Text style={styles.partyItemTime}>{formatTime(party.expiresAt)}</Text>
-                    </View>
-                    <Text style={styles.partyItemMeta} numberOfLines={1}>
-                      Meet: {party.meetupPoint}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+        {loading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color={palette.primary} />
+            <Text style={styles.loadingText}>Loading parties…</Text>
           </View>
+        ) : parties.length === 0 ? (
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyTitle}>No active parties</Text>
+            <Text style={styles.emptyText}>Host a party or join one to see it here.</Text>
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={[styles.scrollArea, isWide ? styles.scrollAreaWide : undefined]}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Your Active Parties</Text>
+              <View style={styles.partyList}>
+                {parties.map((party) => {
+                  const active = party.id === selectedId;
+                  return (
+                    <Pressable
+                      key={party.id}
+                      style={[styles.partyItem, active ? styles.partyItemActive : undefined]}
+                      onPress={() => setSelectedId(party.id)}
+                    >
+                      <View style={styles.partyItemRow}>
+                        <Text style={styles.partyItemTitle} numberOfLines={1}>
+                          {party.dropOff}
+                        </Text>
+                        <Text style={styles.partyItemTime}>{formatTime(party.expiresAt)}</Text>
+                      </View>
+                      <Text style={styles.partyItemMeta} numberOfLines={1}>
+                        Meet: {party.meetupPoint}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
 
-          <View style={[styles.detail, { flex: isWide ? 1 : 0 }]}>
             {selected ? (
-              <View style={styles.detailCard}>
+              <View style={styles.card}>
                 <Text style={styles.detailTitle}>Ride to {selected.dropOff}</Text>
 
                 <View style={styles.detailStatsRow}>
@@ -196,7 +223,7 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
                     </Text>
                   </View>
 
-                  <View style={styles.detailStat}>
+                  <View style={styles.detailStatRight}>
                     <Ionicons name="people-outline" size={18} color={palette.textSecondary} />
                     <Text style={styles.detailStatText}>Size: {nonHostCount}/{selected.partySize}</Text>
                   </View>
@@ -242,70 +269,169 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
                   )}
                 </View>
 
-                {selected.hostId && (
-                  <Pressable
-                    style={[styles.cancelButton, !canCancel ? styles.cancelButtonDisabled : undefined]}
-                    onPress={handleCancel}
-                    disabled={!canCancel}
-                  >
-                    <Text style={styles.cancelButtonText}>Cancel party</Text>
-                  </Pressable>
-                )}
+                <Pressable
+                  style={[styles.cancelButton, !canCancel ? styles.cancelButtonDisabled : undefined]}
+                  onPress={handleCancel}
+                  disabled={!canCancel}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel party</Text>
+                </Pressable>
               </View>
             ) : null}
+          </ScrollView>
+        )}
+      </View>
+
+      <View style={styles.bottomBar}>
+        <TouchableOpacity style={styles.bottomItem} onPress={() => navigation.navigate('Home', undefined)}>
+          <Ionicons name="home" size={24} color={palette.textSecondary} />
+          <Text style={styles.bottomLabel}>Home</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.bottomItem} onPress={() => navigation.navigate('Profile')}>
+          <Ionicons name="person-circle" size={26} color={palette.textSecondary} />
+          <Text style={styles.bottomLabel}>Profile</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('HostParty')}>
+          <Ionicons name="add" size={32} color={palette.textPrimary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.bottomItem} onPress={() => navigation.navigate('Connections')}>
+          <Ionicons name="people" size={24} color={palette.textSecondary} />
+          <Text style={styles.bottomLabel}>Connections</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.bottomItem} onPress={() => navigation.navigate('Settings')}>
+          <Ionicons name="settings" size={24} color={palette.textSecondary} />
+          <Text style={styles.bottomLabel}>Settings</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Modal visible={menuOpen} animationType="fade" transparent>
+        <View style={styles.menuOverlay}>
+          <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)} />
+          <View style={styles.menuPanel}>
+            {mobileMenuItems.map((item) => (
+              <TouchableOpacity
+                key={item.label}
+                style={styles.menuItem}
+                onPress={() => {
+                  setMenuOpen(false);
+                  if (item.label === 'Home') {
+                    navigation.navigate('Home', undefined);
+                    return;
+                  }
+                  if (item.label === 'Host Party') {
+                    navigation.navigate('HostParty');
+                    return;
+                  }
+                  if (item.label === 'Current Party') {
+                    navigation.navigate('CurrentParty');
+                    return;
+                  }
+                  if (item.label === 'Show of Interest') {
+                    navigation.navigate('ShowInterest');
+                    return;
+                  }
+                  if (item.label === 'Connections') {
+                    navigation.navigate('Connections');
+                    return;
+                  }
+                  if (item.label === 'Profile') {
+                    navigation.navigate('Profile');
+                    return;
+                  }
+                  if (item.label === 'Settings') {
+                    navigation.navigate('Settings');
+                    return;
+                  }
+                  Alert.alert(item.label, 'Navigation coming soon.');
+                }}
+              >
+                <Ionicons name={item.icon} size={22} color={palette.textPrimary} />
+                <Text style={styles.menuLabel}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
-      )}
+      </Modal>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  screen: {
+  root: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: palette.background,
-    paddingTop: 28,
+    paddingVertical: 24,
   },
-  topBar: {
+  container: {
+    width: '90%',
+    maxWidth: 420,
+    flex: 1,
+    backgroundColor: palette.backgroundAlt,
+    borderRadius: 32,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    shadowColor: '#000',
+    shadowOpacity: 0.28,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 18 },
+    elevation: 16,
+    paddingBottom: 110,
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
+    marginBottom: 16,
   },
-  topPill: {
-    flexDirection: 'row',
+  menuButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: palette.surface,
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 14,
+    justifyContent: 'space-between',
+    paddingVertical: 10,
     borderWidth: 1,
     borderColor: palette.outline,
-    backgroundColor: palette.surface,
   },
-  topPillText: {
-    color: palette.textPrimary,
-    fontWeight: '700',
+  menuStripe: {
+    width: 22,
+    height: 3,
+    backgroundColor: palette.textPrimary,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginVertical: 2,
   },
   title: {
     color: palette.textPrimary,
     fontWeight: '800',
     fontSize: 20,
   },
-  topRight: {
-    width: 80,
-    alignItems: 'flex-end',
-  },
   bellCircle: {
     width: 34,
     height: 34,
-    borderRadius: 17,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: palette.outline,
     backgroundColor: palette.surface,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollArea: {
+    paddingBottom: 160,
+    gap: 16,
+  },
+  scrollAreaWide: {
+    maxWidth: 1100,
+    alignSelf: 'center',
   },
   loadingWrap: {
     flex: 1,
@@ -335,29 +461,25 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
-    paddingHorizontal: 18,
-    gap: 18,
-    paddingBottom: 20,
   },
-  sidebar: {
-    borderRadius: 14,
+  card: {
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: palette.outline,
     backgroundColor: palette.surface,
-    padding: 16,
+    padding: 18,
+    gap: 14,
   },
-  sidebarTitle: {
+  sectionTitle: {
     color: palette.textPrimary,
     fontWeight: '800',
     fontSize: 16,
-    marginBottom: 12,
   },
-  sidebarList: {
+  partyList: {
     gap: 12,
-    paddingBottom: 6,
   },
   partyItem: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: palette.outline,
     backgroundColor: palette.surfaceAlt,
@@ -386,17 +508,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     color: palette.textSecondary,
   },
-  detail: {
-    flex: 1,
-  },
-  detailCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: palette.outline,
-    backgroundColor: palette.surface,
-    padding: 18,
-    gap: 14,
-  },
   detailTitle: {
     color: palette.textPrimary,
     fontWeight: '900',
@@ -413,7 +524,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     flex: 1,
-    minWidth: 220,
+  },
+  detailStatRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   detailStatText: {
     color: palette.textPrimary,
@@ -488,7 +603,7 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     alignSelf: 'flex-start',
-    borderRadius: 12,
+    borderRadius: 16,
     backgroundColor: palette.danger,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -499,6 +614,91 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: palette.textPrimary,
     fontWeight: '900',
+  },
+  bottomBar: {
+    position: 'absolute',
+    bottom: 18,
+    alignSelf: 'center',
+    width: '90%',
+    maxWidth: 420,
+    backgroundColor: palette.backgroundAlt,
+    borderRadius: 32,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 12,
+  },
+  bottomItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+  },
+  bottomLabel: {
+    color: palette.textSecondary,
+    fontWeight: '600',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  fab: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: palette.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+    paddingTop: 80,
+    paddingHorizontal: 20,
+    position: 'relative',
+  },
+  menuBackdrop: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 0,
+  },
+  menuPanel: {
+    width: 260,
+    backgroundColor: palette.surface,
+    borderRadius: 20,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    zIndex: 1,
+    marginTop: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  menuLabel: {
+    color: palette.textPrimary,
+    fontWeight: '700',
   },
 });
 
