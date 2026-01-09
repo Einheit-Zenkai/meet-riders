@@ -9,9 +9,9 @@ import {
   Switch,
   ActivityIndicator,
   Alert,
+  StatusBar,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
@@ -256,7 +256,7 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar barStyle="light-content" />
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={20} color={palette.textPrimary} />

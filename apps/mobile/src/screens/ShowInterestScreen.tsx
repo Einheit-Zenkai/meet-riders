@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,10 @@ import {
   Alert,
   Switch,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { StatusBar } from 'expo-status-bar';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
@@ -45,44 +46,49 @@ const ShowInterestScreen = ({ navigation }: ShowInterestScreenProps): JSX.Elemen
   const [selectedRides, setSelectedRides] = useState<RidePreference[]>([]);
   const [startTime, setStartTime] = useState(''); // HH:MM
 
-  useEffect(() => {
-    let mounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
 
-    const initialize = async (): Promise<void> => {
-      try {
-        const status = await loadSoiStatus();
-        if (!mounted) return;
+      const initialize = async (): Promise<void> => {
+        try {
+          setLoading(true);
+          setInitializationError(null);
 
-        setHostId(status.userId);
-        setAlreadyHosting(status.isHosting);
-        setHostUniversity(status.university);
-        setDisplayUniversity(Boolean(status.university) && status.showUniversityPreference);
-      } catch (error) {
-        if (!mounted) return;
+          const status = await loadSoiStatus();
+          if (!mounted) return;
 
-        if (error instanceof SupabaseUnavailableError) {
-          setInitializationError('Supabase is not configured; SOI is unavailable.');
-          Alert.alert('Offline mode', 'Supabase client is not configured. SOI requires a Supabase setup.');
-        } else if (error instanceof Error) {
-          setInitializationError(error.message);
-          Alert.alert('Unable to load', error.message);
-        } else {
-          setInitializationError('An unknown error occurred while initializing SOI.');
-          Alert.alert('Unable to load', 'An unknown error occurred while preparing the SOI screen.');
+          setHostId(status.userId);
+          setAlreadyHosting(status.isHosting);
+          setHostUniversity(status.university);
+          setDisplayUniversity(Boolean(status.university) && status.showUniversityPreference);
+        } catch (error) {
+          if (!mounted) return;
+
+          if (error instanceof SupabaseUnavailableError) {
+            setInitializationError('Supabase is not configured; SOI is unavailable.');
+            Alert.alert('Offline mode', 'Supabase client is not configured. SOI requires a Supabase setup.');
+          } else if (error instanceof Error) {
+            setInitializationError(error.message);
+            Alert.alert('Unable to load', error.message);
+          } else {
+            setInitializationError('An unknown error occurred while initializing SOI.');
+            Alert.alert('Unable to load', 'An unknown error occurred while preparing the SOI screen.');
+          }
+        } finally {
+          if (mounted) {
+            setLoading(false);
+          }
         }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
+      };
 
-    initialize();
+      initialize();
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
+      return () => {
+        mounted = false;
+      };
+    }, [])
+  );
 
   const toggleRidePreference = (option: RidePreference): void => {
     setSelectedRides((current) => {
@@ -190,7 +196,7 @@ const ShowInterestScreen = ({ navigation }: ShowInterestScreenProps): JSX.Elemen
   if (alreadyHosting) {
     return (
       <View style={styles.root}>
-        <StatusBar style="light" />
+        <StatusBar barStyle="light-content" />
         <View style={styles.alreadyHostingCard}>
           <Ionicons name="alert-circle" size={52} color={palette.primary} style={styles.alreadyHostingIcon} />
           <Text style={styles.alreadyHostingTitle}>You're already hosting an SOI!</Text>
@@ -207,7 +213,7 @@ const ShowInterestScreen = ({ navigation }: ShowInterestScreenProps): JSX.Elemen
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar barStyle="light-content" />
       <View style={styles.container}>
         <View style={styles.headerRow}>
           <Pressable style={styles.menuButton} onPress={() => setMenuOpen(true)}>
@@ -305,7 +311,14 @@ const ShowInterestScreen = ({ navigation }: ShowInterestScreenProps): JSX.Elemen
               </View>
               <Switch
                 value={displayUniversity && Boolean(hostUniversity)}
-                onValueChange={(next) => setDisplayUniversity(next)}
+                onValueChange={(next) => {
+                  if (!hostUniversity) {
+                    Alert.alert('Add university', 'Update your profile with a university to share it.');
+                    return;
+                  }
+
+                  setDisplayUniversity(next);
+                }}
                 trackColor={{ false: palette.surface, true: palette.primary }}
                 thumbColor={palette.textPrimary}
                 disabled={!hostUniversity}
@@ -333,32 +346,42 @@ const ShowInterestScreen = ({ navigation }: ShowInterestScreenProps): JSX.Elemen
                 style={styles.menuItem}
                 onPress={() => {
                   setMenuOpen(false);
-                  if (item.label === 'Home') return;
-                  if (item.label === 'Host Party') {
-                    navigation.navigate('HostParty');
-                    return;
+                  switch (item.label) {
+                    case 'Home':
+                      navigation.navigate('Home');
+                      return;
+                    case 'Profile':
+                      navigation.navigate('Profile');
+                      return;
+                    case 'Map':
+                      navigation.navigate('Map');
+                      return;
+                    case 'Host Party':
+                      navigation.navigate('HostParty');
+                      return;
+                    case 'Current Party':
+                      navigation.navigate('CurrentParty');
+                      return;
+                    case 'Live Party':
+                      navigation.navigate('LiveParty');
+                      return;
+                    case 'Show of Interest':
+                      return;
+                    case 'Connections':
+                      navigation.navigate('Connections');
+                      return;
+                    case 'Leaderboard':
+                      navigation.navigate('Leaderboard');
+                      return;
+                    case 'Expired':
+                      navigation.navigate('Expired');
+                      return;
+                    case 'Settings':
+                      navigation.navigate('Settings');
+                      return;
+                    default:
+                      Alert.alert(item.label, 'Navigation coming soon.');
                   }
-                  if (item.label === 'Show of Interest') {
-                    navigation.navigate('ShowInterest');
-                    return;
-                  }
-                  if (item.label === 'Profile') {
-                    navigation.navigate('Profile');
-                    return;
-                  }
-                  if (item.label === 'Map') {
-                    navigation.navigate('Map');
-                    return;
-                  }
-                  if (item.label === 'Connections') {
-                    navigation.navigate('Connections');
-                    return;
-                  }
-                  if (item.label === 'Settings') {
-                    navigation.navigate('Settings');
-                    return;
-                  }
-                  Alert.alert(item.label, 'Navigation coming soon.');
                 }}
               >
                 <Ionicons name={item.icon} size={22} color={palette.textPrimary} />

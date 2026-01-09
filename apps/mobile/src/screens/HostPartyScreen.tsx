@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,10 @@ import {
   Switch,
   Alert,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { StatusBar } from 'expo-status-bar';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
@@ -46,48 +47,52 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
   const [selectedRides, setSelectedRides] = useState<RidePreference[]>([]);
   const [expiry, setExpiry] = useState<ExpiryOption>(10);
 
-  useEffect(() => {
-    let mounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
 
-    const initialize = async (): Promise<void> => {
-      try {
-        const status = await loadHostStatus();
-        if (!mounted) {
-          return;
+      const initialize = async (): Promise<void> => {
+        try {
+          setLoading(true);
+          setInitializationError(null);
+          const status = await loadHostStatus();
+          if (!mounted) {
+            return;
+          }
+
+          setHostId(status.userId);
+          setAlreadyHosting(status.isHosting);
+          setHostUniversity(status.university);
+          setDisplayUniversity(Boolean(status.university) && status.showUniversityPreference);
+        } catch (error) {
+          if (!mounted) {
+            return;
+          }
+
+          if (error instanceof SupabaseUnavailableError) {
+            setInitializationError('Supabase is not configured; hosting is unavailable.');
+            Alert.alert('Offline mode', 'Supabase client is not configured. Hosting requires a Supabase setup.');
+          } else if (error instanceof Error) {
+            setInitializationError(error.message);
+            Alert.alert('Unable to load', error.message);
+          } else {
+            setInitializationError('An unknown error occurred while initializing host data.');
+            Alert.alert('Unable to load', 'An unknown error occurred while preparing the host screen.');
+          }
+        } finally {
+          if (mounted) {
+            setLoading(false);
+          }
         }
+      };
 
-        setHostId(status.userId);
-        setAlreadyHosting(status.isHosting);
-        setHostUniversity(status.university);
-        setDisplayUniversity(Boolean(status.university) && status.showUniversityPreference);
-      } catch (error) {
-        if (!mounted) {
-          return;
-        }
+      initialize();
 
-        if (error instanceof SupabaseUnavailableError) {
-          setInitializationError('Supabase is not configured; hosting is unavailable.');
-          Alert.alert('Offline mode', 'Supabase client is not configured. Hosting requires a Supabase setup.');
-        } else if (error instanceof Error) {
-          setInitializationError(error.message);
-          Alert.alert('Unable to load', error.message);
-        } else {
-          setInitializationError('An unknown error occurred while initializing host data.');
-          Alert.alert('Unable to load', 'An unknown error occurred while preparing the host screen.');
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    initialize();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+      return () => {
+        mounted = false;
+      };
+    }, [])
+  );
 
   const toggleRidePreference = (option: RidePreference): void => {
     setSelectedRides((current) => {
@@ -198,7 +203,7 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
   if (alreadyHosting) {
     return (
       <View style={styles.root}>
-        <StatusBar style="light" />
+        <StatusBar barStyle="light-content" />
         <View style={styles.alreadyHostingCard}>
           <Ionicons name="alert-circle" size={52} color={palette.primary} style={styles.alreadyHostingIcon} />
           <Text style={styles.alreadyHostingTitle}>You're already hosting!</Text>
@@ -215,7 +220,7 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar barStyle="light-content" />
       <View style={styles.container}>
         <View style={styles.headerRow}>
           <Pressable style={styles.menuButton} onPress={() => setMenuOpen(true)}>
@@ -390,14 +395,42 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
                 style={styles.menuItem}
                 onPress={() => {
                   setMenuOpen(false);
-                  if (item.label === 'Home') {
-                    navigation.navigate('Home', { email: '' });
-                    return;
+                  switch (item.label) {
+                    case 'Home':
+                      navigation.navigate('Home');
+                      return;
+                    case 'Profile':
+                      navigation.navigate('Profile');
+                      return;
+                    case 'Map':
+                      navigation.navigate('Map');
+                      return;
+                    case 'Host Party':
+                      return;
+                    case 'Current Party':
+                      navigation.navigate('CurrentParty');
+                      return;
+                    case 'Live Party':
+                      navigation.navigate('LiveParty');
+                      return;
+                    case 'Show of Interest':
+                      navigation.navigate('ShowInterest');
+                      return;
+                    case 'Connections':
+                      navigation.navigate('Connections');
+                      return;
+                    case 'Leaderboard':
+                      navigation.navigate('Leaderboard');
+                      return;
+                    case 'Expired':
+                      navigation.navigate('Expired');
+                      return;
+                    case 'Settings':
+                      navigation.navigate('Settings');
+                      return;
+                    default:
+                      Alert.alert(item.label, 'Navigation coming soon.');
                   }
-                  if (item.label === 'Host Party') {
-                    return;
-                  }
-                  Alert.alert(item.label, 'Navigation coming soon.');
                 }}
               >
                 <Ionicons name={item.icon} size={22} color={palette.textPrimary} />

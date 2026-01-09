@@ -10,8 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -192,7 +192,7 @@ const OnboardingScreen = ({ navigation }: NativeStackScreenProps<RootStackParamL
   if (initialising) {
     return (
       <LinearGradient colors={[palette.background, palette.backgroundAlt]} style={styles.loadingShell}>
-        <StatusBar style="light" />
+        <StatusBar barStyle="light-content" />
         <ActivityIndicator color={palette.textPrimary} size="large" />
       </LinearGradient>
     );
@@ -200,7 +200,7 @@ const OnboardingScreen = ({ navigation }: NativeStackScreenProps<RootStackParamL
 
   return (
     <LinearGradient colors={[palette.background, palette.backgroundAlt]} style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar barStyle="light-content" />
       <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', android: undefined })} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.card}>

@@ -9,10 +9,10 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { StatusBar } from 'expo-status-bar';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { login } from '../api/auth';
@@ -59,7 +59,7 @@ const LoginScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 
 
   return (
     <LinearGradient colors={[palette.background, palette.backgroundAlt]} style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar barStyle="light-content" />
       <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', android: undefined })} style={styles.content}>
         <View style={styles.brandWrapper}>
           <Text style={styles.brand}>MeetRiders</Text>

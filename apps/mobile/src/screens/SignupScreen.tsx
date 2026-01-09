@@ -10,9 +10,9 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
@@ -78,7 +78,7 @@ const SignupScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList,
 
   return (
     <LinearGradient colors={[palette.background, palette.backgroundAlt]} style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar barStyle="light-content" />
       <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', android: undefined })} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.scrollContent} bounces={false} keyboardShouldPersistTaps="handled">
           <View style={styles.card}>

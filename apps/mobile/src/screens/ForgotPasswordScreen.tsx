@@ -1,7 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { StatusBar, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
@@ -10,7 +9,7 @@ import { palette } from '../theme/colors';
 const ForgotPasswordScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>): JSX.Element => {
   return (
     <LinearGradient colors={[palette.background, palette.backgroundAlt]} style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar barStyle="light-content" />
       <View style={styles.content}>
         <Text style={styles.heading}>Reset password</Text>
         <Text style={styles.copy}>Password reset flow will go here shortly. Head back to the login screen in the meantime.</Text>

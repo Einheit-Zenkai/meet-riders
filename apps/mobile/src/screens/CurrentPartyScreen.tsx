@@ -344,6 +344,18 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
                     navigation.navigate('Profile');
                     return;
                   }
+                  if (item.label === 'Map') {
+                    navigation.navigate('Map');
+                    return;
+                  }
+                  if (item.label === 'Leaderboard') {
+                    navigation.navigate('Leaderboard');
+                    return;
+                  }
+                  if (item.label === 'Expired') {
+                    navigation.navigate('Expired');
+                    return;
+                  }
                   if (item.label === 'Settings') {
                     navigation.navigate('Settings');
                     return;

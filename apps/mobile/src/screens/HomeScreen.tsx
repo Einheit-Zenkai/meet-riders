@@ -9,9 +9,9 @@ import {
   Alert,
   Pressable,
   Modal,
+  StatusBar,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
@@ -68,7 +68,7 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar barStyle="light-content" />
       <View style={styles.container}>
         <View style={styles.headerRow}>
           <Pressable style={styles.menuButton} onPress={() => setMenuOpen(true)}>
@@ -197,6 +197,14 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
                   }
                   if (item.label === 'Settings') {
                     navigation.navigate('Settings');
+                    return;
+                  }
+                  if (item.label === 'Leaderboard') {
+                    navigation.navigate('Leaderboard');
+                    return;
+                  }
+                  if (item.label === 'Expired') {
+                    navigation.navigate('Expired');
                     return;
                   }
                   Alert.alert(item.label, 'Navigation coming soon.');

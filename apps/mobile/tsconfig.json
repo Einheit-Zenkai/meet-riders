@@ -5,6 +5,7 @@
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "node",
+    "moduleSuffixes": [".native", ".ios", ".android", ".web", ""],
     "allowJs": false,
     "strict": true,
     "types": ["react", "react-native"],

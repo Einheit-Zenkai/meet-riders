@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -15,7 +16,10 @@ import MapScreen from '../screens/MapScreen';
 import ShowInterestScreen from '../screens/ShowInterestScreen';
 import CurrentPartyScreen from '../screens/CurrentPartyScreen';
 import LivePartyScreen from '../screens/LivePartyScreen';
+import ExpiredPartiesScreen from '../screens/ExpiredPartiesScreen';
+import LeaderboardScreen from '../screens/LeaderboardScreen';
 import { palette } from '../theme/colors';
+import { getSupabaseClient } from '../lib/supabase';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -36,6 +40,8 @@ export type RootStackParamList = {
     | undefined;
   CurrentParty: undefined;
   LiveParty: { partyId?: string } | undefined;
+  Leaderboard: undefined;
+  Expired: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -54,9 +60,56 @@ const navigationTheme = {
 };
 
 const AppNavigator = (): JSX.Element => {
+  const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList | null>(null);
+
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      setInitialRoute('Login');
+      return;
+    }
+
+    let mounted = true;
+
+    const bootstrap = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!mounted) return;
+        setInitialRoute(data.session ? 'Home' : 'Login');
+      } catch {
+        if (!mounted) return;
+        setInitialRoute('Login');
+      }
+    };
+
+    bootstrap();
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
+      setInitialRoute(session ? 'Home' : 'Login');
+    });
+
+    return () => {
+      mounted = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  if (!initialRoute) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.background }}>
+        <ActivityIndicator size="large" color={palette.primary} />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer theme={navigationTheme}>
-      <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator
+        key={initialRoute}
+        initialRouteName={initialRoute}
+        screenOptions={{ headerShown: false }}
+      >
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
@@ -70,6 +123,8 @@ const AppNavigator = (): JSX.Element => {
         <Stack.Screen name="Map" component={MapScreen} />
         <Stack.Screen name="CurrentParty" component={CurrentPartyScreen} />
         <Stack.Screen name="LiveParty" component={LivePartyScreen} />
+        <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
+        <Stack.Screen name="Expired" component={ExpiredPartiesScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

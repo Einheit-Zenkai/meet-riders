@@ -32,7 +32,7 @@ const hasActiveParty = async (userId: string): Promise<boolean> => {
     .from('parties')
     .select('id', { count: 'exact', head: false })
     .eq('host_id', userId)
-    .eq('is_active', true)
+    .neq('is_active', false)
     .gt('expires_at', nowIso)
     .limit(1);
 
@@ -291,11 +291,70 @@ export const cancelParty = async (partyId: string): Promise<void> => {
 
   const { error } = await supabase
     .from('parties')
-    .update({ is_active: false, expires_at: nowIso, updated_at: nowIso } as never)
+    .update({ is_active: false, expires_at: nowIso } as never)
     .eq('id', partyId)
     .eq('host_id', user.id);
 
   if (error) {
     throw error;
   }
+};
+
+export const fetchMyExpiredParties = async (): Promise<ActiveParty[]> => {
+  const { supabase, user } = await ensureUser();
+  const nowIso = new Date().toISOString();
+  const cutoffIso = new Date(Date.now() - 5 * 60_000).toISOString();
+
+  const partyFields = 'id, host_id, party_size, expires_at, meetup_point, drop_off, host_comments, is_active';
+
+  const [hostedRes, memberIdsRes] = await Promise.all([
+    supabase
+      .from('parties')
+      .select(partyFields)
+      .eq('host_id', user.id)
+      .gte('expires_at', cutoffIso)
+      .or(`is_active.eq.false,expires_at.lte.${nowIso}`)
+      .order('expires_at', { ascending: false }),
+    supabase
+      .from('party_members')
+      .select('party_id')
+      .eq('user_id', user.id)
+      .eq('status', 'joined'),
+  ]);
+
+  if (hostedRes.error) {
+    throw hostedRes.error;
+  }
+  if (memberIdsRes.error) {
+    throw memberIdsRes.error;
+  }
+
+  const hosted = (hostedRes.data ?? []).map(mapPartyRow);
+  const partyIds = (memberIdsRes.data ?? [])
+    .map((row: any) => row?.party_id)
+    .filter(Boolean) as string[];
+
+  let fromMembership: ActiveParty[] = [];
+  if (partyIds.length) {
+    const memberPartiesRes = await supabase
+      .from('parties')
+      .select(partyFields)
+      .in('id', partyIds)
+      .gte('expires_at', cutoffIso)
+      .or(`is_active.eq.false,expires_at.lte.${nowIso}`)
+      .order('expires_at', { ascending: false });
+
+    if (memberPartiesRes.error) {
+      throw memberPartiesRes.error;
+    }
+
+    fromMembership = (memberPartiesRes.data ?? []).map(mapPartyRow);
+  }
+
+  const dedup = new Map<string, ActiveParty>();
+  for (const party of [...hosted, ...fromMembership]) {
+    dedup.set(party.id, party);
+  }
+
+  return Array.from(dedup.values()).sort((a, b) => b.expiresAt.localeCompare(a.expiresAt));
 };
