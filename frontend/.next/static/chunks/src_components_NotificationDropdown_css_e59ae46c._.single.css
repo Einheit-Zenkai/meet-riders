@@ -1,0 +1,51 @@
+/* [project]/src/components/NotificationDropdown.css [app-client] (css) */
+.notification-dropdown {
+  position: relative;
+}
+
+.notification-icon {
+  cursor: pointer;
+  position: relative;
+}
+
+.notification-badge {
+  color: #fff;
+  background: red;
+  border-radius: 50%;
+  padding: 2px 6px;
+  font-size: 12px;
+  position: absolute;
+  top: -5px;
+  right: -5px;
+}
+
+.dropdown-menu {
+  z-index: 1000;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+}
+
+.dropdown-item {
+  cursor: pointer;
+  align-items: center;
+  padding: 8px;
+  display: flex;
+}
+
+.dropdown-item:hover {
+  background: #f0f0f0;
+}
+
+.profile-pic {
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  margin-right: 8px;
+}
+
+/*# sourceMappingURL=src_components_NotificationDropdown_css_e59ae46c._.single.css.map*/

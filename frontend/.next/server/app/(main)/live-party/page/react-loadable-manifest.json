@@ -1,0 +1,20 @@
+{
+  "[project]/src/components/SinglePointMap.tsx [app-client] (ecmascript, next/dynamic entry)": {
+    "id": "[project]/src/components/SinglePointMap.tsx [app-client] (ecmascript, next/dynamic entry)",
+    "files": [
+      "static/chunks/node_modules_3dd639dc._.js",
+      "static/chunks/src_916eb4fb._.js",
+      "static/chunks/node_modules_leaflet_dist_leaflet_88e19fd3.css",
+      "static/chunks/src_components_SinglePointMap_tsx_c89c968a._.js"
+    ]
+  },
+  "[project]/src/components/RideMap.tsx [app-client] (ecmascript, next/dynamic entry)": {
+    "id": "[project]/src/components/RideMap.tsx [app-client] (ecmascript, next/dynamic entry)",
+    "files": [
+      "static/chunks/node_modules_ff44adde._.js",
+      "static/chunks/src_components_RideMap_tsx_0840a7ea._.js",
+      "static/chunks/node_modules_leaflet_dist_leaflet_88e19fd3.css",
+      "static/chunks/src_components_RideMap_tsx_c89c968a._.js"
+    ]
+  }
+}

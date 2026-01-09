@@ -1,0 +1,11 @@
+{
+  "[project]/src/components/RideMap.tsx [app-client] (ecmascript, next/dynamic entry)": {
+    "id": "[project]/src/components/RideMap.tsx [app-client] (ecmascript, next/dynamic entry)",
+    "files": [
+      "static/chunks/node_modules_ff44adde._.js",
+      "static/chunks/src_components_RideMap_tsx_0840a7ea._.js",
+      "static/chunks/node_modules_leaflet_dist_leaflet_88e19fd3.css",
+      "static/chunks/src_components_RideMap_tsx_06e48747._.js"
+    ]
+  }
+}

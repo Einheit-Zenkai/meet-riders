@@ -1,0 +1,20 @@
+{
+  "[project]/src/components/map.tsx [app-client] (ecmascript, next/dynamic entry)": {
+    "id": "[project]/src/components/map.tsx [app-client] (ecmascript, next/dynamic entry)",
+    "files": [
+      "static/chunks/node_modules_9a46f968._.js",
+      "static/chunks/src_516be580._.js",
+      "static/chunks/node_modules_leaflet_dist_leaflet_88e19fd3.css",
+      "static/chunks/src_components_map_tsx_81832671._.js"
+    ]
+  },
+  "[project]/src/components/LocationPicker.tsx [app-client] (ecmascript, next/dynamic entry)": {
+    "id": "[project]/src/components/LocationPicker.tsx [app-client] (ecmascript, next/dynamic entry)",
+    "files": [
+      "static/chunks/node_modules_158915f4._.js",
+      "static/chunks/src_components_LocationPicker_tsx_a9f42dc9._.js",
+      "static/chunks/node_modules_leaflet_dist_leaflet_88e19fd3.css",
+      "static/chunks/src_components_LocationPicker_tsx_81832671._.js"
+    ]
+  }
+}

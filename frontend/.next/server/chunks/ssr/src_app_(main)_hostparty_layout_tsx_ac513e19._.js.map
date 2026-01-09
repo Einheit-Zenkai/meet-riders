@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 5, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/91971/Desktop/Projects/meet-riders/frontend/src/app/%28main%29/hostparty/layout.tsx"],"sourcesContent":["import Sidebar from \"@/components/sidebar\";\r\n\r\nexport default function Layout({\r\n    children,\r\n}: {\r\n    children: React.ReactNode;\r\n}) {\r\n    return (\r\n        <div className=\"flex min-h-screen bg-background\">\r\n            {/* Main Content; add left padding equal to collapsed width to avoid content underlap */}\r\n            <main className=\"relative flex-1 pl-16 pr-16\">\r\n                <div className=\"h-full\">\r\n                    {children}\r\n                </div>\r\n            </main>\r\n        </div>\r\n    );\r\n}\r\n"],"names":[],"mappings":";;;;;AAEe,SAAS,OAAO,EAC3B,QAAQ,EAGX;IACG,qBACI,8OAAC;QAAI,WAAU;kBAEX,cAAA,8OAAC;YAAK,WAAU;sBACZ,cAAA,8OAAC;gBAAI,WAAU;0BACV;;;;;;;;;;;;;;;;AAKrB","debugId":null}}]
+}
