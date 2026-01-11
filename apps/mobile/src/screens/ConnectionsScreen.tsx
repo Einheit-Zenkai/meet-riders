@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +15,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
+import { mobileMenuItems } from '../constants/menuItems';
 import { palette } from '../theme/colors';
 import {
   ConnectionProfile,
@@ -132,6 +134,7 @@ const RequestRow = ({
 const ConnectionsScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 'Connections'>): JSX.Element => {
   const [bundle, setBundle] = useState<ConnectionsBundle | null>(null);
   const [loading, setLoading] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [sameUniversityOnly, setSameUniversityOnly] = useState(false);
   const [suggestions, setSuggestions] = useState<ConnectionProfile[]>([]);
@@ -260,12 +263,14 @@ const ConnectionsScreen = ({ navigation }: NativeStackScreenProps<RootStackParam
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color={palette.textPrimary} />
-        </TouchableOpacity>
+      <View style={styles.headerRow}>
+        <Pressable style={styles.menuButton} onPress={() => setMenuOpen(true)}>
+          <View style={styles.menuStripe} />
+          <View style={styles.menuStripe} />
+          <View style={styles.menuStripe} />
+        </Pressable>
         <Text style={styles.headerTitle}>Connections</Text>
-        <View style={styles.backButton} />
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -420,6 +425,71 @@ const ConnectionsScreen = ({ navigation }: NativeStackScreenProps<RootStackParam
           <EmptyState message="Start by searching for a username and sending a connection request." />
         )}
       </ScrollView>
+
+      <Modal visible={menuOpen} animationType="fade" transparent>
+        <View style={styles.menuOverlay}>
+          <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)} />
+          <View style={styles.menuPanel}>
+            {mobileMenuItems.map((item) => (
+              <TouchableOpacity
+                key={item.label}
+                style={styles.menuItem}
+                onPress={() => {
+                  setMenuOpen(false);
+                  if (item.label === 'Home') {
+                    navigation.navigate('Home', undefined);
+                    return;
+                  }
+                  if (item.label === 'Host Party') {
+                    navigation.navigate('HostParty');
+                    return;
+                  }
+                  if (item.label === 'Current Party') {
+                    navigation.navigate('CurrentParty');
+                    return;
+                  }
+                  if (item.label === 'Live Party') {
+                    navigation.navigate('LiveParty');
+                    return;
+                  }
+                  if (item.label === 'Show of Interest') {
+                    navigation.navigate('ShowInterest');
+                    return;
+                  }
+                  if (item.label === 'Connections') {
+                    navigation.navigate('Connections');
+                    return;
+                  }
+                  if (item.label === 'Profile') {
+                    navigation.navigate('Profile');
+                    return;
+                  }
+                  if (item.label === 'Map') {
+                    navigation.navigate('Map');
+                    return;
+                  }
+                  if (item.label === 'Leaderboard') {
+                    navigation.navigate('Leaderboard');
+                    return;
+                  }
+                  if (item.label === 'Expired') {
+                    navigation.navigate('Expired');
+                    return;
+                  }
+                  if (item.label === 'Settings') {
+                    navigation.navigate('Settings');
+                    return;
+                  }
+                  Alert.alert(item.label, 'Navigation coming soon.');
+                }}
+              >
+                <Ionicons name={item.icon} size={22} color={palette.textPrimary} />
+                <Text style={styles.menuLabel}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -438,6 +508,38 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     backgroundColor: palette.background,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 56,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    backgroundColor: palette.background,
+  },
+  menuButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: palette.surface,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: palette.outline,
+  },
+  menuStripe: {
+    width: 22,
+    height: 3,
+    backgroundColor: palette.textPrimary,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginVertical: 2,
+  },
+  headerSpacer: {
+    width: 42,
+    height: 42,
+  },
   backButton: {
     width: 36,
     height: 36,
@@ -452,6 +554,44 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: palette.textPrimary,
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+    paddingTop: 80,
+    paddingHorizontal: 20,
+    position: 'relative',
+  },
+  menuBackdrop: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 0,
+  },
+  menuPanel: {
+    width: 260,
+    backgroundColor: palette.surface,
+    borderRadius: 20,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    zIndex: 1,
+    marginTop: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  menuLabel: {
+    color: palette.textPrimary,
+    fontWeight: '700',
   },
   content: {
     paddingHorizontal: 20,
