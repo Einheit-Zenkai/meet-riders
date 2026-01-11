@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   View,
   Text,
   StyleSheet,
@@ -19,12 +20,23 @@ import { palette } from '../theme/colors';
 import { getSupabaseClient } from '../lib/supabase';
 import { fetchProfile } from '../api/profile';
 import { mobileMenuItems } from '../constants/menuItems';
+import { FeedParty, fetchActivePartyFeed, joinParty, cancelParty } from '../api/party';
 
 const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Home'>): JSX.Element => {
   const [email, setEmail] = useState(route.params?.email ?? '');
   const [nickname, setNickname] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  const [feedLoading, setFeedLoading] = useState(true);
+  const [feedError, setFeedError] = useState<string | null>(null);
+  const [feed, setFeed] = useState<FeedParty[]>([]);
+
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<FeedParty | null>(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [inlineNotice, setInlineNotice] = useState<string | null>(null);
 
   const welcomeName = useMemo(() => {
     if (nickname.trim()) return nickname;
@@ -43,6 +55,10 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
+      if (mounted) {
+        setCurrentUserId(user?.id ?? null);
+      }
 
       if (mounted && user?.email) {
         setEmail(user.email);
@@ -65,6 +81,61 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
       mounted = false;
     };
   }, []);
+
+  const loadFeed = useCallback(async () => {
+    try {
+      setInlineNotice(null);
+      setFeedError(null);
+      setFeedLoading(true);
+      const parties = await fetchActivePartyFeed();
+      setFeed(parties);
+    } catch (error: any) {
+      console.error('Failed to load party feed', error);
+      setFeedError(error?.message || 'Failed to load rides.');
+      setFeed([]);
+    } finally {
+      setFeedLoading(false);
+    }
+  }, []);
+
+  const showInlineNotice = useCallback((message: string) => {
+    setInlineNotice(message);
+    setTimeout(() => setInlineNotice(null), 2500);
+  }, []);
+
+  const requestCancel = useCallback((party: FeedParty) => {
+    setCancelTarget(party);
+    setCancelConfirmOpen(true);
+  }, []);
+
+  const runCancel = useCallback(async () => {
+    if (!cancelTarget || cancelBusy) return;
+    try {
+      setCancelBusy(true);
+      await cancelParty(cancelTarget.id);
+      setCancelConfirmOpen(false);
+      setCancelTarget(null);
+      await loadFeed();
+      showInlineNotice('Party canceled.');
+    } catch (error: any) {
+      console.error('Failed to cancel party from home', error);
+      const msg = error?.message || 'Failed to cancel party.';
+      setCancelConfirmOpen(false);
+      showInlineNotice(msg);
+    } finally {
+      setCancelBusy(false);
+    }
+  }, [cancelBusy, cancelTarget, loadFeed, showInlineNotice]);
+
+  useEffect(() => {
+    void loadFeed();
+  }, [loadFeed]);
+
+  const formatExpiry = (iso: string): string => {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
     <View style={styles.root}>
@@ -99,13 +170,116 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Available Rides</Text>
-            <Text style={styles.sectionHelper}>No rides match your filters right now.</Text>
-            <TouchableOpacity
-              style={styles.secondaryAction}
-              onPress={() => Alert.alert('Explore rides', 'Ride discovery coming soon!')}
-            >
-              <Text style={styles.secondaryActionText}>Refresh</Text>
-            </TouchableOpacity>
+            {inlineNotice ? <Text style={styles.inlineNotice}>{inlineNotice}</Text> : null}
+            {feedLoading ? (
+              <View style={styles.feedLoadingRow}>
+                <ActivityIndicator size="small" color={palette.primary} />
+                <Text style={styles.sectionHelper}>Loading rides…</Text>
+              </View>
+            ) : feedError ? (
+              <View>
+                <Text style={styles.sectionHelper}>{feedError}</Text>
+                <TouchableOpacity style={styles.secondaryAction} onPress={loadFeed}>
+                  <Text style={styles.secondaryActionText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : feed.length === 0 ? (
+              <View>
+                <Text style={styles.sectionHelper}>No rides available right now.</Text>
+                <TouchableOpacity style={styles.secondaryAction} onPress={loadFeed}>
+                  <Text style={styles.secondaryActionText}>Refresh</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.feedList}>
+                {feed
+                  .filter((p) => {
+                    const query = searchQuery.trim().toLowerCase();
+                    if (!query) return true;
+                    return (
+                      p.dropOff.toLowerCase().includes(query) ||
+                      p.meetupPoint.toLowerCase().includes(query)
+                    );
+                  })
+                  .map((party) => (
+                    <View key={party.id} style={styles.feedCard}>
+                      <View style={styles.feedCardRow}>
+                        <Text style={styles.feedTitle} numberOfLines={1}>
+                          {party.dropOff}
+                        </Text>
+                        <Text style={styles.feedMeta}>{formatExpiry(party.expiresAt)}</Text>
+                      </View>
+                      <Text style={styles.feedSub} numberOfLines={1}>
+                        Meet: {party.meetupPoint}
+                      </Text>
+                      <View style={styles.feedBadges}>
+                        {party.isFriendsOnly ? (
+                          <View style={styles.badge}>
+                            <Text style={styles.badgeText}>Connections</Text>
+                          </View>
+                        ) : (
+                          <View style={styles.badgeAlt}>
+                            <Text style={styles.badgeText}>Public</Text>
+                          </View>
+                        )}
+                        <View style={styles.badgeAlt}>
+                          <Text style={styles.badgeText}>Size: {party.partySize}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.feedActions}>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.actionButtonAlt]}
+                          onPress={() => {
+                            if (currentUserId && party.hostId === currentUserId) {
+                              navigation.navigate('CurrentParty');
+                              return;
+                            }
+                            navigation.navigate('LiveParty', { partyId: party.id });
+                          }}
+                        >
+                          <Text style={styles.actionButtonText}>View</Text>
+                        </TouchableOpacity>
+
+                        {currentUserId && party.hostId === currentUserId ? (
+                          <TouchableOpacity
+                            style={[styles.actionButton, styles.actionButtonDanger]}
+                            onPress={() => requestCancel(party)}
+                          >
+                            <Text style={styles.actionButtonText}>Cancel</Text>
+                          </TouchableOpacity>
+                        ) : party.isJoined ? (
+                          <TouchableOpacity
+                            style={[styles.actionButton, styles.actionButtonAlt]}
+                            onPress={() => navigation.navigate('CurrentParty')}
+                          >
+                            <Text style={styles.actionButtonText}>Joined</Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity
+                            style={[styles.actionButton, styles.actionButtonPrimary]}
+                            onPress={async () => {
+                              try {
+                                await joinParty(party.id);
+                                await loadFeed();
+                                Alert.alert('Joined', 'You joined the party.');
+                                navigation.navigate('CurrentParty');
+                              } catch (error: any) {
+                                console.error('Failed to join party', error);
+                                Alert.alert('Join failed', error?.message || 'Unable to join party.');
+                              }
+                            }}
+                          >
+                            <Text style={styles.actionButtonText}>Join</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                <TouchableOpacity style={styles.secondaryAction} onPress={loadFeed}>
+                  <Text style={styles.secondaryActionText}>Refresh</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           <View style={styles.section}>
@@ -114,6 +288,47 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
           </View>
         </ScrollView>
       </View>
+
+      <Modal visible={cancelConfirmOpen} animationType="fade" transparent>
+        <View style={styles.confirmOverlay}>
+          <Pressable
+            style={styles.confirmBackdrop}
+            onPress={() => {
+              if (!cancelBusy) {
+                setCancelConfirmOpen(false);
+                setCancelTarget(null);
+              }
+            }}
+          />
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>Cancel party?</Text>
+            <Text style={styles.confirmText}>This will end your party immediately for everyone.</Text>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={[styles.confirmButton, styles.confirmButtonAlt]}
+                onPress={() => {
+                  setCancelConfirmOpen(false);
+                  setCancelTarget(null);
+                }}
+                disabled={cancelBusy}
+              >
+                <Text style={styles.confirmButtonText}>Keep</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.confirmButton,
+                  styles.confirmButtonDanger,
+                  cancelBusy ? styles.confirmButtonDisabled : undefined,
+                ]}
+                onPress={runCancel}
+                disabled={cancelBusy}
+              >
+                <Text style={styles.confirmButtonText}>{cancelBusy ? 'Canceling…' : 'Cancel'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <View style={styles.bottomBar}>
         <TouchableOpacity
@@ -335,10 +550,172 @@ const styles = StyleSheet.create({
     color: palette.textPrimary,
     marginBottom: 8,
   },
+  inlineNotice: {
+    color: palette.textSecondary,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
   sectionHelper: {
     fontSize: 14,
     color: palette.textSecondary,
     marginBottom: 12,
+  },
+  feedLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 6,
+  },
+  feedList: {
+    gap: 12,
+  },
+  feedCard: {
+    backgroundColor: palette.surfaceAlt,
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: palette.outline,
+  },
+  feedCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  feedTitle: {
+    color: palette.textPrimary,
+    fontWeight: '800',
+    fontSize: 16,
+    flex: 1,
+  },
+  feedMeta: {
+    color: palette.textSecondary,
+    fontWeight: '700',
+  },
+  feedSub: {
+    color: palette.textSecondary,
+    marginTop: 6,
+    fontWeight: '600',
+  },
+  feedBadges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  feedActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 12,
+  },
+  actionButton: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    minWidth: 84,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionButtonPrimary: {
+    backgroundColor: palette.primary,
+    borderColor: palette.primary,
+  },
+  actionButtonDanger: {
+    backgroundColor: palette.danger,
+    borderColor: palette.danger,
+  },
+  actionButtonAlt: {
+    backgroundColor: palette.surface,
+  },
+  actionButtonText: {
+    color: palette.textPrimary,
+    fontWeight: '800',
+  },
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  confirmBackdrop: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  confirmCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: palette.surface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    padding: 18,
+  },
+  confirmTitle: {
+    color: palette.textPrimary,
+    fontWeight: '900',
+    fontSize: 18,
+  },
+  confirmText: {
+    color: palette.textSecondary,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 16,
+  },
+  confirmButton: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    minWidth: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmButtonAlt: {
+    backgroundColor: palette.surfaceAlt,
+  },
+  confirmButtonDanger: {
+    backgroundColor: palette.danger,
+    borderColor: palette.danger,
+  },
+  confirmButtonDisabled: {
+    opacity: 0.7,
+  },
+  confirmButtonText: {
+    color: palette.textPrimary,
+    fontWeight: '900',
+  },
+  badge: {
+    backgroundColor: palette.primary,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  badgeAlt: {
+    backgroundColor: palette.surface,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: palette.outline,
+  },
+  badgeText: {
+    color: palette.textPrimary,
+    fontWeight: '800',
+    fontSize: 12,
   },
   secondaryAction: {
     alignSelf: 'flex-start',

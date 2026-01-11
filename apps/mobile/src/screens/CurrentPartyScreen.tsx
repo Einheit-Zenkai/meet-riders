@@ -58,6 +58,8 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
 
   const [loading, setLoading] = useState(true);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
   const [parties, setParties] = useState<ActiveParty[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [members, setMembers] = useState<PartyMember[]>([]);
@@ -131,25 +133,25 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
 
   const canCancel = Boolean(selected && currentUserId && selected.hostId === currentUserId);
 
-  const handleCancel = async () => {
-    if (!selected) return;
+  const handleCancel = () => {
+    if (!selected || !canCancel) return;
+    setCancelConfirmOpen(true);
+  };
 
-    Alert.alert('Cancel party', 'This will end your party immediately.', [
-      { text: 'Keep', style: 'cancel' },
-      {
-        text: 'Cancel party',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await cancelParty(selected.id);
-            await load();
-          } catch (error: any) {
-            console.error('Failed to cancel party', error);
-            Alert.alert('Cancel party', error.message || 'Failed to cancel party.');
-          }
-        },
-      },
-    ]);
+  const runCancel = async () => {
+    if (!selected || cancelBusy) return;
+    try {
+      setCancelBusy(true);
+      await cancelParty(selected.id);
+      setCancelConfirmOpen(false);
+      await load();
+      Alert.alert('Party', 'Party canceled.');
+    } catch (error: any) {
+      console.error('Failed to cancel party', error);
+      Alert.alert('Cancel party', error?.message || 'Failed to cancel party.');
+    } finally {
+      setCancelBusy(false);
+    }
   };
 
   return (
@@ -305,6 +307,41 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
           <Text style={styles.bottomLabel}>Settings</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal visible={cancelConfirmOpen} animationType="fade" transparent>
+        <View style={styles.confirmOverlay}>
+          <Pressable
+            style={styles.confirmBackdrop}
+            onPress={() => {
+              if (!cancelBusy) setCancelConfirmOpen(false);
+            }}
+          />
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>Cancel party?</Text>
+            <Text style={styles.confirmText}>This will end your party immediately for everyone.</Text>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={[styles.confirmButton, styles.confirmButtonAlt]}
+                onPress={() => setCancelConfirmOpen(false)}
+                disabled={cancelBusy}
+              >
+                <Text style={styles.confirmButtonText}>Keep</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.confirmButton,
+                  styles.confirmButtonDanger,
+                  cancelBusy ? styles.confirmButtonDisabled : undefined,
+                ]}
+                onPress={runCancel}
+                disabled={cancelBusy}
+              >
+                <Text style={styles.confirmButtonText}>{cancelBusy ? 'Canceling…' : 'Cancel'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={menuOpen} animationType="fade" transparent>
         <View style={styles.menuOverlay}>
@@ -628,6 +665,69 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   cancelButtonText: {
+    color: palette.textPrimary,
+    fontWeight: '900',
+  },
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  confirmBackdrop: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  confirmCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: palette.surface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    padding: 18,
+  },
+  confirmTitle: {
+    color: palette.textPrimary,
+    fontWeight: '900',
+    fontSize: 18,
+  },
+  confirmText: {
+    color: palette.textSecondary,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 16,
+  },
+  confirmButton: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    minWidth: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmButtonAlt: {
+    backgroundColor: palette.surfaceAlt,
+  },
+  confirmButtonDanger: {
+    backgroundColor: palette.danger,
+    borderColor: palette.danger,
+  },
+  confirmButtonDisabled: {
+    opacity: 0.7,
+  },
+  confirmButtonText: {
     color: palette.textPrimary,
     fontWeight: '900',
   },

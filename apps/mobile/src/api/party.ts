@@ -21,18 +21,25 @@ export class SupabaseUnavailableError extends Error {
   }
 }
 
+// Supabase/Postgres uses its own clock (NOW()) for constraints/triggers.
+// If a device clock is ahead, client-side `new Date().toISOString()` comparisons can
+// incorrectly treat an active party as expired. Use a small grace window to avoid mismatches.
+const CLOCK_SKEW_GRACE_MS = 5 * 60_000;
+
+const nowIsoWithGrace = (): string => new Date(Date.now() - CLOCK_SKEW_GRACE_MS).toISOString();
+
 const hasActiveParty = async (userId: string): Promise<boolean> => {
   const supabase = getSupabaseClient();
   if (!supabase) {
     throw new SupabaseUnavailableError();
   }
 
-  const nowIso = new Date().toISOString();
+  const nowIso = nowIsoWithGrace();
   const { data, error } = await supabase
     .from('parties')
     .select('id', { count: 'exact', head: false })
     .eq('host_id', userId)
-    .neq('is_active', false)
+    .eq('is_active', true)
     .gt('expires_at', nowIso)
     .limit(1);
 
@@ -198,7 +205,7 @@ const mapProfileRow = (row: any): PartyMemberProfile => ({
 
 export const fetchMyActiveParties = async (): Promise<ActiveParty[]> => {
   const { supabase, user } = await ensureUser();
-  const nowIso = new Date().toISOString();
+  const nowIso = nowIsoWithGrace();
 
   const partyFields = 'id, host_id, party_size, expires_at, meetup_point, drop_off, host_comments, is_active';
 
@@ -287,13 +294,168 @@ export const fetchPartyMembers = async (partyId: string): Promise<PartyMember[]>
 
 export const cancelParty = async (partyId: string): Promise<void> => {
   const { supabase, user } = await ensureUser();
-  const nowIso = new Date().toISOString();
-
   const { error } = await supabase
     .from('parties')
-    .update({ is_active: false, expires_at: nowIso } as never)
+    // Match the web app behavior: only flip is_active.
+    .update({ is_active: false } as never)
     .eq('id', partyId)
     .eq('host_id', user.id);
+
+  if (error) {
+    throw error;
+  }
+};
+
+export type FeedHostProfile = {
+  id: string;
+  username: string | null;
+  fullName: string | null;
+  avatarUrl: string | null;
+  university: string | null;
+};
+
+export type FeedParty = ActiveParty & {
+  isFriendsOnly: boolean;
+  isJoined: boolean;
+  rideOptions: string[];
+  hostUniversity: string | null;
+  displayUniversity: boolean;
+  hostProfile: FeedHostProfile | null;
+};
+
+const mapFeedProfileRow = (row: any): FeedHostProfile => ({
+  id: row?.id ?? '',
+  username: row?.username ?? null,
+  fullName: row?.full_name ?? null,
+  avatarUrl: row?.avatar_url ?? null,
+  university: row?.university ?? null,
+});
+
+export const fetchActivePartyFeed = async (): Promise<FeedParty[]> => {
+  const { supabase, user } = await ensureUser();
+  const nowIso = nowIsoWithGrace();
+
+  const partyFields =
+    'id, created_at, host_id, party_size, expires_at, meetup_point, drop_off, host_comments, is_active, is_friends_only, ride_options, host_university, display_university';
+
+  const { data: partiesData, error: partiesError } = await supabase
+    .from('parties')
+    .select(partyFields)
+    .eq('is_active', true)
+    .gt('expires_at', nowIso)
+    .order('created_at', { ascending: false })
+    .limit(30);
+
+  if (partiesError) {
+    throw partiesError;
+  }
+
+  const rows = (partiesData ?? []) as any[];
+  if (!rows.length) {
+    return [];
+  }
+
+  const hostIds = Array.from(new Set(rows.map((p) => p.host_id).filter(Boolean)));
+
+  // Resolve connections for friends-only parties using the mobile `connections` table.
+  const connectedHostIds = new Set<string>();
+  if (hostIds.length) {
+    const [fromMe, toMe] = await Promise.all([
+      supabase
+        .from('connections')
+        .select('addressee_id')
+        .eq('requester_id', user.id)
+        .in('addressee_id', hostIds)
+        .eq('status', 'accepted'),
+      supabase
+        .from('connections')
+        .select('requester_id')
+        .eq('addressee_id', user.id)
+        .in('requester_id', hostIds)
+        .eq('status', 'accepted'),
+    ]);
+
+    if (fromMe.error) throw fromMe.error;
+    if (toMe.error) throw toMe.error;
+
+    (fromMe.data ?? []).forEach((r: any) => connectedHostIds.add(r.addressee_id));
+    (toMe.data ?? []).forEach((r: any) => connectedHostIds.add(r.requester_id));
+  }
+
+  const visible = rows.filter((p) => {
+    if (p.host_id === user.id) return true;
+    return !p.is_friends_only || connectedHostIds.has(p.host_id);
+  });
+
+  if (!visible.length) {
+    return [];
+  }
+
+  const visibleHostIds = Array.from(new Set(visible.map((p) => p.host_id)));
+  const { data: profilesData, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, username, full_name, avatar_url, university')
+    .in('id', visibleHostIds);
+
+  if (profilesError) {
+    throw profilesError;
+  }
+
+  const profilesMap = new Map<string, FeedHostProfile>();
+  (profilesData ?? []).forEach((p: any) => profilesMap.set(p.id, mapFeedProfileRow(p)));
+
+  // Determine which of the visible parties the viewer has already joined.
+  const visiblePartyIds = visible.map((p) => p.id).filter(Boolean);
+  const joinedPartyIds = new Set<string>();
+  if (visiblePartyIds.length) {
+    const { data: memberRows, error: memberError } = await supabase
+      .from('party_members')
+      .select('party_id')
+      .eq('user_id', user.id)
+      .eq('status', 'joined')
+      .in('party_id', visiblePartyIds);
+
+    if (memberError) {
+      throw memberError;
+    }
+    (memberRows ?? []).forEach((r: any) => joinedPartyIds.add(r.party_id));
+  }
+
+  return visible.map((row: any) => {
+    const base = mapPartyRow(row);
+    return {
+      ...base,
+      isFriendsOnly: Boolean(row.is_friends_only),
+      isJoined: joinedPartyIds.has(row.id),
+      rideOptions: Array.isArray(row.ride_options) ? row.ride_options : [],
+      hostUniversity: row.host_university ?? null,
+      displayUniversity: Boolean(row.display_university),
+      hostProfile: profilesMap.get(row.host_id) ?? null,
+    } satisfies FeedParty;
+  });
+};
+
+export const joinParty = async (partyId: string): Promise<void> => {
+  const { supabase, user } = await ensureUser();
+
+  const { data: canJoin, error: canJoinError } = await supabase.rpc('can_user_join_party', {
+    p_party_id: partyId,
+    p_user_id: user.id,
+  });
+
+  if (canJoinError) {
+    throw canJoinError;
+  }
+
+  if (!canJoin) {
+    throw new Error('You cannot join this party right now.');
+  }
+
+  const { error } = await supabase.from('party_members').insert({
+    party_id: partyId,
+    user_id: user.id,
+    status: 'joined',
+  } as never);
 
   if (error) {
     throw error;
