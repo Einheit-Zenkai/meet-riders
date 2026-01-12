@@ -28,13 +28,35 @@ const CLOCK_SKEW_GRACE_MS = 5 * 60_000;
 
 const nowIsoWithGrace = (): string => new Date(Date.now() - CLOCK_SKEW_GRACE_MS).toISOString();
 
+/**
+ * Clean up expired parties for a user by marking them as inactive.
+ * This should be called before checking if a user is hosting.
+ */
+export const cleanupExpiredParties = async (userId: string): Promise<void> => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+
+  const nowIso = new Date().toISOString();
+  
+  // Mark all expired parties as inactive
+  await supabase
+    .from('parties')
+    .update({ is_active: false })
+    .eq('host_id', userId)
+    .eq('is_active', true)
+    .lt('expires_at', nowIso);
+};
+
 const hasActiveParty = async (userId: string): Promise<boolean> => {
   const supabase = getSupabaseClient();
   if (!supabase) {
     throw new SupabaseUnavailableError();
   }
 
-  const nowIso = nowIsoWithGrace();
+  // First, clean up any expired parties
+  await cleanupExpiredParties(userId);
+
+  const nowIso = new Date().toISOString(); // Use actual now, not grace period
   const { data, error } = await supabase
     .from('parties')
     .select('id', { count: 'exact', head: false })
@@ -236,7 +258,11 @@ const mapProfileRow = (row: any): PartyMemberProfile => ({
 
 export const fetchMyActiveParties = async (): Promise<ActiveParty[]> => {
   const { supabase, user } = await ensureUser();
-  const nowIso = nowIsoWithGrace();
+  
+  // Clean up expired parties first
+  await cleanupExpiredParties(user.id);
+  
+  const nowIso = new Date().toISOString();
 
   const partyFields = 'id, host_id, party_size, expires_at, meetup_point, drop_off, host_comments, is_active';
 
@@ -267,7 +293,7 @@ export const fetchMyActiveParties = async (): Promise<ActiveParty[]> => {
     .map((row: any) => row?.party)
     .filter(Boolean)
     .map(mapPartyRow)
-    .filter((p) => p.isActive && p.expiresAt > nowIso);
+    .filter((p) => p.isActive && new Date(p.expiresAt) > new Date(nowIso));
 
   const dedup = new Map<string, ActiveParty>();
   for (const party of [...hosted, ...fromMembership]) {

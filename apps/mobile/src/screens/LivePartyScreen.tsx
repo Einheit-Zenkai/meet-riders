@@ -163,10 +163,17 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
         const nonHost = mems.filter((m) => m.userId !== hostId);
         const isExpired = new Date(expiresAt).getTime() <= Date.now();
 
-        // Web behavior: live party only available after at least one non-host member joins.
-        if (isExpired && nonHost.length === 0) {
-          Alert.alert('Live Party', 'Live party is available only after at least one member joins.');
-          navigation.navigate('CurrentParty');
+        // Live party is ONLY available when:
+        // 1. Party has expired (timer ended)
+        // 2. At least one non-host member has joined
+        // If no non-host members, the party should go to "expired parties" instead
+        if (nonHost.length === 0) {
+          Alert.alert(
+            'No Live Party', 
+            'Live party requires at least one member besides the host. This party will be moved to expired parties.',
+            [{ text: 'OK', onPress: () => navigation.navigate('CurrentParty') }]
+          );
+          return;
         }
       } catch (error: any) {
         console.error('Failed to load live party members', error);
