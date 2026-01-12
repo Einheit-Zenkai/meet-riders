@@ -18,6 +18,9 @@ import { palette } from '../theme/colors';
 import { getSupabaseClient } from '../lib/supabase';
 import { mobileMenuItems } from '../constants/menuItems';
 import { fetchPartyMembers, PartyMember } from '../api/party';
+import { CrownBadge } from '../components/SharedComponents';
+import RatingModal from '../components/RatingModal';
+import { submitRating } from '../api/rating';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LiveParty'>;
 
@@ -51,6 +54,12 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
 
   const [party, setParty] = useState<PartyRow | null>(null);
   const [members, setMembers] = useState<PartyMember[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Rating state
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [memberToRate, setMemberToRate] = useState<PartyMember | null>(null);
+  const [ratedUserIds, setRatedUserIds] = useState<Set<string>>(new Set());
 
   const partyIdParam = route.params?.partyId;
 
@@ -182,6 +191,21 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
     };
   }, [loadParty]);
 
+  // Get current user
+  useEffect(() => {
+    const loadCurrentUser = async () => {
+      try {
+        const supabase = getSupabaseClient();
+        if (!supabase) return;
+        const { data: { user } } = await supabase.auth.getUser();
+        setCurrentUserId(user?.id ?? null);
+      } catch (error) {
+        console.error('Failed to load current user', error);
+      }
+    };
+    loadCurrentUser();
+  }, []);
+
   useEffect(() => {
     if (!party) {
       setMembers([]);
@@ -195,6 +219,32 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
     if (!party) return [];
     return members.filter((m) => m.userId !== party.host_id);
   }, [members, party]);
+
+  // Rating handlers
+  const openRatingModal = (member: PartyMember) => {
+    if (member.userId === currentUserId) return; // Can't rate yourself
+    if (ratedUserIds.has(member.userId)) {
+      Alert.alert('Already Rated', 'You have already rated this user for this ride.');
+      return;
+    }
+    setMemberToRate(member);
+    setRatingModalOpen(true);
+  };
+
+  const handleRatingSubmit = async (rating: number, comment?: string) => {
+    if (!memberToRate || !party) return;
+    try {
+      await submitRating(memberToRate.userId, rating, party.id, comment);
+      setRatedUserIds(prev => new Set(prev).add(memberToRate.userId));
+      Alert.alert('Success', `You rated ${displayName(memberToRate)} ${rating} stars!`);
+    } catch (error: any) {
+      console.error('Failed to submit rating', error);
+      Alert.alert('Error', error?.message || 'Failed to submit rating.');
+    } finally {
+      setMemberToRate(null);
+      setRatingModalOpen(false);
+    }
+  };
 
   const openMap = () => navigation.navigate('Map');
 
@@ -262,7 +312,10 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
                   <Text style={styles.loadingTextSmall}>Loading host…</Text>
                 </View>
               ) : host ? (
-                <View style={styles.memberRow}>
+                <Pressable 
+                  style={styles.memberRow}
+                  onPress={() => host.userId !== currentUserId && openRatingModal(host)}
+                >
                   <View style={styles.memberAvatar}>
                     <Text style={styles.memberAvatarText}>{initials(displayName(host))}</Text>
                   </View>
@@ -274,8 +327,23 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
                       @{host.profile.username}
                     </Text>
                   </View>
-                  <Ionicons name="star" size={16} color={palette.accent} />
-                </View>
+                  <CrownBadge size={20} />
+                  {host.userId !== currentUserId && !ratedUserIds.has(host.userId) && (
+                    <TouchableOpacity 
+                      style={styles.rateButton}
+                      onPress={() => openRatingModal(host)}
+                    >
+                      <Ionicons name="star-outline" size={16} color={palette.primary} />
+                      <Text style={styles.rateButtonText}>Rate</Text>
+                    </TouchableOpacity>
+                  )}
+                  {ratedUserIds.has(host.userId) && (
+                    <View style={styles.ratedBadge}>
+                      <Ionicons name="checkmark-circle" size={16} color={palette.success} />
+                      <Text style={styles.ratedText}>Rated</Text>
+                    </View>
+                  )}
+                </Pressable>
               ) : (
                 <Text style={styles.sectionValue}>Host profile unavailable.</Text>
               )}
@@ -294,8 +362,14 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
                 <View style={styles.memberList}>
                   {nonHostMembers.map((m) => {
                     const canShowPhone = Boolean(m.profile.showPhone && m.profile.phoneNumber);
+                    const canRate = m.userId !== currentUserId;
+                    const hasRated = ratedUserIds.has(m.userId);
                     return (
-                      <View key={m.userId} style={styles.memberRow}>
+                      <Pressable 
+                        key={m.userId} 
+                        style={styles.memberRow}
+                        onPress={() => canRate && !hasRated && openRatingModal(m)}
+                      >
                         <View style={styles.memberAvatar}>
                           <Text style={styles.memberAvatarText}>{initials(displayName(m))}</Text>
                         </View>
@@ -312,7 +386,22 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
                             </Text>
                           ) : null}
                         </View>
-                      </View>
+                        {canRate && !hasRated && (
+                          <TouchableOpacity 
+                            style={styles.rateButton}
+                            onPress={() => openRatingModal(m)}
+                          >
+                            <Ionicons name="star-outline" size={16} color={palette.primary} />
+                            <Text style={styles.rateButtonText}>Rate</Text>
+                          </TouchableOpacity>
+                        )}
+                        {hasRated && (
+                          <View style={styles.ratedBadge}>
+                            <Ionicons name="checkmark-circle" size={16} color={palette.success} />
+                            <Text style={styles.ratedText}>Rated</Text>
+                          </View>
+                        )}
+                      </Pressable>
                     );
                   })}
                 </View>
@@ -410,6 +499,17 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
           </View>
         </View>
       </Modal>
+
+      {/* Rating Modal */}
+      <RatingModal
+        visible={ratingModalOpen}
+        onClose={() => {
+          setRatingModalOpen(false);
+          setMemberToRate(null);
+        }}
+        onSubmit={handleRatingSubmit}
+        userName={memberToRate ? displayName(memberToRate) : ''}
+      />
     </View>
   );
 };
@@ -638,6 +738,36 @@ const styles = StyleSheet.create({
     color: palette.textSecondary,
     fontWeight: '600',
     marginTop: 2,
+  },
+  rateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: palette.primary + '20',
+    borderWidth: 1,
+    borderColor: palette.primary,
+  },
+  rateButtonText: {
+    color: palette.primary,
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  ratedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: palette.success + '20',
+  },
+  ratedText: {
+    color: palette.success,
+    fontWeight: '700',
+    fontSize: 12,
   },
   bottomBar: {
     position: 'absolute',

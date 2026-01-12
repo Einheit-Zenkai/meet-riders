@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,15 +12,19 @@ import {
   Alert,
   ActivityIndicator,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
 import { mobileMenuItems } from '../constants/menuItems';
 import { createParty, loadHostStatus, SupabaseUnavailableError } from '../api/party';
+import { reverseGeocode } from '../api/location';
+import MapPickerView, { MapPickerRef } from '../components/MapPickerView';
 
 const ridePreferences = ['On Foot', 'Auto', 'Cab', 'Bus', 'SUV'] as const;
 const expiryOptions = [10, 15, 20, 30, 60] as const;
@@ -30,7 +34,18 @@ type ExpiryOption = (typeof expiryOptions)[number];
 
 type HostPartyScreenProps = NativeStackScreenProps<RootStackParamList, 'HostParty'>;
 
+type Coordinate = {
+  latitude: number;
+  longitude: number;
+};
+
+const defaultCoordinate: Coordinate = {
+  latitude: 12.9716,
+  longitude: 77.5946,
+};
+
 const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
+  const mapRef = useRef<MapPickerRef>(null);
   const [loading, setLoading] = useState(true);
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -46,6 +61,38 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
   const [comments, setComments] = useState('');
   const [selectedRides, setSelectedRides] = useState<RidePreference[]>([]);
   const [expiry, setExpiry] = useState<ExpiryOption>(10);
+
+  // Map state
+  const [meetupCoordinate, setMeetupCoordinate] = useState<Coordinate | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<Coordinate>(defaultCoordinate);
+  const [mapExpanded, setMapExpanded] = useState(false);
+
+  // Get user location on mount
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+
+      const getLocation = async () => {
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === 'granted') {
+            const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            if (mounted) {
+              setCurrentLocation({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+              });
+            }
+          }
+        } catch (error) {
+          console.log('Location error:', error);
+        }
+      };
+
+      getLocation();
+      return () => { mounted = false; };
+    }, [])
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -244,10 +291,50 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
           </View>
 
           <View style={styles.mapSection}>
-            <Text style={styles.label}>Select meetup on map</Text>
-            <View style={styles.mapFrame}>
-              <Text style={styles.mapPlaceholder}>Map preview coming soon</Text>
+            <View style={styles.mapLabelRow}>
+              <Text style={styles.label}>Select meetup on map</Text>
+              <TouchableOpacity onPress={() => setMapExpanded(!mapExpanded)}>
+                <Ionicons 
+                  name={mapExpanded ? 'contract' : 'expand'} 
+                  size={20} 
+                  color={palette.textSecondary} 
+                />
+              </TouchableOpacity>
             </View>
+            <View style={[styles.mapFrame, mapExpanded && styles.mapFrameExpanded]}>
+              <MapPickerView
+                ref={mapRef}
+                style={StyleSheet.absoluteFillObject}
+                currentLocation={currentLocation}
+                markerCoordinate={meetupCoordinate}
+                expanded={mapExpanded}
+                onLongPress={async (coordinate) => {
+                  setMeetupCoordinate(coordinate);
+                  // Get address from coordinates
+                  const address = await reverseGeocode(coordinate.latitude, coordinate.longitude);
+                  if (address && !meetupPoint.trim()) {
+                    setMeetupPoint(address.split(',').slice(0, 2).join(','));
+                  }
+                }}
+              />
+              {!meetupCoordinate && (
+                <View style={styles.mapHint}>
+                  <Ionicons name="hand-left" size={16} color={palette.textSecondary} />
+                  <Text style={styles.mapHintText}>Long-press to set meetup point</Text>
+                </View>
+              )}
+            </View>
+            {meetupCoordinate && (
+              <View style={styles.coordinateDisplay}>
+                <Ionicons name="location" size={16} color={palette.primary} />
+                <Text style={styles.coordinateText}>
+                  {meetupCoordinate.latitude.toFixed(5)}, {meetupCoordinate.longitude.toFixed(5)}
+                </Text>
+                <TouchableOpacity onPress={() => setMeetupCoordinate(null)}>
+                  <Ionicons name="close-circle" size={18} color={palette.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           <View style={styles.formGroup}>
@@ -566,14 +653,59 @@ const styles = StyleSheet.create({
   mapSection: {
     marginBottom: 24,
   },
+  mapLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   mapFrame: {
     height: 180,
     borderRadius: 24,
     borderWidth: 1,
     borderColor: palette.outline,
     backgroundColor: palette.surfaceAlt,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  mapFrameExpanded: {
+    height: 280,
+  },
+  mapHint: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    right: 12,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  mapHintText: {
+    color: palette.textSecondary,
+    fontSize: 13,
+  },
+  coordinateDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: palette.surface,
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    gap: 8,
+  },
+  coordinateText: {
+    flex: 1,
+    color: palette.textPrimary,
+    fontFamily: 'monospace',
+    fontSize: 12,
   },
   mapPlaceholder: {
     color: palette.textSecondary,

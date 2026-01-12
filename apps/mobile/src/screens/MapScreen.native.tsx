@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,18 @@ import {
   Alert,
   Platform,
   StatusBar,
+  Keyboard,
 } from 'react-native';
-import MapView, { type LongPressEvent, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { type LongPressEvent, Marker, PROVIDER_GOOGLE
+} from 'react-native-maps';
 import * as Location from 'expo-location';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
+import { LocationSearchBar, ActiveUsersIndicator, LocationMarkerDisplay } from '../components/LocationComponents';
+import { fetchActiveUsersNearLocation, ActiveUser, updateUserLocation, reverseGeocode, LocationSearchResult } from '../api/location';
 
 type MapScreenProps = NativeStackScreenProps<RootStackParamList, 'Map'>;
 
@@ -29,11 +33,37 @@ const defaultCoordinate: Coordinate = {
   longitude: 77.5946,
 };
 
-const MapScreen = ({ navigation }: MapScreenProps): JSX.Element => {
+const MapScreen = ({ navigation, route }: MapScreenProps): JSX.Element => {
+  const mapRef = useRef<MapView>(null);
   const [locating, setLocating] = useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [currentCoordinate, setCurrentCoordinate] = useState<Coordinate>(defaultCoordinate);
   const [pinnedCoordinate, setPinnedCoordinate] = useState<Coordinate | null>(null);
+  const [pinnedAddress, setPinnedAddress] = useState<string | null>(null);
+
+  // Active users state
+  const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
+  const [activeUsersLoading, setActiveUsersLoading] = useState(false);
+  const [searchedLocation, setSearchedLocation] = useState<LocationSearchResult | null>(null);
+  const [sharingLocation, setSharingLocation] = useState(false);
+
+  // Get route params
+  const routeStart = route.params?.start;
+  const routeDestination = route.params?.destination;
+
+  // Fetch active users when search location changes
+  const loadActiveUsers = useCallback(async (lat: number, lng: number) => {
+    setActiveUsersLoading(true);
+    try {
+      const users = await fetchActiveUsersNearLocation(lat, lng, 10);
+      setActiveUsers(users);
+    } catch (error) {
+      console.error('Failed to fetch active users:', error);
+      setActiveUsers([]);
+    } finally {
+      setActiveUsersLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -44,7 +74,7 @@ const MapScreen = ({ navigation }: MapScreenProps): JSX.Element => {
         if (!active) return;
 
         if (status !== 'granted') {
-          setLocationError('Location permission denied. You can still pin a place manually.');
+          setLocationError('Location permission denied. You can still search and pin locations.');
           setLocating(false);
           return;
         }
@@ -74,17 +104,41 @@ const MapScreen = ({ navigation }: MapScreenProps): JSX.Element => {
 
   const region = useMemo(
     () => ({
-      latitude: pinnedCoordinate?.latitude ?? currentCoordinate.latitude,
-      longitude: pinnedCoordinate?.longitude ?? currentCoordinate.longitude,
+      latitude: searchedLocation?.latitude ?? pinnedCoordinate?.latitude ?? currentCoordinate.latitude,
+      longitude: searchedLocation?.longitude ?? pinnedCoordinate?.longitude ?? currentCoordinate.longitude,
       latitudeDelta: 0.02,
       longitudeDelta: 0.02,
     }),
-    [currentCoordinate, pinnedCoordinate]
+    [currentCoordinate, pinnedCoordinate, searchedLocation]
   );
 
-  const handleLongPress = (event: LongPressEvent): void => {
+  const handleLongPress = async (event: LongPressEvent): Promise<void> => {
     const { coordinate } = event.nativeEvent;
     setPinnedCoordinate({ latitude: coordinate.latitude, longitude: coordinate.longitude });
+    // Get address for pinned location
+    const address = await reverseGeocode(coordinate.latitude, coordinate.longitude);
+    setPinnedAddress(address);
+  };
+
+  const handleLocationSelect = (location: LocationSearchResult) => {
+    Keyboard.dismiss();
+    setSearchedLocation(location);
+    
+    // Animate to the selected location
+    mapRef.current?.animateToRegion({
+      latitude: location.latitude,
+      longitude: location.longitude,
+      latitudeDelta: 0.02,
+      longitudeDelta: 0.02,
+    }, 500);
+
+    // Fetch active users near this location
+    loadActiveUsers(location.latitude, location.longitude);
+  };
+
+  const handleSearchClear = () => {
+    setSearchedLocation(null);
+    setActiveUsers([]);
   };
 
   const handleConfirmPin = (): void => {
@@ -94,9 +148,38 @@ const MapScreen = ({ navigation }: MapScreenProps): JSX.Element => {
     }
 
     Alert.alert(
-      'Pinned location',
-      `Lat: ${pinnedCoordinate.latitude.toFixed(6)}\nLng: ${pinnedCoordinate.longitude.toFixed(6)}`
+      'Location Selected',
+      pinnedAddress || `Lat: ${pinnedCoordinate.latitude.toFixed(6)}\nLng: ${pinnedCoordinate.longitude.toFixed(6)}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Use Location', onPress: () => navigation.goBack() },
+      ]
     );
+  };
+
+  const handleCenterOnUser = async () => {
+    try {
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const userCoord = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+      setCurrentCoordinate(userCoord);
+      mapRef.current?.animateToRegion({
+        ...userCoord,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      }, 500);
+    } catch (error) {
+      Alert.alert('Location Error', 'Unable to get your current location.');
+    }
+  };
+
+  const toggleLocationSharing = () => {
+    setSharingLocation(!sharingLocation);
+    if (!sharingLocation) {
+      updateUserLocation(currentCoordinate.latitude, currentCoordinate.longitude);
+    }
   };
 
   return (
@@ -107,7 +190,25 @@ const MapScreen = ({ navigation }: MapScreenProps): JSX.Element => {
           <Ionicons name="arrow-back" size={20} color={palette.textPrimary} />
           <Text style={styles.backLabel}>Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Map</Text>
+        <Text style={styles.headerTitle}>Explore Map</Text>
+        <TouchableOpacity 
+          style={[styles.shareButton, sharingLocation && styles.shareButtonActive]} 
+          onPress={toggleLocationSharing}
+        >
+          <Ionicons 
+            name={sharingLocation ? 'radio' : 'radio-outline'} 
+            size={20} 
+            color={sharingLocation ? palette.textPrimary : palette.textSecondary} 
+          />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.searchContainer}>
+        <LocationSearchBar
+          placeholder="Search for a location..."
+          onLocationSelect={handleLocationSelect}
+          onClear={handleSearchClear}
+        />
       </View>
 
       <View style={styles.mapContainer}>
@@ -119,39 +220,120 @@ const MapScreen = ({ navigation }: MapScreenProps): JSX.Element => {
         ) : null}
 
         <MapView
+          ref={mapRef}
           style={StyleSheet.absoluteFillObject}
           provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
           initialRegion={region}
           onLongPress={handleLongPress}
           showsUserLocation
-          showsMyLocationButton
+          showsMyLocationButton={false}
         >
-          {pinnedCoordinate ? <Marker coordinate={pinnedCoordinate} title="Pinned location" /> : null}
+          {/* Pinned location marker */}
+          {pinnedCoordinate && (
+            <Marker 
+              coordinate={pinnedCoordinate} 
+              title="Pinned Location"
+              description={pinnedAddress || 'Long-press to move'}
+              pinColor={palette.primary}
+            />
+          )}
+          
+          {/* Search result marker */}
+          {searchedLocation && (
+            <Marker
+              coordinate={{
+                latitude: searchedLocation.latitude,
+                longitude: searchedLocation.longitude,
+              }}
+              title={searchedLocation.name}
+              description={searchedLocation.displayName}
+              pinColor="#3b82f6"
+            />
+          )}
+
+          {/* Active users markers */}
+          {activeUsers.map((user) => (
+            <Marker
+              key={user.userId}
+              coordinate={{
+                latitude: user.latitude,
+                longitude: user.longitude,
+              }}
+              title={user.fullName || user.username || 'Rider'}
+              pinColor="#22c55e"
+            />
+          ))}
+
+          {/* Route markers if provided */}
+          {routeStart && (
+            <Marker coordinate={routeStart} title="Start Point" pinColor="#22c55e" />
+          )}
+          {routeDestination && (
+            <Marker coordinate={routeDestination} title="Destination" pinColor="#ef4444" />
+          )}
         </MapView>
 
+        {/* FAB for centering on user */}
+        <TouchableOpacity style={styles.fabButton} onPress={handleCenterOnUser}>
+          <Ionicons name="locate" size={22} color={palette.textPrimary} />
+        </TouchableOpacity>
+
         <View style={styles.bottomCard}>
-          <View style={styles.bottomRow}>
-            <Ionicons name="pin" size={18} color={palette.textPrimary} />
-            <Text style={styles.bottomTitle}>Drop a pin</Text>
+          <View style={styles.bottomHeader}>
+            <View style={styles.bottomRow}>
+              <Ionicons name="map" size={18} color={palette.textPrimary} />
+              <Text style={styles.bottomTitle}>Map Controls</Text>
+            </View>
+            <ActiveUsersIndicator 
+              count={activeUsers.length} 
+              onPress={() => {
+                if (activeUsers.length > 0) {
+                  Alert.alert(
+                    'Nearby Riders',
+                    `${activeUsers.length} rider(s) active nearby:\n${activeUsers.map(u => u.fullName || u.username || 'Anonymous').join(', ')}`
+                  );
+                }
+              }}
+            />
           </View>
-          <Text style={styles.bottomSubtitle}>Long-press anywhere on the map to pin a location.</Text>
+          <Text style={styles.bottomSubtitle}>
+            {searchedLocation 
+              ? `Showing: ${searchedLocation.name}` 
+              : 'Long-press to pin a location, or search above.'
+            }
+          </Text>
 
-          {locationError ? <Text style={styles.warningText}>{locationError}</Text> : null}
+          {locationError && (
+            <View style={styles.warningBanner}>
+              <Ionicons name="warning" size={16} color="#f59e0b" />
+              <Text style={styles.warningText}>{locationError}</Text>
+            </View>
+          )}
 
-          <View style={styles.pinPreview}>
-            <Text style={styles.pinLabel}>Pinned:</Text>
-            <Text style={styles.pinValue}>
-              {pinnedCoordinate
-                ? `${pinnedCoordinate.latitude.toFixed(6)}, ${pinnedCoordinate.longitude.toFixed(6)}`
-                : 'None'}
-            </Text>
-          </View>
+          {pinnedCoordinate && (
+            <LocationMarkerDisplay
+              latitude={pinnedCoordinate.latitude}
+              longitude={pinnedCoordinate.longitude}
+              label={pinnedAddress ? pinnedAddress.split(',')[0] : 'Pinned Location'}
+              type="meetup"
+            />
+          )}
 
           <View style={styles.actionsRow}>
-            <TouchableOpacity style={styles.secondaryButton} onPress={() => setPinnedCoordinate(null)}>
-              <Text style={styles.secondaryButtonText}>Clear</Text>
+            <TouchableOpacity 
+              style={styles.secondaryButton} 
+              onPress={() => {
+                setPinnedCoordinate(null);
+                setPinnedAddress(null);
+              }}
+            >
+              <Text style={styles.secondaryButtonText}>Clear Pin</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.primaryButton} onPress={handleConfirmPin}>
+            <TouchableOpacity 
+              style={[styles.primaryButton, !pinnedCoordinate && styles.primaryButtonDisabled]} 
+              onPress={handleConfirmPin}
+              disabled={!pinnedCoordinate}
+            >
               <Text style={styles.primaryButtonText}>Confirm</Text>
             </TouchableOpacity>
           </View>
@@ -171,11 +353,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 40,
-    paddingBottom: 16,
-    width: '100%',
-    maxWidth: 420,
-    alignSelf: 'center',
+    paddingTop: 50,
+    paddingBottom: 12,
+    backgroundColor: palette.background,
   },
   backButton: {
     flexDirection: 'row',
@@ -190,6 +370,26 @@ const styles = StyleSheet.create({
     color: palette.textPrimary,
     fontSize: 18,
     fontWeight: '700',
+  },
+  shareButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: palette.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: palette.outline,
+  },
+  shareButtonActive: {
+    backgroundColor: palette.primary,
+    borderColor: palette.primary,
+  },
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    backgroundColor: palette.background,
+    zIndex: 100,
   },
   mapContainer: {
     flex: 1,
@@ -213,85 +413,112 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontWeight: '600',
   },
+  fabButton: {
+    position: 'absolute',
+    right: 16,
+    bottom: 240,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: palette.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: palette.outline,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
   bottomCard: {
     position: 'absolute',
     left: 16,
     right: 16,
-    bottom: 16,
+    bottom: 24,
     backgroundColor: palette.backgroundAlt,
     borderRadius: 24,
     padding: 18,
     borderWidth: 1,
     borderColor: palette.outline,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 8,
+  },
+  bottomHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
   bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
   },
   bottomTitle: {
     color: palette.textPrimary,
     fontWeight: '700',
     marginLeft: 8,
+    fontSize: 16,
   },
   bottomSubtitle: {
     color: palette.textSecondary,
-    marginBottom: 10,
+    marginBottom: 12,
+    fontSize: 13,
   },
-  warningText: {
-    color: palette.textSecondary,
-    marginBottom: 10,
-  },
-  pinPreview: {
+  warningBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: palette.surface,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: palette.outline,
+    backgroundColor: palette.surfaceAlt,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     marginBottom: 12,
+    gap: 8,
   },
-  pinLabel: {
-    color: palette.textSecondary,
-    fontWeight: '600',
-  },
-  pinValue: {
-    color: palette.textPrimary,
-    fontWeight: '700',
+  warningText: {
+    color: '#f59e0b',
+    fontSize: 13,
+    flex: 1,
   },
   actionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 12,
   },
   secondaryButton: {
     flex: 1,
     backgroundColor: palette.surface,
     borderRadius: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: palette.outline,
-    marginRight: 10,
   },
   secondaryButtonText: {
     color: palette.textPrimary,
     fontWeight: '700',
+    fontSize: 14,
   },
   primaryButton: {
     flex: 1,
     backgroundColor: palette.primary,
     borderRadius: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  primaryButtonDisabled: {
+    opacity: 0.5,
   },
   primaryButtonText: {
     color: palette.textPrimary,
     fontWeight: '700',
+    fontSize: 14,
   },
 });
 

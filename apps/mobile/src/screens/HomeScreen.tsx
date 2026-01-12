@@ -21,6 +21,7 @@ import { getSupabaseClient } from '../lib/supabase';
 import { fetchProfile } from '../api/profile';
 import { mobileMenuItems } from '../constants/menuItems';
 import { FeedParty, fetchActivePartyFeed, joinParty, cancelParty } from '../api/party';
+import { CrownBadge } from '../components/SharedComponents';
 
 const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Home'>): JSX.Element => {
   const [email, setEmail] = useState(route.params?.email ?? '');
@@ -212,6 +213,12 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
                       <Text style={styles.feedSub} numberOfLines={1}>
                         Meet: {party.meetupPoint}
                       </Text>
+                      <View style={styles.hostRow}>
+                        <CrownBadge size={14} />
+                        <Text style={styles.hostText}>
+                          {currentUserId === party.hostId ? 'You are hosting' : `Host: @${party.hostProfile?.username || 'unknown'}`}
+                        </Text>
+                      </View>
                       <View style={styles.feedBadges}>
                         {party.isFriendsOnly ? (
                           <View style={styles.badge}>
@@ -596,6 +603,17 @@ const styles = StyleSheet.create({
     color: palette.textSecondary,
     marginTop: 6,
     fontWeight: '600',
+  },
+  hostRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  hostText: {
+    color: palette.accent,
+    fontWeight: '700',
+    fontSize: 13,
   },
   feedBadges: {
     flexDirection: 'row',

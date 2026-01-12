@@ -11,4 +11,7 @@ export const palette = {
   muted: '#4a1d2b',
   outline: '#631f35',
   danger: '#dc2626',
+  success: '#22c55e',
+  warning: '#f59e0b',
+  info: '#3b82f6',
 };

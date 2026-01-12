@@ -16,6 +16,9 @@ import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
 import { fetchProfile, type ProfileData } from '../api/profile';
 import { getSupabaseClient } from '../lib/supabase';
+import { fetchUserRatings, UserRatingSummary } from '../api/rating';
+import { RatingStars } from '../components/SharedComponents';
+import ReportUserModal from '../components/ReportUserModal';
 
 const punctualityLabels: Record<string, string> = {
   'on-time': 'Always On-Time',
@@ -31,6 +34,12 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps): JSX.Element => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [email, setEmail] = useState<string>('');
   const [memberSince, setMemberSince] = useState<string>('');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [ratings, setRatings] = useState<UserRatingSummary>({ averageRating: 0, totalRatings: 0, ratings: [] });
+  
+  // Report modal state
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [viewedUserId, setViewedUserId] = useState<string | null>(null);
 
   const supabaseAvailable = useMemo(() => Boolean(getSupabaseClient()), []);
 
@@ -58,6 +67,8 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps): JSX.Element => {
         }
 
         if (user) {
+          setCurrentUserId(user.id);
+          setViewedUserId(user.id); // For now, viewing own profile
           setEmail(user.email ?? '');
           if (user.created_at) {
             const joined = new Date(user.created_at);
@@ -66,6 +77,12 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps): JSX.Element => {
               year: 'numeric',
             });
             setMemberSince(label);
+          }
+          
+          // Fetch ratings for this user
+          const userRatings = await fetchUserRatings(user.id);
+          if (active) {
+            setRatings(userRatings);
           }
         }
 
@@ -216,19 +233,30 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps): JSX.Element => {
             </View>
 
             <View style={styles.ratingsCard}>
+              <Text style={styles.ratingsTitle}>User Ratings</Text>
               <View style={styles.ratingStars}>
-                {[0, 1, 2, 3, 4].map((index) => (
-                  <Ionicons
-                    key={index}
-                    name={index < 4 ? 'star' : 'star-outline'}
-                    size={18}
-                    color={palette.primary}
-                  />
-                ))}
+                <RatingStars rating={ratings.averageRating} size={24} />
               </View>
-              <Text style={styles.ratingScore}>4.4 / 5.0</Text>
-              <Text style={styles.ratingHint}>Placeholder ratings. Real feedback will arrive with ride history.</Text>
+              <Text style={styles.ratingScore}>
+                {ratings.averageRating > 0 ? `${ratings.averageRating.toFixed(1)} / 5.0` : 'No ratings yet'}
+              </Text>
+              <Text style={styles.ratingHint}>
+                {ratings.totalRatings > 0 
+                  ? `Based on ${ratings.totalRatings} rating${ratings.totalRatings !== 1 ? 's' : ''} from fellow riders`
+                  : 'Complete rides to receive ratings from other members'}
+              </Text>
             </View>
+
+            {/* Report User Button - Only show for other users */}
+            {viewedUserId && viewedUserId !== currentUserId && (
+              <TouchableOpacity 
+                style={styles.reportButton} 
+                onPress={() => setReportModalOpen(true)}
+              >
+                <Ionicons name="flag-outline" size={18} color={palette.danger} />
+                <Text style={styles.reportButtonText}>Report User</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.connectionsCard}>
@@ -241,6 +269,16 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps): JSX.Element => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Report User Modal */}
+      {viewedUserId && (
+        <ReportUserModal
+          visible={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          reportedUserId={viewedUserId}
+          reportedUserName={displayName}
+        />
+      )}
     </View>
   );
 };
@@ -452,19 +490,46 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.outline,
     marginTop: 20,
+    alignItems: 'center',
+  },
+  ratingsTitle: {
+    color: palette.textPrimary,
+    fontWeight: '700',
+    fontSize: 16,
+    marginBottom: 12,
   },
   ratingStars: {
     flexDirection: 'row',
+    marginBottom: 8,
   },
   ratingScore: {
     color: palette.textPrimary,
     fontWeight: '700',
-    marginTop: 8,
+    fontSize: 18,
+    marginTop: 4,
   },
   ratingHint: {
     color: palette.textSecondary,
-    marginTop: 4,
+    marginTop: 8,
     fontSize: 12,
+    textAlign: 'center',
+  },
+  reportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: palette.danger,
+    backgroundColor: 'transparent',
+  },
+  reportButtonText: {
+    color: palette.danger,
+    fontWeight: '600',
+    marginLeft: 8,
   },
   connectionsCard: {
     backgroundColor: palette.surface,

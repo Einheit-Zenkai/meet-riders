@@ -19,6 +19,7 @@ import { palette } from '../theme/colors';
 import { getSupabaseClient } from '../lib/supabase';
 import { mobileMenuItems } from '../constants/menuItems';
 import { ActiveParty, cancelParty, fetchMyActiveParties, fetchPartyMembers, PartyMember } from '../api/party';
+import { CrownBadge } from '../components/SharedComponents';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CurrentParty'>;
 
@@ -259,7 +260,9 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
                               {m.profile.username || label}
                             </Text>
                             {m.isHost && (
-                              <Ionicons name="star" size={16} color={palette.accent} style={styles.memberBadge} />
+                              <View style={styles.memberBadge}>
+                                <CrownBadge size={18} />
+                              </View>
                             )}
                             {icon && (
                               <Ionicons name={icon.name} size={16} color={icon.color} style={styles.memberBadge} />
