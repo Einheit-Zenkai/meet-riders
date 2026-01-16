@@ -556,6 +556,228 @@ export const joinParty = async (partyId: string): Promise<void> => {
   }
 };
 
+// ============ PARTY JOIN REQUESTS ============
+
+export interface PartyJoinRequest {
+  requestId: string;
+  partyId: string;
+  userId: string;
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled';
+  createdAt: string;
+  profile: {
+    id: string;
+    username: string;
+    fullName: string | null;
+    avatarUrl: string | null;
+    gender: string | null;
+    university: string | null;
+    showUniversity: boolean;
+  };
+  rating: {
+    averageRating: number;
+    totalRatings: number;
+  };
+}
+
+/**
+ * Fetch pending join requests for parties the current user is hosting
+ */
+export const fetchMyPartyJoinRequests = async (): Promise<PartyJoinRequest[]> => {
+  const { supabase, user } = await ensureUser();
+  const nowIso = new Date().toISOString();
+
+  // Get parties I'm hosting that are active
+  const { data: myParties, error: partiesError } = await supabase
+    .from('parties')
+    .select('id')
+    .eq('host_id', user.id)
+    .eq('is_active', true)
+    .gt('expires_at', nowIso);
+
+  if (partiesError) throw partiesError;
+
+  const partyIds = (myParties ?? []).map((p: any) => p.id);
+  if (!partyIds.length) return [];
+
+  // Fetch pending requests for these parties
+  const { data: requests, error: requestsError } = await supabase
+    .from('party_requests')
+    .select('request_id, party_id, user_id, status, created_at')
+    .in('party_id', partyIds)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  if (requestsError) throw requestsError;
+
+  const requestRows = (requests ?? []) as any[];
+  if (!requestRows.length) return [];
+
+  // Get unique user IDs
+  const userIds = Array.from(new Set(requestRows.map((r) => r.user_id)));
+
+  // Fetch profiles
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, username, full_name, avatar_url, gender, university, show_university')
+    .in('id', userIds);
+
+  if (profilesError) throw profilesError;
+
+  const profilesMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+
+  // Fetch ratings for all users
+  const ratingsMap = new Map<string, { averageRating: number; totalRatings: number }>();
+  for (const userId of userIds) {
+    const { data: ratingsData } = await supabase
+      .from('ratings')
+      .select('score')
+      .eq('rated_user_id', userId);
+
+    const scores = (ratingsData ?? []).map((r: any) => r.score);
+    if (scores.length > 0) {
+      const avg = scores.reduce((a: number, b: number) => a + b, 0) / scores.length;
+      ratingsMap.set(userId, { averageRating: Math.round(avg * 10) / 10, totalRatings: scores.length });
+    } else {
+      ratingsMap.set(userId, { averageRating: 0, totalRatings: 0 });
+    }
+  }
+
+  return requestRows.map((row: any) => {
+    const profile = profilesMap.get(row.user_id) ?? {};
+    const rating = ratingsMap.get(row.user_id) ?? { averageRating: 0, totalRatings: 0 };
+    return {
+      requestId: row.request_id,
+      partyId: row.party_id,
+      userId: row.user_id,
+      status: row.status,
+      createdAt: row.created_at,
+      profile: {
+        id: profile.id ?? row.user_id,
+        username: profile.username ?? 'Unknown',
+        fullName: profile.full_name ?? null,
+        avatarUrl: profile.avatar_url ?? null,
+        gender: profile.gender ?? null,
+        university: profile.university ?? null,
+        showUniversity: Boolean(profile.show_university),
+      },
+      rating,
+    };
+  });
+};
+
+/**
+ * Request to join a party (for non-instant join parties)
+ */
+export const requestToJoinParty = async (partyId: string): Promise<void> => {
+  const { supabase, user } = await ensureUser();
+
+  // Check if already requested
+  const { data: existing } = await supabase
+    .from('party_requests')
+    .select('request_id')
+    .eq('party_id', partyId)
+    .eq('user_id', user.id)
+    .in('status', ['pending', 'accepted'] as never)
+    .maybeSingle();
+
+  if (existing) {
+    throw new Error('You have already requested to join this party');
+  }
+
+  const { error } = await supabase.from('party_requests').insert({
+    party_id: partyId,
+    user_id: user.id,
+    status: 'pending',
+  } as never);
+
+  if (error) throw error;
+};
+
+/**
+ * Accept a join request (host only)
+ */
+export const acceptJoinRequest = async (requestId: string): Promise<void> => {
+  const { supabase, user } = await ensureUser();
+
+  // Fetch the request to get party details
+  const { data: request, error: reqError } = await supabase
+    .from('party_requests')
+    .select('party_id, user_id')
+    .eq('request_id', requestId)
+    .maybeSingle();
+
+  if (reqError) throw reqError;
+  if (!request) throw new Error('Request not found');
+
+  // Verify caller is the host
+  const { data: party, error: partyError } = await supabase
+    .from('parties')
+    .select('host_id')
+    .eq('id', request.party_id)
+    .maybeSingle();
+
+  if (partyError) throw partyError;
+  if (!party || party.host_id !== user.id) {
+    throw new Error('Only the host can accept join requests');
+  }
+
+  // Update request status
+  const { error: updateError } = await supabase
+    .from('party_requests')
+    .update({ status: 'accepted' } as never)
+    .eq('request_id', requestId);
+
+  if (updateError) throw updateError;
+
+  // Add user to party members
+  const { error: memberError } = await supabase.from('party_members').insert({
+    party_id: request.party_id,
+    user_id: request.user_id,
+    status: 'joined',
+  } as never);
+
+  if (memberError) throw memberError;
+};
+
+/**
+ * Decline a join request (host only)
+ */
+export const declineJoinRequest = async (requestId: string): Promise<void> => {
+  const { supabase, user } = await ensureUser();
+
+  // Fetch the request to get party details
+  const { data: request, error: reqError } = await supabase
+    .from('party_requests')
+    .select('party_id')
+    .eq('request_id', requestId)
+    .maybeSingle();
+
+  if (reqError) throw reqError;
+  if (!request) throw new Error('Request not found');
+
+  // Verify caller is the host
+  const { data: party, error: partyError } = await supabase
+    .from('parties')
+    .select('host_id')
+    .eq('id', request.party_id)
+    .maybeSingle();
+
+  if (partyError) throw partyError;
+  if (!party || party.host_id !== user.id) {
+    throw new Error('Only the host can decline join requests');
+  }
+
+  // Update request status
+  const { error: updateError } = await supabase
+    .from('party_requests')
+    .update({ status: 'declined' } as never)
+    .eq('request_id', requestId);
+
+  if (updateError) throw updateError;
+};
+
+// ============ EXPIRED PARTIES ============
+
 export const fetchMyExpiredParties = async (): Promise<ExpiredParty[]> => {
   const { supabase, user } = await ensureUser();
   const nowIso = new Date().toISOString();
