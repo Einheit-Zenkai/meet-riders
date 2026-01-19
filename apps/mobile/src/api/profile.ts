@@ -158,3 +158,50 @@ export const saveProfile = async (payload: SaveProfilePayload): Promise<void> =>
     throw error;
   }
 };
+
+/**
+ * Fetch another user's profile by their ID
+ */
+export const fetchProfileById = async (userId: string): Promise<ProfileData | null> => {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(
+      'username, nickname, bio, gender, punctuality, ideal_location, ideal_departure_time, university, show_university, phone_number, show_phone, avatar_url, "rideOptions"'
+    )
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  let parsedRideOptions: Record<string, number> | null = null;
+  if (typeof data.rideOptions === 'string') {
+    try {
+      parsedRideOptions = JSON.parse(data.rideOptions);
+    } catch {
+      parsedRideOptions = null;
+    }
+  }
+
+  return {
+    username: data.username ?? null,
+    nickname: data.nickname ?? null,
+    bio: data.bio ?? null,
+    gender: data.gender ?? null,
+    punctuality: data.punctuality ?? null,
+    idealLocation: data.ideal_location ?? null,
+    idealDepartureTime: data.ideal_departure_time ?? null,
+    rideOptions: parsedRideOptions,
+    university: data.university ?? null,
+    showUniversity: typeof data.show_university === 'boolean' ? data.show_university : false,
+    phoneNumber: data.phone_number ?? null,
+    showPhone: Boolean(data.show_phone),
+    avatarUrl: data.avatar_url ?? null,
+  };
+};

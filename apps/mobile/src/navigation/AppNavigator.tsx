@@ -30,7 +30,7 @@ export type RootStackParamList = {
   HostParty: undefined;
   ShowInterest: undefined;
   Settings: undefined;
-  Profile: undefined;
+  Profile: { userId?: string } | undefined;
   Connections: undefined;
   Map:
     | {

@@ -14,11 +14,12 @@ import { Ionicons } from '@expo/vector-icons';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
-import { fetchProfile, type ProfileData } from '../api/profile';
+import { fetchProfile, fetchProfileById, type ProfileData } from '../api/profile';
 import { getSupabaseClient } from '../lib/supabase';
 import { fetchUserRatings, UserRatingSummary } from '../api/rating';
 import { RatingStars } from '../components/SharedComponents';
 import ReportUserModal from '../components/ReportUserModal';
+import { sendConnectionRequest, fetchConnectionsBundle, ConnectionsBundle } from '../api/connections';
 
 const punctualityLabels: Record<string, string> = {
   'on-time': 'Always On-Time',
@@ -28,7 +29,10 @@ const punctualityLabels: Record<string, string> = {
 
 type ProfileScreenProps = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
-const ProfileScreen = ({ navigation }: ProfileScreenProps): JSX.Element => {
+const ProfileScreen = ({ navigation, route }: ProfileScreenProps): JSX.Element => {
+  const viewingUserId = route.params?.userId; // If provided, viewing another user's profile
+  const isViewingOther = Boolean(viewingUserId);
+
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -40,6 +44,10 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps): JSX.Element => {
   // Report modal state
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [viewedUserId, setViewedUserId] = useState<string | null>(null);
+
+  // Connection state (for other users' profiles)
+  const [connectionStatus, setConnectionStatus] = useState<'none' | 'pending' | 'connected' | 'incoming'>('none');
+  const [sendingRequest, setSendingRequest] = useState(false);
 
   const supabaseAvailable = useMemo(() => Boolean(getSupabaseClient()), []);
 
@@ -68,31 +76,90 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps): JSX.Element => {
 
         if (user) {
           setCurrentUserId(user.id);
-          setViewedUserId(user.id); // For now, viewing own profile
-          setEmail(user.email ?? '');
-          if (user.created_at) {
-            const joined = new Date(user.created_at);
-            const label = joined.toLocaleString('en-US', {
-              month: 'long',
-              year: 'numeric',
-            });
-            setMemberSince(label);
-          }
+        }
+
+        // If viewing another user's profile
+        if (isViewingOther && viewingUserId) {
+          setViewedUserId(viewingUserId);
           
-          // Fetch ratings for this user
-          const userRatings = await fetchUserRatings(user.id);
+          // Fetch the other user's profile
+          const otherProfile = await fetchProfileById(viewingUserId);
+          if (!active) return;
+          
+          setProfile(otherProfile);
+          
+          // Fetch ratings for the viewed user
+          const userRatings = await fetchUserRatings(viewingUserId);
           if (active) {
             setRatings(userRatings);
           }
-        }
 
-        const result = await fetchProfile();
-        if (!active) {
-          return;
-        }
+          // Check connection status with this user
+          if (user) {
+            try {
+              const bundle = await fetchConnectionsBundle();
+              if (!active) return;
+              
+              // Check if already connected
+              const isConnected = bundle.connections.some(
+                (c) => c.requesterId === viewingUserId || c.addresseeId === viewingUserId
+              );
+              if (isConnected) {
+                setConnectionStatus('connected');
+              } else {
+                // Check if there's a pending outgoing request
+                const hasPendingOutgoing = bundle.outgoingRequests.some(
+                  (r) => r.addresseeId === viewingUserId
+                );
+                if (hasPendingOutgoing) {
+                  setConnectionStatus('pending');
+                } else {
+                  // Check if there's an incoming request from this user
+                  const hasIncoming = bundle.incomingRequests.some(
+                    (r) => r.requesterId === viewingUserId
+                  );
+                  if (hasIncoming) {
+                    setConnectionStatus('incoming');
+                  } else {
+                    setConnectionStatus('none');
+                  }
+                }
+              }
+            } catch (e) {
+              console.error('Failed to check connection status', e);
+            }
+          }
 
-        setProfile(result);
-        setErrorMessage(null);
+          setErrorMessage(null);
+        } else {
+          // Viewing own profile
+          if (user) {
+            setViewedUserId(user.id);
+            setEmail(user.email ?? '');
+            if (user.created_at) {
+              const joined = new Date(user.created_at);
+              const label = joined.toLocaleString('en-US', {
+                month: 'long',
+                year: 'numeric',
+              });
+              setMemberSince(label);
+            }
+            
+            // Fetch ratings for this user
+            const userRatings = await fetchUserRatings(user.id);
+            if (active) {
+              setRatings(userRatings);
+            }
+          }
+
+          const result = await fetchProfile();
+          if (!active) {
+            return;
+          }
+
+          setProfile(result);
+          setErrorMessage(null);
+        }
       } catch (error) {
         if (active) {
           const message = error instanceof Error ? error.message : 'Unable to load profile.';
@@ -109,7 +176,23 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps): JSX.Element => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [isViewingOther, viewingUserId]);
+
+  const handleSendFriendRequest = async () => {
+    if (!profile?.username || sendingRequest) return;
+    
+    try {
+      setSendingRequest(true);
+      await sendConnectionRequest(profile.username);
+      setConnectionStatus('pending');
+      Alert.alert('Request Sent', 'Connection request sent successfully!');
+    } catch (error: any) {
+      console.error('Failed to send friend request', error);
+      Alert.alert('Error', error.message || 'Failed to send connection request.');
+    } finally {
+      setSendingRequest(false);
+    }
+  };
 
   const handleEditProfile = (): void => {
     navigation.navigate('Settings');
@@ -167,12 +250,16 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps): JSX.Element => {
           <Text style={styles.backLabel}>Back</Text>
         </TouchableOpacity>
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
-            <Text style={styles.editButtonText}>Edit Profile</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.signOutPill} onPress={handleSignOut}>
-            <Text style={styles.signOutPillText}>Sign out</Text>
-          </TouchableOpacity>
+          {!isViewingOther ? (
+            <>
+              <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
+                <Text style={styles.editButtonText}>Edit Profile</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.signOutPill} onPress={handleSignOut}>
+                <Text style={styles.signOutPillText}>Sign out</Text>
+              </TouchableOpacity>
+            </>
+          ) : null}
         </View>
       </View>
 
@@ -194,7 +281,7 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps): JSX.Element => {
                 <Text style={styles.displayName}>{displayName}</Text>
                 <View style={styles.handleRow}>
                   <Text style={styles.handleText}>{handleLabel}</Text>
-                  {email ? <Text style={styles.emailText}> • {email}</Text> : null}
+                  {!isViewingOther && email ? <Text style={styles.emailText}> • {email}</Text> : null}
                   {genderLabel ? (
                     <View style={styles.genderBadge}>
                       <Ionicons name="male" size={14} color={palette.textPrimary} />
@@ -246,6 +333,45 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps): JSX.Element => {
                   : 'Complete rides to receive ratings from other members'}
               </Text>
             </View>
+
+            {/* Add Friend Button - Only show for other users */}
+            {isViewingOther && connectionStatus === 'none' && (
+              <TouchableOpacity 
+                style={[styles.addFriendButton, sendingRequest && styles.addFriendButtonDisabled]}
+                onPress={handleSendFriendRequest}
+                disabled={sendingRequest}
+              >
+                {sendingRequest ? (
+                  <ActivityIndicator size="small" color={palette.textPrimary} />
+                ) : (
+                  <>
+                    <Ionicons name="person-add" size={18} color={palette.textPrimary} />
+                    <Text style={styles.addFriendButtonText}>Add Friend</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {isViewingOther && connectionStatus === 'pending' && (
+              <View style={styles.pendingBadge}>
+                <Ionicons name="time-outline" size={18} color={palette.textSecondary} />
+                <Text style={styles.pendingBadgeText}>Request Pending</Text>
+              </View>
+            )}
+
+            {isViewingOther && connectionStatus === 'connected' && (
+              <View style={styles.connectedBadge}>
+                <Ionicons name="checkmark-circle" size={18} color={palette.success} />
+                <Text style={styles.connectedBadgeText}>Connected</Text>
+              </View>
+            )}
+
+            {isViewingOther && connectionStatus === 'incoming' && (
+              <View style={styles.incomingBadge}>
+                <Ionicons name="mail" size={18} color={palette.primary} />
+                <Text style={styles.incomingBadgeText}>Wants to connect with you</Text>
+              </View>
+            )}
 
             {/* Report User Button - Only show for other users */}
             {viewedUserId && viewedUserId !== currentUserId && (
@@ -514,11 +640,81 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
   },
-  reportButton: {
+  addFriendButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    backgroundColor: palette.primary,
+  },
+  addFriendButtonDisabled: {
+    opacity: 0.6,
+  },
+  addFriendButtonText: {
+    color: palette.textPrimary,
+    fontWeight: '700',
+    marginLeft: 8,
+    fontSize: 15,
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: palette.surfaceAlt,
+    borderWidth: 1,
+    borderColor: palette.outline,
+  },
+  pendingBadgeText: {
+    color: palette.textSecondary,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  connectedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    borderWidth: 1,
+    borderColor: palette.success,
+  },
+  connectedBadgeText: {
+    color: palette.success,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  incomingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    borderWidth: 1,
+    borderColor: palette.primary,
+  },
+  incomingBadgeText: {
+    color: palette.primary,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  reportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 12,

@@ -248,8 +248,7 @@ const ConnectionsScreen = ({ navigation }: NativeStackScreenProps<RootStackParam
   };
 
   const goToProfile = (userId: string) => {
-    Alert.alert('Profile', 'Profile deep link coming soon.');
-    console.log('Navigate to profile id', userId);
+    navigation.navigate('Profile', { userId });
   };
 
   const hasContent = useMemo(() => {
@@ -308,11 +307,19 @@ const ConnectionsScreen = ({ navigation }: NativeStackScreenProps<RootStackParam
           {suggestions.length > 0 && (
             <View style={styles.suggestionPanel}>
               {suggestions.map((item) => (
-                <TouchableOpacity key={item.id} style={styles.suggestionRow} onPress={() => setUsernameInput(item.username ?? '')}>
-                  <Text style={styles.suggestionText}>{profileLabel(item)}</Text>
-                  {item.username && (
-                    <Text style={styles.suggestionHandle}>@{item.username}</Text>
-                  )}
+                <TouchableOpacity 
+                  key={item.id} 
+                  style={styles.suggestionRow} 
+                  onPress={() => goToProfile(item.id)}
+                  onLongPress={() => setUsernameInput(item.username ?? '')}
+                >
+                  <View style={styles.suggestionInfo}>
+                    <Text style={styles.suggestionText}>{profileLabel(item)}</Text>
+                    {item.username && (
+                      <Text style={styles.suggestionHandle}>@{item.username}</Text>
+                    )}
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={palette.textSecondary} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -680,10 +687,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   suggestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: palette.outline,
+  },
+  suggestionInfo: {
+    flex: 1,
   },
   suggestionText: {
     color: palette.textPrimary,
