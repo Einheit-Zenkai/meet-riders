@@ -71,7 +71,3 @@ const MapPickerView = forwardRef<MapPickerRef, MapPickerViewProps>(
 MapPickerView.displayName = 'MapPickerView';
 
 export default MapPickerView;
-
-MapPickerViewNative.displayName = 'MapPickerViewNative';
-
-export default MapPickerViewNative;

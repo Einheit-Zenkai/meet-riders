@@ -18,7 +18,7 @@ import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
 import { getSupabaseClient } from '../lib/supabase';
 import { mobileMenuItems } from '../constants/menuItems';
-import { ActiveParty, cancelParty, fetchMyActiveParties, fetchPartyMembers, PartyMember } from '../api/party';
+import { ActiveParty, cancelParty, fetchMyActiveParties, fetchPartyMembers, leaveParty, PartyMember } from '../api/party';
 import { CrownBadge } from '../components/SharedComponents';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CurrentParty'>;
@@ -61,6 +61,8 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const [leaveBusy, setLeaveBusy] = useState(false);
   const [parties, setParties] = useState<ActiveParty[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [members, setMembers] = useState<PartyMember[]>([]);
@@ -132,7 +134,9 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
     return members.filter((m) => m.userId !== hostId).length;
   }, [members, hostId]);
 
-  const canCancel = Boolean(selected && currentUserId && selected.hostId === currentUserId);
+  const isHost = Boolean(selected && currentUserId && selected.hostId === currentUserId);
+  const canCancel = isHost;
+  const canLeave = Boolean(selected && currentUserId && !isHost);
 
   const handleCancel = () => {
     if (!selected || !canCancel) return;
@@ -152,6 +156,31 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
       Alert.alert('Cancel party', error?.message || 'Failed to cancel party.');
     } finally {
       setCancelBusy(false);
+    }
+  };
+
+  const handleLeave = () => {
+    if (!selected || !canLeave) return;
+    setLeaveConfirmOpen(true);
+  };
+
+  const runLeave = async () => {
+    if (!selected || leaveBusy) return;
+    try {
+      setLeaveBusy(true);
+      const result = await leaveParty(selected.id);
+      if (!result.success) {
+        Alert.alert('Leave Party', result.error || 'Failed to leave party.');
+        return;
+      }
+      setLeaveConfirmOpen(false);
+      await load();
+      Alert.alert('Left Party', 'You have left the party.');
+    } catch (error: any) {
+      console.error('Failed to leave party', error);
+      Alert.alert('Leave party', error?.message || 'Failed to leave party.');
+    } finally {
+      setLeaveBusy(false);
     }
   };
 
@@ -281,6 +310,13 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
                 >
                   <Text style={styles.cancelButtonText}>Cancel party</Text>
                 </Pressable>
+
+                {canLeave && (
+                  <Pressable style={styles.leaveButton} onPress={handleLeave}>
+                    <Ionicons name="exit-outline" size={18} color={palette.danger} />
+                    <Text style={styles.leaveButtonText}>Leave Party</Text>
+                  </Pressable>
+                )}
               </View>
             ) : null}
           </ScrollView>
@@ -340,6 +376,45 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
                 disabled={cancelBusy}
               >
                 <Text style={styles.confirmButtonText}>{cancelBusy ? 'Canceling…' : 'Cancel'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={leaveConfirmOpen} animationType="fade" transparent>
+        <View style={styles.confirmOverlay}>
+          <Pressable
+            style={styles.confirmBackdrop}
+            onPress={() => {
+              if (!leaveBusy) setLeaveConfirmOpen(false);
+            }}
+          />
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>Leave party?</Text>
+            <Text style={styles.confirmText}>Are you sure you want to leave this party?</Text>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={[styles.confirmButton, styles.confirmButtonAlt]}
+                onPress={() => setLeaveConfirmOpen(false)}
+                disabled={leaveBusy}
+              >
+                <Text style={styles.confirmButtonText}>Stay</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.confirmButton,
+                  styles.confirmButtonDanger,
+                  leaveBusy ? styles.confirmButtonDisabled : undefined,
+                ]}
+                onPress={runLeave}
+                disabled={leaveBusy}
+              >
+                {leaveBusy ? (
+                  <ActivityIndicator size="small" color={palette.textPrimary} />
+                ) : (
+                  <Text style={styles.confirmButtonText}>Leave</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -670,6 +745,22 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: palette.textPrimary,
     fontWeight: '900',
+  },
+  leaveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 8,
+    borderRadius: 16,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: palette.danger,
+  },
+  leaveButtonText: {
+    color: palette.danger,
+    fontWeight: '800',
   },
   confirmOverlay: {
     flex: 1,

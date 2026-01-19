@@ -17,7 +17,7 @@ import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
 import { getSupabaseClient } from '../lib/supabase';
 import { mobileMenuItems } from '../constants/menuItems';
-import { fetchPartyMembers, PartyMember } from '../api/party';
+import { cancelParty, fetchPartyMembers, leaveParty, PartyMember } from '../api/party';
 import { CrownBadge } from '../components/SharedComponents';
 import RatingModal from '../components/RatingModal';
 import { submitRating } from '../api/rating';
@@ -60,6 +60,14 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
   const [ratingModalOpen, setRatingModalOpen] = useState(false);
   const [memberToRate, setMemberToRate] = useState<PartyMember | null>(null);
   const [ratedUserIds, setRatedUserIds] = useState<Set<string>>(new Set());
+
+  // Leave party state
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const [leavingBusy, setLeavingBusy] = useState(false);
+
+  // Cancel party state (for host)
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
 
   const partyIdParam = route.params?.partyId;
 
@@ -255,6 +263,59 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
 
   const openMap = () => navigation.navigate('Map');
 
+  // Check if current user is not the host (can leave)
+  const isHost = party && currentUserId && party.host_id === currentUserId;
+  const canLeave = party && currentUserId && !isHost;
+
+  const handleLeaveParty = () => {
+    if (!canLeave) return;
+    setLeaveConfirmOpen(true);
+  };
+
+  const runLeaveParty = async () => {
+    if (!party || leavingBusy) return;
+    try {
+      setLeavingBusy(true);
+      const result = await leaveParty(party.id);
+      if (!result.success) {
+        Alert.alert('Leave Party', result.error || 'Failed to leave party.');
+        return;
+      }
+      setLeaveConfirmOpen(false);
+      Alert.alert('Left Party', 'You have left the party.', [
+        { text: 'OK', onPress: () => navigation.navigate('Home', undefined) }
+      ]);
+    } catch (error: any) {
+      console.error('Failed to leave party', error);
+      Alert.alert('Leave Party', error?.message || 'Failed to leave party.');
+    } finally {
+      setLeavingBusy(false);
+    }
+  };
+
+  // Cancel party handlers (for host)
+  const handleCancelParty = () => {
+    if (!isHost || !party) return;
+    setCancelConfirmOpen(true);
+  };
+
+  const runCancelParty = async () => {
+    if (!party || cancelBusy) return;
+    try {
+      setCancelBusy(true);
+      await cancelParty(party.id);
+      setCancelConfirmOpen(false);
+      Alert.alert('Party Canceled', 'Your party has been canceled.', [
+        { text: 'OK', onPress: () => navigation.navigate('Home', undefined) }
+      ]);
+    } catch (error: any) {
+      console.error('Failed to cancel party', error);
+      Alert.alert('Cancel Party', error?.message || 'Failed to cancel party.');
+    } finally {
+      setCancelBusy(false);
+    }
+  };
+
   return (
     <View style={styles.root}>
       <View style={styles.container}>
@@ -309,6 +370,19 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
                 <Ionicons name="map-outline" size={18} color={palette.textPrimary} />
                 <Text style={styles.mapButtonText}>Open map</Text>
               </Pressable>
+
+              {isHost && (
+                <Pressable style={styles.cancelButton} onPress={handleCancelParty}>
+                  <Text style={styles.cancelButtonText}>Cancel Party</Text>
+                </Pressable>
+              )}
+
+              {canLeave && (
+                <Pressable style={styles.leaveButton} onPress={handleLeaveParty}>
+                  <Ionicons name="exit-outline" size={18} color={palette.danger} />
+                  <Text style={styles.leaveButtonText}>Leave Party</Text>
+                </Pressable>
+              )}
             </View>
 
             <View style={styles.card}>
@@ -517,6 +591,86 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
         onSubmit={handleRatingSubmit}
         userName={memberToRate ? displayName(memberToRate) : ''}
       />
+
+      {/* Leave Party Confirmation Modal */}
+      <Modal visible={leaveConfirmOpen} animationType="fade" transparent>
+        <View style={styles.confirmOverlay}>
+          <Pressable
+            style={styles.confirmBackdrop}
+            onPress={() => {
+              if (!leavingBusy) setLeaveConfirmOpen(false);
+            }}
+          />
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>Leave Party?</Text>
+            <Text style={styles.confirmText}>Are you sure you want to leave this party?</Text>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={[styles.confirmButton, styles.confirmButtonAlt]}
+                onPress={() => setLeaveConfirmOpen(false)}
+                disabled={leavingBusy}
+              >
+                <Text style={styles.confirmButtonText}>Stay</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.confirmButton,
+                  styles.confirmButtonDanger,
+                  leavingBusy ? styles.confirmButtonDisabled : undefined,
+                ]}
+                onPress={runLeaveParty}
+                disabled={leavingBusy}
+              >
+                {leavingBusy ? (
+                  <ActivityIndicator size="small" color={palette.textPrimary} />
+                ) : (
+                  <Text style={styles.confirmButtonText}>Leave</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Cancel Party Confirmation Modal (for host) */}
+      <Modal visible={cancelConfirmOpen} animationType="fade" transparent>
+        <View style={styles.confirmOverlay}>
+          <Pressable
+            style={styles.confirmBackdrop}
+            onPress={() => {
+              if (!cancelBusy) setCancelConfirmOpen(false);
+            }}
+          />
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>Cancel Party?</Text>
+            <Text style={styles.confirmText}>This will end your party immediately for everyone.</Text>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={[styles.confirmButton, styles.confirmButtonAlt]}
+                onPress={() => setCancelConfirmOpen(false)}
+                disabled={cancelBusy}
+              >
+                <Text style={styles.confirmButtonText}>Keep</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.confirmButton,
+                  styles.confirmButtonDanger,
+                  cancelBusy ? styles.confirmButtonDisabled : undefined,
+                ]}
+                onPress={runCancelParty}
+                disabled={cancelBusy}
+              >
+                {cancelBusy ? (
+                  <ActivityIndicator size="small" color={palette.textPrimary} />
+                ) : (
+                  <Text style={styles.confirmButtonText}>Cancel</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -695,6 +849,34 @@ const styles = StyleSheet.create({
     color: palette.textPrimary,
     fontWeight: '800',
   },
+  cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: palette.danger,
+    borderRadius: 16,
+    paddingVertical: 12,
+  },
+  cancelButtonText: {
+    color: palette.textPrimary,
+    fontWeight: '800',
+  },
+  leaveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: 'transparent',
+    borderRadius: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: palette.danger,
+  },
+  leaveButtonText: {
+    color: palette.danger,
+    fontWeight: '800',
+  },
   inlineLoading: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -858,6 +1040,69 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   menuLabel: {
+    color: palette.textPrimary,
+    fontWeight: '700',
+  },
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  confirmBackdrop: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  confirmCard: {
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: palette.surface,
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    gap: 16,
+  },
+  confirmTitle: {
+    color: palette.textPrimary,
+    fontWeight: '800',
+    fontSize: 18,
+    textAlign: 'center',
+  },
+  confirmText: {
+    color: palette.textSecondary,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  confirmButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmButtonAlt: {
+    backgroundColor: palette.surfaceAlt,
+    borderWidth: 1,
+    borderColor: palette.outline,
+  },
+  confirmButtonDanger: {
+    backgroundColor: palette.danger,
+  },
+  confirmButtonDisabled: {
+    opacity: 0.6,
+  },
+  confirmButtonText: {
     color: palette.textPrimary,
     fontWeight: '700',
   },

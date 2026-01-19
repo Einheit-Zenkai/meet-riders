@@ -363,6 +363,36 @@ export const cancelParty = async (partyId: string): Promise<void> => {
   }
 };
 
+/**
+ * Leave a party as the current user (non-host member)
+ */
+export const leaveParty = async (partyId: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { supabase, user } = await ensureUser();
+
+    // Update the member status to 'left'
+    const { error } = await supabase
+      .from('party_members')
+      .update({ 
+        status: 'left', 
+        left_at: new Date().toISOString() 
+      } as never)
+      .eq('party_id', partyId)
+      .eq('user_id', user.id)
+      .eq('status', 'joined');
+
+    if (error) {
+      console.error('Error leaving party:', error);
+      return { success: false, error: 'Failed to leave party' };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Unexpected error leaving party:', error);
+    return { success: false, error: error?.message || 'An unexpected error occurred' };
+  }
+};
+
 export const restoreParty = async (partyId: string): Promise<void> => {
   const { supabase, user } = await ensureUser();
 
