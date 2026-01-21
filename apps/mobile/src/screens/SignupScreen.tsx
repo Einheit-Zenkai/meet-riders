@@ -14,10 +14,11 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
-import { signup } from '../api/auth';
+import { signup, signUpWithOAuth, OAuthProvider } from '../api/auth';
 
 const SignupScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 'Signup'>): JSX.Element => {
   const [username, setUsername] = useState('');
@@ -25,6 +26,29 @@ const SignupScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList,
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<OAuthProvider | null>(null);
+
+  const handleOAuthSignUp = async (provider: OAuthProvider): Promise<void> => {
+    try {
+      setOauthLoading(provider);
+      const result = await signUpWithOAuth(provider);
+      setOauthLoading(null);
+
+      if (!result.success) {
+        Alert.alert('Sign-up failed', result.error || 'Authentication was not successful.');
+        return;
+      }
+
+      // OAuth sign-up always goes to onboarding since we need username/profile info
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Onboarding' }],
+      });
+    } catch (error) {
+      setOauthLoading(null);
+      Alert.alert('Sign-up failed', 'An unexpected error occurred. Please try again.');
+    }
+  };
 
   const onSubmit = async (): Promise<void> => {
     if (!username || !email || !password || !confirmPassword) {
@@ -139,6 +163,42 @@ const SignupScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList,
               {loading ? <ActivityIndicator color={palette.textPrimary} /> : <Text style={styles.primaryButtonText}>Create Account</Text>}
             </TouchableOpacity>
 
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or sign up with</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.oauthButton, styles.googleButton, oauthLoading === 'google' && styles.oauthButtonDisabled]}
+              onPress={() => handleOAuthSignUp('google')}
+              disabled={oauthLoading !== null || loading}
+            >
+              {oauthLoading === 'google' ? (
+                <ActivityIndicator color="#1f1f1f" />
+              ) : (
+                <>
+                  <Ionicons name="logo-google" size={20} color="#1f1f1f" />
+                  <Text style={styles.googleButtonText}>Sign up with Google</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.oauthButton, styles.microsoftButton, oauthLoading === 'azure' && styles.oauthButtonDisabled]}
+              onPress={() => handleOAuthSignUp('azure')}
+              disabled={oauthLoading !== null || loading}
+            >
+              {oauthLoading === 'azure' ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <>
+                  <Ionicons name="logo-microsoft" size={20} color="#ffffff" />
+                  <Text style={styles.microsoftButtonText}>Sign up with Microsoft</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
             <View style={styles.footerRow}>
               <Text style={styles.footerCopy}>Already have an account?</Text>
               <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -228,6 +288,50 @@ const styles = StyleSheet.create({
     color: palette.textPrimary,
     fontWeight: '700',
     fontSize: 16,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginVertical: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: palette.outline,
+  },
+  dividerText: {
+    color: palette.textSecondary,
+    fontSize: 14,
+  },
+  oauthButton: {
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  oauthButtonDisabled: {
+    opacity: 0.7,
+  },
+  googleButton: {
+    backgroundColor: '#ffffff',
+  },
+  googleButtonText: {
+    color: '#1f1f1f',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  microsoftButton: {
+    backgroundColor: '#2f2f2f',
+    borderWidth: 1,
+    borderColor: '#5e5e5e',
+  },
+  microsoftButtonText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 15,
   },
   footerRow: {
     flexDirection: 'row',
