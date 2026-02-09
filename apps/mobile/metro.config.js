@@ -18,10 +18,31 @@ config.resolver.disableHierarchicalLookup = true;
 config.resolver.unstable_enablePackageExports = false;
 config.resolver.unstable_enableSymlinks = true;
 
-// Shim Node.js built-ins that don't exist in React Native (e.g. axios → crypto).
+// Shim Node.js built-ins that don't exist in React Native.
+// Axios 1.x's dist/node/axios.cjs imports Node builtins (crypto, url, http,
+// https, stream, zlib, …) which are absent in RN.  Map them to empty shims so
+// Metro can resolve them without errors.
+const emptyModule = path.resolve(projectRoot, 'shims/empty-module.js');
 config.resolver.extraNodeModules = {
 	...config.resolver.extraNodeModules,
 	crypto: path.resolve(projectRoot, 'shims/crypto.js'),
+	url: emptyModule,
+	http: emptyModule,
+	https: emptyModule,
+	stream: emptyModule,
+	zlib: emptyModule,
+	net: emptyModule,
+	tls: emptyModule,
+	dns: emptyModule,
+	assert: emptyModule,
+	os: emptyModule,
+	child_process: emptyModule,
+	fs: emptyModule,
+	path: emptyModule,
+	util: emptyModule,
+	events: emptyModule,
+	querystring: emptyModule,
+	buffer: emptyModule,
 };
 
 module.exports = config;
