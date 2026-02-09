@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -17,6 +16,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
+import { showAlert } from '../utils/alert';
 import { fetchProfile, saveProfile, type SaveProfilePayload } from '../api/profile';
 import { getSupabaseClient } from '../lib/supabase';
 
@@ -137,12 +137,12 @@ const OnboardingScreen = ({ navigation }: NativeStackScreenProps<RootStackParamL
 
   const handleSubmit = async (): Promise<void> => {
     if (!nickname.trim()) {
-      Alert.alert('Nickname required', 'Please add a nickname before continuing.');
+      showAlert('Nickname required', 'Please add a nickname before continuing.');
       return;
     }
 
     if (!gender) {
-      Alert.alert('Gender required', 'Please select a gender option.');
+      showAlert('Gender required', 'Please select a gender option.');
       return;
     }
 
@@ -180,9 +180,9 @@ const OnboardingScreen = ({ navigation }: NativeStackScreenProps<RootStackParamL
       });
     } catch (error: unknown) {
       if (error instanceof Error) {
-        Alert.alert('Could not save profile', error.message);
+        showAlert('Could not save profile', error.message);
       } else {
-        Alert.alert('Could not save profile', 'Please try again.');
+        showAlert('Could not save profile', 'Please try again.');
       }
     } finally {
       setLoading(false);

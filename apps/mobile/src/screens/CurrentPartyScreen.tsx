@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -16,6 +15,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
+import { showAlert } from '../utils/alert';
 import { getSupabaseClient } from '../lib/supabase';
 import { mobileMenuItems } from '../constants/menuItems';
 import { ActiveParty, cancelParty, fetchMyActiveParties, fetchPartyMembers, leaveParty, PartyMember } from '../api/party';
@@ -80,7 +80,7 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
       });
     } catch (error: any) {
       console.error('Failed to load current parties', error);
-      Alert.alert('Current Parties', error.message || 'Failed to load current parties.');
+      showAlert('Current Parties', error.message || 'Failed to load current parties.');
     } finally {
       setLoading(false);
     }
@@ -93,7 +93,7 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
       setMembers(data);
     } catch (error: any) {
       console.error('Failed to load party members', error);
-      Alert.alert('Members', error.message || 'Failed to load members.');
+      showAlert('Members', error.message || 'Failed to load members.');
     } finally {
       setLoadingMembers(false);
     }
@@ -150,10 +150,10 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
       await cancelParty(selected.id);
       setCancelConfirmOpen(false);
       await load();
-      Alert.alert('Party', 'Party canceled.');
+      showAlert('Party', 'Party canceled.');
     } catch (error: any) {
       console.error('Failed to cancel party', error);
-      Alert.alert('Cancel party', error?.message || 'Failed to cancel party.');
+      showAlert('Cancel party', error?.message || 'Failed to cancel party.');
     } finally {
       setCancelBusy(false);
     }
@@ -170,15 +170,15 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
       setLeaveBusy(true);
       const result = await leaveParty(selected.id);
       if (!result.success) {
-        Alert.alert('Leave Party', result.error || 'Failed to leave party.');
+        showAlert('Leave Party', result.error || 'Failed to leave party.');
         return;
       }
       setLeaveConfirmOpen(false);
       await load();
-      Alert.alert('Left Party', 'You have left the party.');
+      showAlert('Left Party', 'You have left the party.');
     } catch (error: any) {
       console.error('Failed to leave party', error);
-      Alert.alert('Leave party', error?.message || 'Failed to leave party.');
+      showAlert('Leave party', error?.message || 'Failed to leave party.');
     } finally {
       setLeaveBusy(false);
     }
@@ -475,7 +475,7 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
                     navigation.navigate('Settings');
                     return;
                   }
-                  Alert.alert(item.label, 'Navigation coming soon.');
+                  showAlert(item.label, 'Navigation coming soon.');
                 }}
               >
                 <Ionicons name={item.icon} size={22} color={palette.textPrimary} />

@@ -36,7 +36,8 @@ export const cleanupExpiredParties = async (userId: string): Promise<void> => {
   const supabase = getSupabaseClient();
   if (!supabase) return;
 
-  const nowIso = new Date().toISOString();
+  // Use grace window to account for clock skew between client and Postgres
+  const nowIso = nowIsoWithGrace();
   
   // Mark all expired parties as inactive
   await supabase
@@ -56,7 +57,8 @@ const hasActiveParty = async (userId: string): Promise<boolean> => {
   // First, clean up any expired parties
   await cleanupExpiredParties(userId);
 
-  const nowIso = new Date().toISOString(); // Use actual now, not grace period
+  // Use grace window to account for clock skew between client and Postgres
+  const nowIso = nowIsoWithGrace();
   const { data, error } = await supabase
     .from('parties')
     .select('id', { count: 'exact', head: false })

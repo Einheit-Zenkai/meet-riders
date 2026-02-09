@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   StatusBar,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -20,6 +19,7 @@ import { fetchUserRatings, UserRatingSummary } from '../api/rating';
 import { RatingStars } from '../components/SharedComponents';
 import ReportUserModal from '../components/ReportUserModal';
 import { sendConnectionRequest, fetchConnectionsBundle, ConnectionsBundle } from '../api/connections';
+import { showAlert } from '../utils/alert';
 
 const punctualityLabels: Record<string, string> = {
   'on-time': 'Always On-Time',
@@ -185,10 +185,10 @@ const ProfileScreen = ({ navigation, route }: ProfileScreenProps): JSX.Element =
       setSendingRequest(true);
       await sendConnectionRequest(profile.username);
       setConnectionStatus('pending');
-      Alert.alert('Request Sent', 'Connection request sent successfully!');
+      showAlert('Request Sent', 'Connection request sent successfully!');
     } catch (error: any) {
       console.error('Failed to send friend request', error);
-      Alert.alert('Error', error.message || 'Failed to send connection request.');
+      showAlert('Error', error.message || 'Failed to send connection request.');
     } finally {
       setSendingRequest(false);
     }
@@ -201,7 +201,7 @@ const ProfileScreen = ({ navigation, route }: ProfileScreenProps): JSX.Element =
   const handleSignOut = async (): Promise<void> => {
     const supabase = getSupabaseClient();
     if (!supabase) {
-      Alert.alert('Unavailable', 'Supabase is not configured. Sign out from the web app.');
+      showAlert('Unavailable', 'Supabase is not configured. Sign out from the web app.');
       return;
     }
 
@@ -284,7 +284,11 @@ const ProfileScreen = ({ navigation, route }: ProfileScreenProps): JSX.Element =
                   {!isViewingOther && email ? <Text style={styles.emailText}> • {email}</Text> : null}
                   {genderLabel ? (
                     <View style={styles.genderBadge}>
-                      <Ionicons name="male" size={14} color={palette.textPrimary} />
+                      <Ionicons
+                        name={genderLabel.toLowerCase() === 'female' ? 'female' : genderLabel.toLowerCase() === 'male' ? 'male' : 'transgender'}
+                        size={14}
+                        color={palette.textPrimary}
+                      />
                       <Text style={styles.genderText}>{genderLabel}</Text>
                     </View>
                   ) : null}

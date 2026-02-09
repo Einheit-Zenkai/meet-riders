@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  Alert,
   Pressable,
   Modal,
   StatusBar,
@@ -19,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
+import { showAlert } from '../utils/alert';
 import { getSupabaseClient } from '../lib/supabase';
 import { fetchProfile } from '../api/profile';
 import { mobileMenuItems } from '../constants/menuItems';
@@ -207,14 +207,14 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
     try {
       const result = await joinSoi(soi.id);
       if (!result.success) {
-        Alert.alert('Join failed', result.error || 'Unable to join SOI.');
+        showAlert('Join failed', result.error || 'Unable to join SOI.');
         return;
       }
       await loadSoiFeed();
-      Alert.alert('Joined', 'You joined the SOI.');
+      showAlert('Joined', 'You joined the SOI.');
     } catch (error: any) {
       console.error('Failed to join SOI', error);
-      Alert.alert('Join failed', error?.message || 'Unable to join SOI.');
+      showAlert('Join failed', error?.message || 'Unable to join SOI.');
     }
   }, [loadSoiFeed]);
 
@@ -230,7 +230,7 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
       showInlineNotice(`${request.profile.username} has joined your party!`);
       await loadFeed();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to accept request');
+      showAlert('Error', error.message || 'Failed to accept request');
     } finally {
       setRequestActionBusy(false);
     }
@@ -247,7 +247,7 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
       setShowJoinDropdown(false);
       showInlineNotice(`Declined ${request.profile.username}'s request`);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to decline request');
+      showAlert('Error', error.message || 'Failed to decline request');
     } finally {
       setRequestActionBusy(false);
     }
@@ -524,11 +524,11 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
                               try {
                                 await joinParty(party.id);
                                 await loadFeed();
-                                Alert.alert('Joined', 'You joined the party.');
+                                showAlert('Joined', 'You joined the party.');
                                 navigation.navigate('CurrentParty');
                               } catch (error: any) {
                                 console.error('Failed to join party', error);
-                                Alert.alert('Join failed', error?.message || 'Unable to join party.');
+                                showAlert('Join failed', error?.message || 'Unable to join party.');
                               }
                             }}
                           >
@@ -1014,7 +1014,7 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
                     navigation.navigate('Expired');
                     return;
                   }
-                  Alert.alert(item.label, 'Navigation coming soon.');
+                  showAlert(item.label, 'Navigation coming soon.');
                 }}
               >
                 <Ionicons name={item.icon} size={22} color={palette.textPrimary} />

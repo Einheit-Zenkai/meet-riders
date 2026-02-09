@@ -7,7 +7,6 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ScrollView,
   ActivityIndicator,
   StatusBar,
@@ -18,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
+import { showAlert } from '../utils/alert';
 import { signup, signUpWithOAuth, OAuthProvider } from '../api/auth';
 
 const SignupScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 'Signup'>): JSX.Element => {
@@ -35,7 +35,7 @@ const SignupScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList,
       setOauthLoading(null);
 
       if (!result.success) {
-        Alert.alert('Sign-up failed', result.error || 'Authentication was not successful.');
+        showAlert('Sign-up failed', result.error || 'Authentication was not successful.');
         return;
       }
 
@@ -46,18 +46,18 @@ const SignupScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList,
       });
     } catch (error) {
       setOauthLoading(null);
-      Alert.alert('Sign-up failed', 'An unexpected error occurred. Please try again.');
+      showAlert('Sign-up failed', 'An unexpected error occurred. Please try again.');
     }
   };
 
   const onSubmit = async (): Promise<void> => {
     if (!username || !email || !password || !confirmPassword) {
-      Alert.alert('Missing info', 'Please fill in every field to continue.');
+      showAlert('Missing info', 'Please fill in every field to continue.');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Password mismatch', 'Passwords must match before we create your account.');
+      showAlert('Password mismatch', 'Passwords must match before we create your account.');
       return;
     }
 
@@ -68,12 +68,12 @@ const SignupScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList,
       setLoading(false);
 
       if (response.confirmationRequired) {
-        Alert.alert('Verify your email', 'Check your inbox for the confirmation link before logging in.');
+        showAlert('Verify your email', 'Check your inbox for the confirmation link before logging in.');
         navigation.goBack();
         return;
       }
 
-      Alert.alert('Account created', `Signed in as ${response.user.email}`);
+      showAlert('Account created', `Signed in as ${response.user.email}`);
       navigation.reset({
         index: 0,
         routes: [{ name: 'Onboarding' }],
@@ -82,16 +82,16 @@ const SignupScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList,
       setLoading(false);
 
       if (error instanceof Error && error.name === 'UsernameTaken') {
-        Alert.alert('Username already in use', 'Please pick a different username.');
+        showAlert('Username already in use', 'Please pick a different username.');
         return;
       }
 
       if (error instanceof Error && error.message) {
-        Alert.alert('Sign up failed', error.message);
+        showAlert('Sign up failed', error.message);
         return;
       }
 
-      Alert.alert('Sign up failed', 'We could not create your account. Please try again.');
+      showAlert('Sign up failed', 'We could not create your account. Please try again.');
     }
   };
 

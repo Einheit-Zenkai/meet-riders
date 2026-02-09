@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -17,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { mobileMenuItems } from '../constants/menuItems';
 import { palette } from '../theme/colors';
+import { showAlert } from '../utils/alert';
 import {
   ConnectionProfile,
   ConnectionRecord,
@@ -148,7 +148,7 @@ const ConnectionsScreen = ({ navigation }: NativeStackScreenProps<RootStackParam
       setBundle(data);
     } catch (error: any) {
       console.error('Failed to load connections', error);
-      Alert.alert('Connections', error.message || 'Failed to load connections.');
+      showAlert('Connections', error.message || 'Failed to load connections.');
     } finally {
       setLoading(false);
     }
@@ -188,11 +188,11 @@ const ConnectionsScreen = ({ navigation }: NativeStackScreenProps<RootStackParam
       await sendConnectionRequest(usernameInput);
       setUsernameInput('');
       setSuggestions([]);
-      Alert.alert('Connections', 'Connection request sent.');
+      showAlert('Connections', 'Connection request sent.');
       await loadConnections();
     } catch (error: any) {
       console.error('Failed to send request', error);
-      Alert.alert('Connections', error.message || 'Unable to send request.');
+      showAlert('Connections', error.message || 'Unable to send request.');
     } finally {
       setSending(false);
     }
@@ -204,7 +204,7 @@ const ConnectionsScreen = ({ navigation }: NativeStackScreenProps<RootStackParam
       await loadConnections();
     } catch (error: any) {
       console.error('Failed to accept request', error);
-      Alert.alert('Connections', error.message || 'Failed to accept request.');
+      showAlert('Connections', error.message || 'Failed to accept request.');
     }
   };
 
@@ -214,12 +214,12 @@ const ConnectionsScreen = ({ navigation }: NativeStackScreenProps<RootStackParam
       await loadConnections();
     } catch (error: any) {
       console.error('Failed to decline request', error);
-      Alert.alert('Connections', error.message || 'Failed to decline request.');
+      showAlert('Connections', error.message || 'Failed to decline request.');
     }
   };
 
   const handleRemove = async (connectionId: number) => {
-    Alert.alert('Remove Connection', 'Are you sure you want to remove this connection?', [
+    showAlert('Remove Connection', 'Are you sure you want to remove this connection?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Remove',
@@ -230,7 +230,7 @@ const ConnectionsScreen = ({ navigation }: NativeStackScreenProps<RootStackParam
             await loadConnections();
           } catch (error: any) {
             console.error('Failed to remove connection', error);
-            Alert.alert('Connections', error.message || 'Failed to remove connection.');
+            showAlert('Connections', error.message || 'Failed to remove connection.');
           }
         },
       },
@@ -243,7 +243,7 @@ const ConnectionsScreen = ({ navigation }: NativeStackScreenProps<RootStackParam
       await loadConnections();
     } catch (error: any) {
       console.error('Failed to cancel request', error);
-      Alert.alert('Connections', error.message || 'Failed to cancel request.');
+      showAlert('Connections', error.message || 'Failed to cancel request.');
     }
   };
 
@@ -487,7 +487,7 @@ const ConnectionsScreen = ({ navigation }: NativeStackScreenProps<RootStackParam
                     navigation.navigate('Settings');
                     return;
                   }
-                  Alert.alert(item.label, 'Navigation coming soon.');
+                  showAlert(item.label, 'Navigation coming soon.');
                 }}
               >
                 <Ionicons name={item.icon} size={22} color={palette.textPrimary} />

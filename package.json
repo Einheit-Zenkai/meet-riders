@@ -1,0 +1,11 @@
+{
+  "name": "meetriders",
+  "private": true,
+  "packageManager": "pnpm@10.13.1",
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:mobile": "pnpm --filter mobile start",
+    "lint:web": "pnpm --filter web lint",
+    "lint:mobile": "pnpm --filter mobile lint"
+  }
+}

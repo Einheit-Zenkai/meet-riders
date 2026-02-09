@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
   StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,6 +18,7 @@ import type { RootStackParamList } from '../navigation/AppNavigator';
 import { login, signInWithOAuth, OAuthProvider } from '../api/auth';
 import { fetchProfile } from '../api/profile';
 import { palette } from '../theme/colors';
+import { showAlert } from '../utils/alert';
 
 const LoginScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 'Login'>): JSX.Element => {
   const [email, setEmail] = useState('');
@@ -33,7 +33,7 @@ const LoginScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 
       setOauthLoading(null);
 
       if (!result.success) {
-        Alert.alert('Sign-in failed', result.error || 'Authentication was not successful.');
+        showAlert('Sign-in failed', result.error || 'Authentication was not successful.');
         return;
       }
 
@@ -44,13 +44,13 @@ const LoginScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 
       });
     } catch (error) {
       setOauthLoading(null);
-      Alert.alert('Sign-in failed', 'An unexpected error occurred. Please try again.');
+      showAlert('Sign-in failed', 'An unexpected error occurred. Please try again.');
     }
   };
 
   const onSubmit = async (): Promise<void> => {
     if (!email || !password) {
-      Alert.alert('Missing info', 'Enter both email and password to continue.');
+      showAlert('Missing info', 'Enter both email and password to continue.');
       return;
     }
 
@@ -58,7 +58,6 @@ const LoginScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 
       setLoading(true);
       const normalizedEmail = email.trim().toLowerCase();
       const response = await login({ email: normalizedEmail, password });
-      setLoading(false);
       let routeName: keyof RootStackParamList = 'Home';
       const profile = await fetchProfile();
       const needsOnboarding = !profile || !profile.nickname;
@@ -73,11 +72,11 @@ const LoginScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList, 
     } catch (error) {
       setLoading(false);
       if (error instanceof Error && error.message) {
-        Alert.alert('Sign-in failed', error.message);
+        showAlert('Sign-in failed', error.message);
         return;
       }
 
-      Alert.alert('Sign-in failed', 'We could not sign you in. Please try again.');
+      showAlert('Sign-in failed', 'We could not sign you in. Please try again.');
     }
   };
 

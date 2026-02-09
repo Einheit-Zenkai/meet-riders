@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   Pressable,
   Modal,
-  Alert,
   Switch,
   ActivityIndicator,
   StatusBar,
@@ -19,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
+import { showAlert } from '../utils/alert';
 import { mobileMenuItems } from '../constants/menuItems';
 import { createSoi, loadSoiStatus } from '../api/soi';
 import { SupabaseUnavailableError } from '../api/party';
@@ -67,13 +67,13 @@ const ShowInterestScreen = ({ navigation }: ShowInterestScreenProps): JSX.Elemen
 
           if (error instanceof SupabaseUnavailableError) {
             setInitializationError('Supabase is not configured; SOI is unavailable.');
-            Alert.alert('Offline mode', 'Supabase client is not configured. SOI requires a Supabase setup.');
+            showAlert('Offline mode', 'Supabase client is not configured. SOI requires a Supabase setup.');
           } else if (error instanceof Error) {
             setInitializationError(error.message);
-            Alert.alert('Unable to load', error.message);
+            showAlert('Unable to load', error.message);
           } else {
             setInitializationError('An unknown error occurred while initializing SOI.');
-            Alert.alert('Unable to load', 'An unknown error occurred while preparing the SOI screen.');
+            showAlert('Unable to load', 'An unknown error occurred while preparing the SOI screen.');
           }
         } finally {
           if (mounted) {
@@ -97,7 +97,7 @@ const ShowInterestScreen = ({ navigation }: ShowInterestScreenProps): JSX.Elemen
       }
 
       if (current.length >= 2) {
-        Alert.alert('Limit reached', 'You can select a maximum of two ride options.');
+        showAlert('Limit reached', 'You can select a maximum of two ride options.');
         return current;
       }
 
@@ -106,77 +106,44 @@ const ShowInterestScreen = ({ navigation }: ShowInterestScreenProps): JSX.Elemen
   };
 
   const handleCreateSoi = (): void => {
-    // Debug: immediate feedback that button was pressed
-    console.log('[ShowInterestScreen] Button pressed!');
-    
-    console.log('[ShowInterestScreen] handleCreateSoi called with state:', {
-      loading,
-      initializationError,
-      hostId,
-      alreadyHosting,
-      meetupPoint,
-      dropOff,
-      startTime,
-      partySize,
-      selectedRides,
-    });
-
     if (loading || initializationError) {
-      console.log('[ShowInterestScreen] Blocked: loading or initializationError');
-      Alert.alert('Unavailable', initializationError ?? 'Please wait for the screen to finish loading.');
+      showAlert('Unavailable', initializationError ?? 'Please wait for the screen to finish loading.');
       return;
     }
 
     if (!hostId) {
-      console.log('[ShowInterestScreen] Blocked: no hostId');
-      Alert.alert('Sign-in required', 'Please sign in again to create a Show of Interest.');
+      showAlert('Sign-in required', 'Please sign in again to create a Show of Interest.');
       return;
     }
 
     if (alreadyHosting) {
-      console.log('[ShowInterestScreen] Blocked: alreadyHosting');
-      Alert.alert('Active SOI found', 'You already have an active Show of Interest. Cancel it before creating a new one.');
+      showAlert('Active SOI found', 'You already have an active Show of Interest. Cancel it before creating a new one.');
       return;
     }
 
     if (!meetupPoint.trim() || !dropOff.trim()) {
-      console.log('[ShowInterestScreen] Blocked: missing meetupPoint or dropOff');
-      Alert.alert('Missing information', 'Enter both the meetup point and the final destination.');
+      showAlert('Missing information', 'Enter both the meetup point and the final destination.');
       return;
     }
 
     if (!startTime.trim() || !/^\d{2}:\d{2}$/.test(startTime.trim())) {
-      console.log('[ShowInterestScreen] Blocked: invalid startTime format');
-      Alert.alert('Start time required', 'Enter a start time in HH:MM format (e.g. 18:30).');
+      showAlert('Start time required', 'Enter a start time in HH:MM format (e.g. 18:30).');
       return;
     }
 
     if (partySize < 1 || partySize > 7) {
-      console.log('[ShowInterestScreen] Blocked: invalid partySize');
-      Alert.alert('Invalid party size', 'Party size should be between 1 and 7 riders.');
+      showAlert('Invalid party size', 'Party size should be between 1 and 7 riders.');
       return;
     }
 
     if (selectedRides.length === 0) {
-      console.log('[ShowInterestScreen] Blocked: no ride preferences selected');
-      Alert.alert('Choose ride preferences', 'Select at least one preferred ride option.');
+      showAlert('Choose ride preferences', 'Select at least one preferred ride option.');
       return;
     }
 
-    console.log('[ShowInterestScreen] Validation passed, calling create()');
     const create = async (): Promise<void> => {
       try {
         setSubmitting(true);
-        console.log('[ShowInterestScreen] Creating SOI with:', {
-          hostId,
-          meetupPoint: meetupPoint.trim(),
-          dropOff: dropOff.trim(),
-          partySize,
-          rideOptions: selectedRides,
-          startTime: startTime.trim(),
-          displayUniversity: displayUniversity && Boolean(hostUniversity),
-          hostUniversity,
-        });
         const result = await createSoi({
           hostId,
           meetupPoint: meetupPoint.trim(),
@@ -188,30 +155,26 @@ const ShowInterestScreen = ({ navigation }: ShowInterestScreenProps): JSX.Elemen
           hostUniversity,
         });
 
-        console.log('[ShowInterestScreen] createSoi result:', result);
-
         if (result.error) {
           const message = result.error.message || 'Failed to create SOI. Please try again.';
-          console.error('[ShowInterestScreen] SOI creation error:', message);
-          Alert.alert('Unable to create SOI', message);
+          showAlert('Unable to create SOI', message);
           return;
         }
 
         setAlreadyHosting(true);
-        Alert.alert('SOI created', 'Your Show of Interest is live! Redirecting to home.', [
+        showAlert('SOI created', 'Your Show of Interest is live! Redirecting to home.', [
           {
             text: 'OK',
             onPress: () => navigation.navigate('Home', { email: '' }),
           },
         ]);
       } catch (error) {
-        console.error('[ShowInterestScreen] Exception during SOI creation:', error);
         if (error instanceof SupabaseUnavailableError) {
-          Alert.alert('Unavailable', 'Supabase client is not configured. SOI requires Supabase.');
+          showAlert('Unavailable', 'Supabase client is not configured. SOI requires Supabase.');
         } else if (error instanceof Error) {
-          Alert.alert('Unable to create SOI', error.message);
+          showAlert('Unable to create SOI', error.message);
         } else {
-          Alert.alert('Unable to create SOI', 'An unknown error occurred.');
+          showAlert('Unable to create SOI', 'An unknown error occurred.');
         }
       } finally {
         setSubmitting(false);
@@ -350,7 +313,7 @@ const ShowInterestScreen = ({ navigation }: ShowInterestScreenProps): JSX.Elemen
                 value={displayUniversity && Boolean(hostUniversity)}
                 onValueChange={(next) => {
                   if (!hostUniversity) {
-                    Alert.alert('Add university', 'Update your profile with a university to share it.');
+                    showAlert('Add university', 'Update your profile with a university to share it.');
                     return;
                   }
 
@@ -417,7 +380,7 @@ const ShowInterestScreen = ({ navigation }: ShowInterestScreenProps): JSX.Elemen
                       navigation.navigate('Settings');
                       return;
                     default:
-                      Alert.alert(item.label, 'Navigation coming soon.');
+                      showAlert(item.label, 'Navigation coming soon.');
                   }
                 }}
               >

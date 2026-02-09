@@ -9,7 +9,6 @@ import {
   Pressable,
   Modal,
   Switch,
-  Alert,
   ActivityIndicator,
   StatusBar,
   Platform,
@@ -17,13 +16,13 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Location from 'expo-location';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
 import { mobileMenuItems } from '../constants/menuItems';
 import { createParty, loadHostStatus, SupabaseUnavailableError } from '../api/party';
 import { reverseGeocode } from '../api/location';
+import { showAlert } from '../utils/alert';
 import MapPickerView, { MapPickerRef } from '../components/MapPickerView';
 
 const ridePreferences = ['On Foot', 'Auto', 'Cab', 'Bus', 'SUV'] as const;
@@ -74,14 +73,33 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
 
       const getLocation = async () => {
         try {
-          const { status } = await Location.requestForegroundPermissionsAsync();
-          if (status === 'granted') {
-            const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-            if (mounted) {
-              setCurrentLocation({
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-              });
+          if (Platform.OS === 'web') {
+            // Use browser geolocation API on web
+            if ('geolocation' in navigator) {
+              navigator.geolocation.getCurrentPosition(
+                (position) => {
+                  if (mounted) {
+                    setCurrentLocation({
+                      latitude: position.coords.latitude,
+                      longitude: position.coords.longitude,
+                    });
+                  }
+                },
+                (err) => console.log('Web geolocation error:', err),
+                { enableHighAccuracy: false, timeout: 10000 }
+              );
+            }
+          } else {
+            const Location = await import('expo-location');
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status === 'granted') {
+              const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+              if (mounted) {
+                setCurrentLocation({
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
+                });
+              }
             }
           }
         } catch (error) {
@@ -118,13 +136,13 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
 
           if (error instanceof SupabaseUnavailableError) {
             setInitializationError('Supabase is not configured; hosting is unavailable.');
-            Alert.alert('Offline mode', 'Supabase client is not configured. Hosting requires a Supabase setup.');
+            console.error('[HostParty] Init error: Supabase unavailable');
           } else if (error instanceof Error) {
             setInitializationError(error.message);
-            Alert.alert('Unable to load', error.message);
+            console.error('[HostParty] Init error:', error.message);
           } else {
             setInitializationError('An unknown error occurred while initializing host data.');
-            Alert.alert('Unable to load', 'An unknown error occurred while preparing the host screen.');
+            console.error('[HostParty] Init error: unknown', error);
           }
         } finally {
           if (mounted) {
@@ -148,7 +166,7 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
       }
 
       if (current.length >= 2) {
-        Alert.alert('Limit reached', 'You can select a maximum of two ride preferences.');
+        showAlert('Limit reached', 'You can select a maximum of two ride preferences.');
         return current;
       }
 
@@ -157,33 +175,35 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
   };
 
   const handleStartParty = (): void => {
+    console.log('[HostParty] Start Party pressed — loading:', loading, 'initErr:', initializationError, 'hostId:', hostId, 'alreadyHosting:', alreadyHosting);
+
     if (loading || initializationError) {
-      Alert.alert('Unavailable', initializationError ?? 'Please wait for the screen to finish loading.');
+      showAlert('Unavailable', initializationError ?? 'Please wait for the screen to finish loading.');
       return;
     }
 
     if (!hostId) {
-      Alert.alert('Sign-in required', 'Please sign in again to host a party.');
+      showAlert('Sign-in required', 'Please sign in again to host a party.');
       return;
     }
 
     if (alreadyHosting) {
-      Alert.alert('Active party found', 'You already have an active party. End it before starting a new one.');
+      showAlert('Active party found', 'You already have an active party. End it before starting a new one.');
       return;
     }
 
     if (!meetupPoint.trim() || !destination.trim()) {
-      Alert.alert('Missing information', 'Enter both the meetup point and the final destination.');
+      showAlert('Missing information', 'Enter both the meetup point and the final destination.');
       return;
     }
 
     if (maxPartySize < 2 || maxPartySize > 7) {
-      Alert.alert('Invalid party size', 'Party size should be between 2 and 7 riders.');
+      showAlert('Invalid party size', 'Party size should be between 2 and 7 riders.');
       return;
     }
 
     if (selectedRides.length === 0) {
-      Alert.alert('Choose ride preferences', 'Select at least one preferred ride option.');
+      showAlert('Choose ride preferences', 'Select at least one preferred ride option.');
       return;
     }
 
@@ -207,28 +227,24 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
           const message = result.error.message || 'Failed to create party. Please try again.';
           if (message.toLowerCase().includes('active party')) {
             setAlreadyHosting(true);
-            Alert.alert('Active party found', 'Let your existing party end or cancel it before creating another.');
+            showAlert('Active party found', 'Let your existing party end or cancel it before creating another.');
             return;
           }
 
-          Alert.alert('Unable to create party', message);
+          showAlert('Unable to create party', message);
           return;
         }
 
         setAlreadyHosting(true);
-        Alert.alert('Party created', 'Your ride party is live! Opening Current Party.', [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('CurrentParty'),
-          },
-        ]);
+        // Navigate immediately — works on both web and native
+        navigation.navigate('CurrentParty');
       } catch (error) {
         if (error instanceof SupabaseUnavailableError) {
-          Alert.alert('Unavailable', 'Supabase client is not configured. Hosting requires Supabase.');
+          showAlert('Unavailable', 'Supabase client is not configured. Hosting requires Supabase.');
         } else if (error instanceof Error) {
-          Alert.alert('Unable to create party', error.message);
+          showAlert('Unable to create party', error.message);
         } else {
-          Alert.alert('Unable to create party', 'An unknown error occurred.');
+          showAlert('Unable to create party', 'An unknown error occurred.');
         }
       } finally {
         setSubmitting(false);
@@ -279,6 +295,13 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
         </View>
 
         <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
+          {initializationError ? (
+            <View style={styles.errorBanner}>
+              <Ionicons name="warning" size={20} color={palette.warning} />
+              <Text style={styles.errorBannerText}>{initializationError}</Text>
+            </View>
+          ) : null}
+
           <View style={styles.formGroup}>
             <Text style={styles.label}>Meetup point (address)</Text>
             <TextInput
@@ -365,7 +388,7 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
                   value={displayUniversity}
                   onValueChange={(value) => {
                     if (!hostUniversity) {
-                      Alert.alert('Add university', 'Update your profile with a university to share it.');
+                      showAlert('Add university', 'Update your profile with a university to share it.');
                       return;
                     }
 
@@ -516,7 +539,7 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
                       navigation.navigate('Settings');
                       return;
                     default:
-                      Alert.alert(item.label, 'Navigation coming soon.');
+                      showAlert(item.label, 'Navigation coming soon.');
                   }
                 }}
               >
@@ -532,6 +555,23 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
 };
 
 const styles = StyleSheet.create({
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(243, 156, 18, 0.15)',
+    borderWidth: 1,
+    borderColor: palette.warning,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    gap: 10,
+  },
+  errorBannerText: {
+    color: palette.warning,
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

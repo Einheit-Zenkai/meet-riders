@@ -8,7 +8,6 @@ import {
   TextInput,
   Switch,
   ActivityIndicator,
-  Alert,
   StatusBar,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -16,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
+import { showAlert } from '../utils/alert';
 import { fetchProfile, saveProfile } from '../api/profile';
 import { getSupabaseClient } from '../lib/supabase';
 
@@ -126,18 +126,14 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
 
   const cyclePreference = (modeId: string): void => {
     setPreferences((current) => {
-      const nextValue = (() => {
-        const currentValue = current[modeId] ?? PREFERENCE_LEVELS.UNSELECTED;
-        if (currentValue === PREFERENCE_LEVELS.DISLIKED) {
-          return PREFERENCE_LEVELS.PRIMARY;
-        }
-        if (currentValue === PREFERENCE_LEVELS.TERTIARY) {
-          return PREFERENCE_LEVELS.UNSELECTED;
-        }
-        return (currentValue + 1) as number;
-      })();
-
-      return { ...current, [modeId]: nextValue };
+      const currentValue = current[modeId] ?? PREFERENCE_LEVELS.UNSELECTED;
+      let next = currentValue + 1;
+      if (currentValue === PREFERENCE_LEVELS.DISLIKED) {
+        next = PREFERENCE_LEVELS.UNSELECTED;
+      } else if (next > PREFERENCE_LEVELS.TERTIARY) {
+        next = PREFERENCE_LEVELS.DISLIKED;
+      }
+      return { ...current, [modeId]: next };
     });
   };
 
@@ -151,7 +147,7 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
 
   const handleSave = async (): Promise<void> => {
     if (!supabaseAvailable) {
-      Alert.alert('Unavailable', 'Supabase client is not configured. Settings cannot be saved.');
+      showAlert('Unavailable', 'Supabase client is not configured. Settings cannot be saved.');
       return;
     }
 
@@ -178,7 +174,7 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
         rideOptions: preferences,
       });
 
-      Alert.alert('Settings saved', 'Your preferences have been updated.', [
+      showAlert('Settings saved', 'Your preferences have been updated.', [
         {
           text: 'OK',
           onPress: () => navigation.goBack(),
@@ -187,12 +183,12 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
     } catch (error) {
       if (error instanceof Error) {
         if (error.message === 'USERNAME_IN_USE') {
-          Alert.alert('Username taken', 'Please choose a different username.');
+          showAlert('Username taken', 'Please choose a different username.');
         } else {
-          Alert.alert('Save failed', error.message);
+          showAlert('Save failed', error.message);
         }
       } else {
-        Alert.alert('Save failed', 'An unexpected error occurred while saving settings.');
+        showAlert('Save failed', 'An unexpected error occurred while saving settings.');
       }
     } finally {
       setSaving(false);
@@ -288,7 +284,7 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
             {avatarUrl ? <Text style={styles.avatarHint}>Current avatar: {avatarUrl}</Text> : null}
             <TouchableOpacity
               style={styles.secondaryButton}
-              onPress={() => Alert.alert('Coming soon', 'Avatar upload is not available in the mobile preview yet.')}
+              onPress={() => showAlert('Coming soon', 'Avatar upload is not available in the mobile preview yet.')}
             >
               <Text style={styles.secondaryButtonText}>Select Image</Text>
             </TouchableOpacity>
@@ -439,7 +435,7 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
             <Text style={styles.helperTextSmall}>Deleting your account is permanent. This action is disabled in the preview build.</Text>
             <TouchableOpacity
               style={styles.dangerButton}
-              onPress={() => Alert.alert('Unavailable', 'Account deletion is handled from the web dashboard.')}
+              onPress={() => showAlert('Unavailable', 'Account deletion is handled from the web dashboard.')}
             >
               <Text style={styles.dangerButtonText}>Delete Account</Text>
             </TouchableOpacity>

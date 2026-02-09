@@ -10,6 +10,8 @@ import {
   Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+// @ts-ignore — Expo vector-icons type defs lag behind React 18 JSX types
+const Icon = Ionicons as any;
 import { palette } from '../theme/colors';
 import { searchLocation, LocationSearchResult } from '../api/location';
 
@@ -85,7 +87,7 @@ export const LocationSearchBar = ({
   return (
     <View style={styles.container}>
       <View style={styles.inputContainer}>
-        <Ionicons name="search" size={20} color={palette.textSecondary} style={styles.searchIcon} />
+        <Icon name="search" size={20} color={palette.textSecondary} style={styles.searchIcon} />
         <TextInput
           style={styles.input}
           placeholder={placeholder}
@@ -99,7 +101,7 @@ export const LocationSearchBar = ({
         )}
         {query.length > 0 && !loading && (
           <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
-            <Ionicons name="close-circle" size={20} color={palette.textSecondary} />
+            <Icon name="close-circle" size={20} color={palette.textSecondary} />
           </TouchableOpacity>
         )}
       </View>
@@ -112,7 +114,7 @@ export const LocationSearchBar = ({
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <TouchableOpacity style={styles.resultItem} onPress={() => handleSelect(item)}>
-                <Ionicons name="location" size={18} color={palette.primary} style={styles.resultIcon} />
+                <Icon name="location" size={18} color={palette.primary} style={styles.resultIcon} />
                 <View style={styles.resultContent}>
                   <Text style={styles.resultName} numberOfLines={1}>
                     {item.name}
@@ -176,7 +178,7 @@ export const LocationMarkerDisplay = ({
   return (
     <View style={styles.markerDisplay}>
       <View style={[styles.markerIcon, type === 'destination' && styles.markerIconDestination]}>
-        <Ionicons 
+        <Icon 
           name={type === 'meetup' ? 'location' : 'flag'} 
           size={16} 
           color={palette.textPrimary} 

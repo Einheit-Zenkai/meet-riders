@@ -84,9 +84,12 @@ const AppNavigator = (): JSX.Element => {
 
     bootstrap();
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
-      setInitialRoute(session ? 'Home' : 'Login');
+      // Only react to actual sign-in/sign-out, not periodic token refreshes
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        setInitialRoute(session ? 'Home' : 'Login');
+      }
     });
 
     return () => {

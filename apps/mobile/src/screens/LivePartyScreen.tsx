@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -15,6 +14,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
+import { showAlert } from '../utils/alert';
 import { getSupabaseClient } from '../lib/supabase';
 import { mobileMenuItems } from '../constants/menuItems';
 import { cancelParty, fetchPartyMembers, leaveParty, PartyMember } from '../api/party';
@@ -74,7 +74,7 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
   const loadParty = useCallback(async (): Promise<void> => {
     const supabase = getSupabaseClient();
     if (!supabase) {
-      Alert.alert('Live Party', 'Supabase client is not configured.');
+      showAlert('Live Party', 'Supabase client is not configured.');
       setLoading(false);
       return;
     }
@@ -85,13 +85,13 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
     } = await supabase.auth.getUser();
 
     if (userError) {
-      Alert.alert('Live Party', userError.message);
+      showAlert('Live Party', userError.message);
       setLoading(false);
       return;
     }
 
     if (!user) {
-      Alert.alert('Live Party', 'You must be signed in.');
+      showAlert('Live Party', 'You must be signed in.');
       setLoading(false);
       return;
     }
@@ -109,7 +109,7 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
         .maybeSingle();
 
       if (error) {
-        Alert.alert('Live Party', error.message);
+        showAlert('Live Party', error.message);
         setLoading(false);
         return;
       }
@@ -151,7 +151,7 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
     }
 
     if (!target) {
-      Alert.alert('Live Party', 'No live party found yet.');
+      showAlert('Live Party', 'No live party found yet.');
       navigation.navigate('CurrentParty');
       setLoading(false);
       return;
@@ -176,7 +176,7 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
         // 2. At least one non-host member has joined
         // If no non-host members, the party should go to "expired parties" instead
         if (nonHost.length === 0) {
-          Alert.alert(
+          showAlert(
             'No Live Party', 
             'Live party requires at least one member besides the host. This party will be moved to expired parties.',
             [{ text: 'OK', onPress: () => navigation.navigate('CurrentParty') }]
@@ -185,7 +185,7 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
         }
       } catch (error: any) {
         console.error('Failed to load live party members', error);
-        Alert.alert('Live Party', error.message || 'Failed to load members.');
+        showAlert('Live Party', error.message || 'Failed to load members.');
       } finally {
         setMembersLoading(false);
       }
@@ -239,7 +239,7 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
   const openRatingModal = (member: PartyMember) => {
     if (member.userId === currentUserId) return; // Can't rate yourself
     if (ratedUserIds.has(member.userId)) {
-      Alert.alert('Already Rated', 'You have already rated this user for this ride.');
+      showAlert('Already Rated', 'You have already rated this user for this ride.');
       return;
     }
     setMemberToRate(member);
@@ -249,12 +249,12 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
   const handleRatingSubmit = async (rating: number, comment?: string) => {
     if (!memberToRate || !party) return;
     try {
-      await submitRating(memberToRate.userId, rating, party.id, comment);
+      await submitRating({ ratedUserId: memberToRate.userId, partyId: party.id, score: rating, comment });
       setRatedUserIds(prev => new Set(prev).add(memberToRate.userId));
-      Alert.alert('Success', `You rated ${displayName(memberToRate)} ${rating} stars!`);
+      showAlert('Success', `You rated ${displayName(memberToRate)} ${rating} stars!`);
     } catch (error: any) {
       console.error('Failed to submit rating', error);
-      Alert.alert('Error', error?.message || 'Failed to submit rating.');
+      showAlert('Error', error?.message || 'Failed to submit rating.');
     } finally {
       setMemberToRate(null);
       setRatingModalOpen(false);
@@ -278,16 +278,16 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
       setLeavingBusy(true);
       const result = await leaveParty(party.id);
       if (!result.success) {
-        Alert.alert('Leave Party', result.error || 'Failed to leave party.');
+        showAlert('Leave Party', result.error || 'Failed to leave party.');
         return;
       }
       setLeaveConfirmOpen(false);
-      Alert.alert('Left Party', 'You have left the party.', [
+      showAlert('Left Party', 'You have left the party.', [
         { text: 'OK', onPress: () => navigation.navigate('Home', undefined) }
       ]);
     } catch (error: any) {
       console.error('Failed to leave party', error);
-      Alert.alert('Leave Party', error?.message || 'Failed to leave party.');
+      showAlert('Leave Party', error?.message || 'Failed to leave party.');
     } finally {
       setLeavingBusy(false);
     }
@@ -305,12 +305,12 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
       setCancelBusy(true);
       await cancelParty(party.id);
       setCancelConfirmOpen(false);
-      Alert.alert('Party Canceled', 'Your party has been canceled.', [
+      showAlert('Party Canceled', 'Your party has been canceled.', [
         { text: 'OK', onPress: () => navigation.navigate('Home', undefined) }
       ]);
     } catch (error: any) {
       console.error('Failed to cancel party', error);
-      Alert.alert('Cancel Party', error?.message || 'Failed to cancel party.');
+      showAlert('Cancel Party', error?.message || 'Failed to cancel party.');
     } finally {
       setCancelBusy(false);
     }
@@ -570,7 +570,7 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
                     navigation.navigate('Settings');
                     return;
                   }
-                  Alert.alert(item.label, 'Navigation coming soon.');
+                  showAlert(item.label, 'Navigation coming soon.');
                 }}
               >
                 <Ionicons name={item.icon} size={22} color={palette.textPrimary} />

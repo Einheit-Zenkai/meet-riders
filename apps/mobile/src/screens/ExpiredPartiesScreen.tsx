@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -17,6 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
+import { showAlert } from '../utils/alert';
 import { mobileMenuItems } from '../constants/menuItems';
 import { ExpiredParty, fetchMyExpiredParties, restoreParty } from '../api/party';
 import { getSupabaseClient } from '../lib/supabase';
@@ -60,7 +60,7 @@ const ExpiredPartiesScreen = ({ navigation }: Props): JSX.Element => {
       setItems(data);
     } catch (error: any) {
       console.error('Failed to load expired parties', error);
-      Alert.alert('Expired parties', error?.message || 'Failed to load expired parties.');
+      showAlert('Expired parties', error?.message || 'Failed to load expired parties.');
     } finally {
       setLoading(false);
     }
@@ -100,7 +100,7 @@ const ExpiredPartiesScreen = ({ navigation }: Props): JSX.Element => {
     } catch (error: any) {
       console.error('Failed to restore party', error);
       setRestoreConfirmOpen(false);
-      Alert.alert('Restore party', error?.message || 'Failed to restore party.');
+      showAlert('Restore party', error?.message || 'Failed to restore party.');
     } finally {
       setRestoreBusy(false);
     }
@@ -268,7 +268,7 @@ const ExpiredPartiesScreen = ({ navigation }: Props): JSX.Element => {
                       navigation.navigate('Settings');
                       return;
                     default:
-                      Alert.alert(item.label, 'Navigation coming soon.');
+                      showAlert(item.label, 'Navigation coming soon.');
                   }
                 }}
               >
