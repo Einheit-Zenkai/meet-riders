@@ -18,31 +18,51 @@ config.resolver.disableHierarchicalLookup = true;
 config.resolver.unstable_enablePackageExports = false;
 config.resolver.unstable_enableSymlinks = true;
 
-// Shim Node.js built-ins that don't exist in React Native.
-// Axios 1.x's dist/node/axios.cjs imports Node builtins (crypto, url, http,
-// https, stream, zlib, …) which are absent in RN.  Map them to empty shims so
-// Metro can resolve them without errors.
+// ---------------------------------------------------------------------------
+// Axios fix: force the *browser* build so it never imports Node built-ins.
+// Axios 1.x's main entry → dist/node/axios.cjs which pulls in crypto, http,
+// url, http2, stream, zlib, etc.  The browser build uses XMLHttpRequest and
+// needs none of those.
+// ---------------------------------------------------------------------------
 const emptyModule = path.resolve(projectRoot, 'shims/empty-module.js');
+
+// Well-known Node built-ins that must never reach the RN runtime.
+const NODE_BUILTINS = new Set([
+	'assert', 'buffer', 'child_process', 'cluster', 'crypto', 'dgram', 'dns',
+	'events', 'fs', 'http', 'http2', 'https', 'net', 'os', 'path',
+	'querystring', 'readline', 'stream', 'string_decoder', 'tls', 'tty',
+	'url', 'util', 'v8', 'vm', 'worker_threads', 'zlib',
+]);
+
 config.resolver.extraNodeModules = {
 	...config.resolver.extraNodeModules,
-	crypto: path.resolve(projectRoot, 'shims/crypto.js'),
-	url: emptyModule,
-	http: emptyModule,
-	https: emptyModule,
-	stream: emptyModule,
-	zlib: emptyModule,
-	net: emptyModule,
-	tls: emptyModule,
-	dns: emptyModule,
-	assert: emptyModule,
-	os: emptyModule,
-	child_process: emptyModule,
-	fs: emptyModule,
-	path: emptyModule,
-	util: emptyModule,
-	events: emptyModule,
-	querystring: emptyModule,
-	buffer: emptyModule,
+};
+
+// Map every Node built-in to the empty shim so Metro never chokes.
+for (const mod of NODE_BUILTINS) {
+	config.resolver.extraNodeModules[mod] = emptyModule;
+}
+// Keep the crypto shim that provides randomUUID for Supabase/axios.
+config.resolver.extraNodeModules.crypto = path.resolve(projectRoot, 'shims/crypto.js');
+
+// Intercept resolution: redirect axios's Node entry to its browser CJS build.
+const defaultResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+	// axios/index.js → dist/node/axios.cjs  — swap to → dist/browser/axios.cjs
+	if (
+		moduleName === './dist/node/axios.cjs' ||
+		moduleName.endsWith('/axios/dist/node/axios.cjs')
+	) {
+		const browserName = moduleName.replace('/dist/node/', '/dist/browser/');
+		if (defaultResolveRequest) {
+			return defaultResolveRequest(context, browserName, platform);
+		}
+		return context.resolveRequest(context, browserName, platform);
+	}
+	if (defaultResolveRequest) {
+		return defaultResolveRequest(context, moduleName, platform);
+	}
+	return context.resolveRequest(context, moduleName, platform);
 };
 
 module.exports = config;
