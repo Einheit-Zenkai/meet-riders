@@ -26,23 +26,25 @@ config.resolver.unstable_enableSymlinks = true;
 // ---------------------------------------------------------------------------
 const emptyModule = path.resolve(projectRoot, 'shims/empty-module.js');
 
-// Well-known Node built-ins that must never reach the RN runtime.
-const NODE_BUILTINS = new Set([
-	'assert', 'buffer', 'child_process', 'cluster', 'crypto', 'dgram', 'dns',
-	'events', 'fs', 'http', 'http2', 'https', 'net', 'os', 'path',
-	'querystring', 'readline', 'stream', 'string_decoder', 'tls', 'tty',
-	'url', 'util', 'v8', 'vm', 'worker_threads', 'zlib',
-]);
+// Only shim Node built-ins that are truly server-only.  Do NOT shim modules
+// like 'events', 'buffer', 'url', 'path', 'util', 'querystring', 'assert',
+// 'os', 'stream' — these have standalone npm package equivalents that RN
+// libraries legitimately depend on (e.g. EventEmitter from 'events').
+const NODE_SERVER_ONLY = [
+	'child_process', 'cluster', 'dgram', 'dns', 'fs',
+	'http', 'http2', 'https', 'net', 'tls',
+	'v8', 'vm', 'worker_threads', 'zlib',
+	'readline', 'tty',
+];
 
 config.resolver.extraNodeModules = {
 	...config.resolver.extraNodeModules,
 };
 
-// Map every Node built-in to the empty shim so Metro never chokes.
-for (const mod of NODE_BUILTINS) {
+for (const mod of NODE_SERVER_ONLY) {
 	config.resolver.extraNodeModules[mod] = emptyModule;
 }
-// Keep the crypto shim that provides randomUUID for Supabase/axios.
+// Provide a crypto shim with randomUUID for Supabase/axios.
 config.resolver.extraNodeModules.crypto = path.resolve(projectRoot, 'shims/crypto.js');
 
 // Intercept resolution: redirect axios's Node entry to its browser CJS build.
