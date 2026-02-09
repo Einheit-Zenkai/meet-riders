@@ -6,7 +6,11 @@
     "orientation": "portrait",
     "scheme": "meetriders",
     "userInterfaceStyle": "automatic",
-    "platforms": ["android", "ios", "web"],
+    "platforms": [
+      "android",
+      "ios",
+      "web"
+    ],
     "splash": {
       "backgroundColor": "#0f172a",
       "resizeMode": "contain"
@@ -28,7 +32,10 @@
               "pathPrefix": "/callback"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -43,8 +50,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "00000000-0000-0000-0000-000000000000"
+        "projectId": "915689d1-92f5-460b-af43-b2401a5accaa"
       }
-    }
+    },
+    "owner": "lohitaksha06"
   }
 }
