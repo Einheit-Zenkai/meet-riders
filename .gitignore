@@ -1,6 +1,4 @@
 .vscode/
-pnpm-lock.yaml
-apps/web/pnpm-lock.yaml
 apps/mobile/.expo
 apps/mobile/.expo-shared
 apps/mobile/android/

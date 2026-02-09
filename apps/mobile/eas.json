@@ -1,0 +1,19 @@
+{
+  "cli": {
+    "version": ">= 9.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "release-apk": {
+      "android": {
+        "buildType": "apk"
+      },
+      "node": "20.18.0",
+      "pnpm": "9.15.5",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://hpzuzgccyusizsgvfhmr.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwenV6Z2NjeXVzaXpzZ3ZmaG1yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUzMzkyMzksImV4cCI6MjA3MDkxNTIzOX0.TvsPMgI-wwTIIix-EuxIJ_f2SJ2Z2PHpvR7C-gEBgOc"
+      }
+    }
+  }
+}
