@@ -18,4 +18,10 @@ config.resolver.disableHierarchicalLookup = true;
 config.resolver.unstable_enablePackageExports = false;
 config.resolver.unstable_enableSymlinks = true;
 
+// Shim Node.js built-ins that don't exist in React Native (e.g. axios → crypto).
+config.resolver.extraNodeModules = {
+	...config.resolver.extraNodeModules,
+	crypto: path.resolve(projectRoot, 'shims/crypto.js'),
+};
+
 module.exports = config;
