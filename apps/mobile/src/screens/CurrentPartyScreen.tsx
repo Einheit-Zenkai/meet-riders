@@ -63,6 +63,7 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
   const [cancelBusy, setCancelBusy] = useState(false);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const [leaveBusy, setLeaveBusy] = useState(false);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [parties, setParties] = useState<ActiveParty[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [members, setMembers] = useState<PartyMember[]>([]);
@@ -150,7 +151,7 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
       await cancelParty(selected.id);
       setCancelConfirmOpen(false);
       await load();
-      showAlert('Party', 'Party canceled.');
+      setSuccessNotice('Party cancelled successfully.');
     } catch (error: any) {
       console.error('Failed to cancel party', error);
       showAlert('Cancel party', error?.message || 'Failed to cancel party.');
@@ -175,7 +176,7 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
       }
       setLeaveConfirmOpen(false);
       await load();
-      showAlert('Left Party', 'You have left the party.');
+      setSuccessNotice('You have left the party.');
     } catch (error: any) {
       console.error('Failed to leave party', error);
       showAlert('Leave party', error?.message || 'Failed to leave party.');
@@ -415,6 +416,26 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
                 ) : (
                   <Text style={styles.confirmButtonText}>Leave</Text>
                 )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={!!successNotice} animationType="fade" transparent>
+        <View style={styles.confirmOverlay}>
+          <Pressable style={styles.confirmBackdrop} onPress={() => setSuccessNotice(null)} />
+          <View style={styles.confirmCard}>
+            <View style={{ alignItems: 'center', gap: 12, paddingVertical: 8 }}>
+              <Ionicons name="checkmark-circle" size={48} color={palette.success} />
+              <Text style={[styles.confirmTitle, { textAlign: 'center' }]}>{successNotice}</Text>
+            </View>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={[styles.confirmButton, { backgroundColor: palette.primary, borderColor: palette.primary, flex: 1 }]}
+                onPress={() => setSuccessNotice(null)}
+              >
+                <Text style={styles.confirmButtonText}>OK</Text>
               </TouchableOpacity>
             </View>
           </View>

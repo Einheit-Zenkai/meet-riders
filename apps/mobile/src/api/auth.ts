@@ -1,4 +1,3 @@
-import type { AxiosResponse } from 'axios';
 import type { Session, User, Provider } from '@supabase/supabase-js';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
@@ -56,7 +55,7 @@ export const login = async (payload: LoginPayload): Promise<AuthResponse> => {
       };
     }
 
-    const response: AxiosResponse<AuthResponse> = await apiClient.post('/auth/login', payload);
+    const response = await apiClient.post<AuthResponse>('/auth/login', payload);
     return response.data;
   }
 
@@ -88,7 +87,7 @@ export const signup = async (payload: SignupPayload): Promise<SignupResponse> =>
       };
     }
 
-    const response: AxiosResponse<SignupResponse> = await apiClient.post('/auth/signup', payload);
+    const response = await apiClient.post<SignupResponse>('/auth/signup', payload);
     return response.data;
   }
 

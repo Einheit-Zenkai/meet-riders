@@ -12,59 +12,19 @@ config.resolver.nodeModulesPaths = [
 	path.resolve(projectRoot, 'node_modules'),
 	path.resolve(workspaceRoot, 'node_modules'),
 ];
-config.resolver.disableHierarchicalLookup = true;
+config.resolver.disableHierarchicalLookup = false;
+
+// Prioritize browser/react-native builds over Node.js builds
+config.resolver.resolverMainFields = ['react-native', 'browser', 'main'];
 
 // Work around Metro/Babel-runtime resolution problems on some setups.
 config.resolver.unstable_enablePackageExports = false;
 config.resolver.unstable_enableSymlinks = true;
 
-// ---------------------------------------------------------------------------
-// Axios fix: force the *browser* build so it never imports Node built-ins.
-// Axios 1.x's main entry → dist/node/axios.cjs which pulls in crypto, http,
-// url, http2, stream, zlib, etc.  The browser build uses XMLHttpRequest and
-// needs none of those.
-// ---------------------------------------------------------------------------
-const emptyModule = path.resolve(projectRoot, 'shims/empty-module.js');
-
-// Only shim Node built-ins that are truly server-only.  Do NOT shim modules
-// like 'events', 'buffer', 'url', 'path', 'util', 'querystring', 'assert',
-// 'os', 'stream' — these have standalone npm package equivalents that RN
-// libraries legitimately depend on (e.g. EventEmitter from 'events').
-const NODE_SERVER_ONLY = [
-	'child_process', 'cluster', 'dgram', 'dns', 'fs',
-	'http', 'http2', 'https', 'net', 'tls',
-	'v8', 'vm', 'worker_threads', 'zlib',
-	'readline', 'tty',
-];
-
+// Provide a crypto shim with randomUUID for Supabase.
 config.resolver.extraNodeModules = {
 	...config.resolver.extraNodeModules,
-};
-
-for (const mod of NODE_SERVER_ONLY) {
-	config.resolver.extraNodeModules[mod] = emptyModule;
-}
-// Provide a crypto shim with randomUUID for Supabase/axios.
-config.resolver.extraNodeModules.crypto = path.resolve(projectRoot, 'shims/crypto.js');
-
-// Intercept resolution: redirect axios's Node entry to its browser CJS build.
-const defaultResolveRequest = config.resolver.resolveRequest;
-config.resolver.resolveRequest = (context, moduleName, platform) => {
-	// axios/index.js → dist/node/axios.cjs  — swap to → dist/browser/axios.cjs
-	if (
-		moduleName === './dist/node/axios.cjs' ||
-		moduleName.endsWith('/axios/dist/node/axios.cjs')
-	) {
-		const browserName = moduleName.replace('/dist/node/', '/dist/browser/');
-		if (defaultResolveRequest) {
-			return defaultResolveRequest(context, browserName, platform);
-		}
-		return context.resolveRequest(context, browserName, platform);
-	}
-	if (defaultResolveRequest) {
-		return defaultResolveRequest(context, moduleName, platform);
-	}
-	return context.resolveRequest(context, moduleName, platform);
+	crypto: path.resolve(projectRoot, 'shims/crypto.js'),
 };
 
 module.exports = config;
