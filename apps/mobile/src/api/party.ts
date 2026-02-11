@@ -314,9 +314,11 @@ export const fetchPartyMembers = async (partyId: string): Promise<PartyMember[]>
   }
   const hostId: string | null = (partyRes.data as any)?.host_id ?? null;
 
+  // Fetch member rows (no embedded profile join — party_members.user_id FK
+  // points to auth.users, not profiles, so PostgREST can't resolve the join).
   const { data, error } = await supabase
     .from('party_members')
-    .select('user_id, status, profile:user_id(id, username, full_name, gender, avatar_url, phone_number, show_phone)')
+    .select('user_id, status')
     .eq('party_id', partyId)
     .eq('status', 'joined');
 
@@ -324,25 +326,44 @@ export const fetchPartyMembers = async (partyId: string): Promise<PartyMember[]>
     throw error;
   }
 
-  const members: PartyMember[] = (data ?? []).map((row: any) => ({
+  const memberRows = data ?? [];
+  const userIds = memberRows.map((r: any) => r.user_id).filter(Boolean);
+
+  // Include the host id so we always fetch their profile too
+  if (hostId && !userIds.includes(hostId)) {
+    userIds.push(hostId);
+  }
+
+  // Batch-fetch profiles for all relevant user ids
+  const profilesMap = new Map<string, any>();
+  if (userIds.length > 0) {
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, username, full_name, gender, avatar_url, phone_number, show_phone')
+      .in('id', userIds);
+
+    if (!profilesError && profiles) {
+      for (const p of profiles) {
+        profilesMap.set((p as any).id, p);
+      }
+    }
+  }
+
+  const members: PartyMember[] = memberRows.map((row: any) => ({
     userId: row.user_id,
     status: row.status,
-    profile: mapProfileRow(row.profile),
+    profile: mapProfileRow(profilesMap.get(row.user_id) ?? {}),
     isHost: Boolean(hostId && row.user_id === hostId),
   }));
 
+  // If the host isn't already listed as a joined member, add them at the front
   if (hostId && !members.some((m) => m.userId === hostId)) {
-    const hostProfileRes = await supabase
-      .from('profiles')
-      .select('id, username, full_name, gender, avatar_url, phone_number, show_phone')
-      .eq('id', hostId)
-      .maybeSingle();
-
-    if (!hostProfileRes.error && hostProfileRes.data) {
+    const hostProfile = profilesMap.get(hostId);
+    if (hostProfile) {
       members.unshift({
         userId: hostId,
         status: 'host',
-        profile: mapProfileRow(hostProfileRes.data),
+        profile: mapProfileRow(hostProfile),
         isHost: true,
       });
     }
