@@ -15,8 +15,15 @@ const useAuthStore = create<AuthState>((set) => ({
   init: () => {
     const supabase = createClient();
     // Get initial session
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      set({ user, loading: false });
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (error) {
+        // Handle refresh token errors by clearing invalid session
+        console.warn('Auth error:', error.message);
+        if (error.message?.includes('Refresh Token') || error.message?.includes('refresh_token')) {
+          supabase.auth.signOut();
+        }
+      }
+      set({ user: user ?? null, loading: false });
     });
 
     // Listen for auth changes

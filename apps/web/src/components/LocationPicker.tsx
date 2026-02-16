@@ -9,8 +9,8 @@ interface LocationPickerProps {
 }
 
 export default function LocationPicker({ label, value, onChange }: LocationPickerProps) {
-  // Default to India center if no value
-  const defaultPosition = value || { lat: 20.5937, lng: 78.9629 };
+  // Default to Sarjapur, Bangalore if no value
+  const defaultPosition = value || { lat: 12.9150, lng: 77.6870 };
 
   function LocationMarker() {
     useMapEvents({
@@ -26,7 +26,7 @@ export default function LocationPicker({ label, value, onChange }: LocationPicke
       <label className="block text-lg font-semibold mb-2">{label}</label>
       <MapContainer
         center={defaultPosition}
-        zoom={5}
+        zoom={14}
         style={{ height: 300, width: '100%' }}
         className="rounded-lg border"
       >

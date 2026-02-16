@@ -8,7 +8,7 @@ interface RideMapProps {
   isReadOnly?: boolean; // New prop to disable interactions
 }
 
-const BENGALURU_CENTER = { lat: 12.9716, lng: 77.5946 };
+const SARJAPUR_CENTER = { lat: 12.9150, lng: 77.6870 };
 const BENGALURU_BOUNDS: [[number, number], [number, number]] = [
   [12.8, 77.4],
   [13.1, 77.8],

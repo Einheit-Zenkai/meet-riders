@@ -20,7 +20,7 @@ function toPoint(p?: { lat: number | string; lng: number | string } | null) {
 }
 
 export default function SinglePointMap({ point, height = 180 }: { point?: { lat: number | string; lng: number | string } | null; height?: number }) {
-  const pos = toPoint(point || null) ?? { lat: 20, lng: 0 };
+  const pos = toPoint(point || null) ?? { lat: 12.9150, lng: 77.6870 };
   return (
     <div style={{ width: "100%", height }}>
       <MapContainer

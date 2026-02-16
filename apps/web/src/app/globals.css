@@ -194,3 +194,12 @@
     color: var(--foreground);
   }
 }
+
+/* Ensure Leaflet maps stay below sidebar z-index */
+.leaflet-container {
+  z-index: 0 !important;
+}
+.leaflet-pane,
+.leaflet-control {
+  z-index: auto !important;
+}

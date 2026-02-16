@@ -48,7 +48,7 @@ const RideMap: React.FC<RideMapProps> = ({ startCoords, setStartCoords, destCoor
   };
 
   return (
-    <MapContainer center={[51.505, -0.09]} zoom={13} style={{ height: "400px", width: "100%" }}>
+    <MapContainer center={[12.9150, 77.6870]} zoom={14} style={{ height: "400px", width: "100%" }}>
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

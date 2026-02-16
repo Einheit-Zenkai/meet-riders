@@ -39,8 +39,8 @@ type Coordinate = {
 };
 
 const defaultCoordinate: Coordinate = {
-  latitude: 12.9716,
-  longitude: 77.5946,
+  latitude: 12.9150,
+  longitude: 77.6870,
 };
 
 const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
