@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,17 +18,12 @@ function Report() {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [submitted, setSubmitted] = useState<boolean>(false);
 
-  const backHref = useMemo(() => {
-    if (targetType === "user" && targetId) return `/profile/${targetId}`;
-    return "/dashboard";
-  }, [targetType, targetId]);
-
   useEffect(() => {
     if (submitted) {
-      const t = setTimeout(() => router.replace(backHref), 1500);
+      const t = setTimeout(() => router.back(), 1500);
       return () => clearTimeout(t);
     }
-  }, [submitted, router, backHref]);
+  }, [submitted, router]);
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,7 +111,7 @@ function Report() {
                 This is a demo. In a real app, our team would review it. You’ll be redirected shortly.
               </p>
               <div className="pt-2">
-                <Button onClick={() => router.replace(backHref)}>Back now</Button>
+                <Button onClick={() => router.back()}>Back now</Button>
               </div>
             </div>
           )}
