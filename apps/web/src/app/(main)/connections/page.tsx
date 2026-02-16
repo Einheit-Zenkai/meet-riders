@@ -16,6 +16,7 @@ import { UserCheck, UserPlus, X } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
 // --- TYPES ---
 // Derived from your SQL schema
@@ -322,7 +323,7 @@ export default function ConnectionsPage() {
                       key={req.id}
                       className="flex items-center justify-between p-2 rounded-lg hover:bg-muted"
                     >
-                      <div className="flex items-center gap-4">
+                      <Link href={`/profile/id/${req.requester_id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity">
                         <Avatar>
                           <AvatarImage src={`https://avatar.vercel.sh/${req.requester.username}.png`} />
                           <AvatarFallback>{req.requester.username?.charAt(0).toUpperCase()}</AvatarFallback>
@@ -331,7 +332,7 @@ export default function ConnectionsPage() {
                           <p className="font-semibold">{req.requester.full_name || req.requester.username}</p>
                           <p className="text-sm text-muted-foreground">@{req.requester.username}</p>
                         </div>
-                      </div>
+                      </Link>
                       <div className="flex gap-2">
                         <Button variant="ghost" size="icon" onClick={() => handleUpdateRequest(req.id, 'accepted')}>
                           <UserCheck className="h-5 w-5 text-green-500" />
@@ -365,7 +366,7 @@ export default function ConnectionsPage() {
                       key={req.id}
                       className="flex items-center justify-between p-2 rounded-lg hover:bg-muted"
                     >
-                      <div className="flex items-center gap-4">
+                      <Link href={`/profile/id/${req.addressee_id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity">
                         <Avatar>
                           <AvatarImage src={`https://avatar.vercel.sh/${req.addressee.username}.png`} />
                           <AvatarFallback>{req.addressee.username?.charAt(0).toUpperCase()}</AvatarFallback>
@@ -374,7 +375,7 @@ export default function ConnectionsPage() {
                           <p className="font-semibold">{req.addressee.full_name || req.addressee.username}</p>
                           <p className="text-sm text-muted-foreground">@{req.addressee.username}</p>
                         </div>
-                      </div>
+                      </Link>
                       <Button variant="outline" size="sm" onClick={() => handleDeleteRequest(req.id, 'cancel')}>
                         Cancel Request
                       </Button>

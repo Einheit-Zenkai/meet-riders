@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import useAuthStore from "@/stores/authStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,12 +20,18 @@ type MiniProfile = {
 export default function MutualsDrawer() {
   const supabase = createClient();
   const { user } = useAuthStore();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<MiniProfile[]>([]);
   const [q, setQ] = useState("");
 
   const toggle = () => setOpen((o) => !o);
+
+  // Close drawer on route change
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const load = async () => {
