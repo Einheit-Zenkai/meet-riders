@@ -158,6 +158,7 @@ const OnboardingScreen = ({ navigation }: NativeStackScreenProps<RootStackParamL
         idealDepartureTime,
         university: '',
         showUniversity: false,
+        studentType: '',
         phoneNumber: '',
         showPhone: false,
         rideOptions: preferences,

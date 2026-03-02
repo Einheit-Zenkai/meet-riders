@@ -625,6 +625,7 @@ export interface PartyJoinRequest {
     gender: string | null;
     university: string | null;
     showUniversity: boolean;
+    studentType: string | null;
   };
   rating: {
     averageRating: number;
@@ -671,7 +672,7 @@ export const fetchMyPartyJoinRequests = async (): Promise<PartyJoinRequest[]> =>
   // Fetch profiles
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
-    .select('id, username, full_name, avatar_url, gender, university, show_university')
+    .select('id, username, full_name, avatar_url, gender, university, show_university, student_type')
     .in('id', userIds);
 
   if (profilesError) throw profilesError;
@@ -712,6 +713,7 @@ export const fetchMyPartyJoinRequests = async (): Promise<PartyJoinRequest[]> =>
         gender: profile.gender ?? null,
         university: profile.university ?? null,
         showUniversity: Boolean(profile.show_university),
+        studentType: profile.student_type ?? null,
       },
       rating,
     };

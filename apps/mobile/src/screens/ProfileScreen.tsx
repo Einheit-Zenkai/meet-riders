@@ -316,6 +316,22 @@ const ProfileScreen = ({ navigation, route }: ProfileScreenProps): JSX.Element =
               </View>
             </View>
 
+            {profile?.university && profile.showUniversity && (
+              <View style={styles.universityBlock}>
+                <Ionicons name="school" size={16} color={palette.primary} style={{ marginRight: 6 }} />
+                <View>
+                  <Text style={styles.universityName}>{profile.university}</Text>
+                  {profile.studentType ? (
+                    <View style={styles.studentTypeBadge}>
+                      <Text style={styles.studentTypeText}>
+                        {profile.studentType === 'hosteller' ? '\ud83c\udfe0 Hosteller' : '\ud83d\ude8c Day Scholar'}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+            )}
+
             <View style={styles.memberRow}>
               <Ionicons name="calendar" size={16} color={palette.textSecondary} />
               <Text style={styles.memberText}>
@@ -603,6 +619,34 @@ const styles = StyleSheet.create({
     color: palette.textPrimary,
     fontWeight: '700',
     marginTop: 6,
+  },
+  universityBlock: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: palette.surfaceAlt,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    marginTop: 12,
+  },
+  universityName: {
+    color: palette.textPrimary,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  studentTypeBadge: {
+    marginTop: 4,
+    alignSelf: 'flex-start',
+    backgroundColor: palette.primary + '22',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  studentTypeText: {
+    color: palette.primary,
+    fontSize: 12,
+    fontWeight: '600',
   },
   memberRow: {
     flexDirection: 'row',

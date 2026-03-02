@@ -34,6 +34,7 @@ export const useProfile = () => {
   const [idealDepartureTime, setIdealDepartureTime] = useState('');
   const [university, setUniversity] = useState('');
   const [showUniversity, setShowUniversity] = useState<boolean>(true);
+  const [studentType, setStudentType] = useState<string>('');
   const [phone, setPhone] = useState('');
   const [showPhone, setShowPhone] = useState<boolean>(false);
   
@@ -76,6 +77,7 @@ export const useProfile = () => {
         setIdealDepartureTime(profile.ideal_departure_time || '');
         setUniversity(profile.university || '');
         setShowUniversity(typeof profile.show_university === 'boolean' ? profile.show_university : true);
+        setStudentType(profile.student_type || '');
         setAvatarUrl(profile.avatar_url || null);
         setPhone(profile.phone_number || '');
         setShowPhone(!!profile.show_phone);
@@ -127,6 +129,8 @@ export const useProfile = () => {
     setUniversity,
     showUniversity,
     setShowUniversity,
+    studentType,
+    setStudentType,
   phone,
   setPhone,
   showPhone,

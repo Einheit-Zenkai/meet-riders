@@ -23,6 +23,7 @@ export const useSettingsSave = () => {
       idealDepartureTime: string;
       university: string;
       showUniversity: boolean;
+      studentType: string;
       phone: string;
       showPhone: boolean;
       preferences: Preferences;
@@ -114,6 +115,7 @@ export const useSettingsSave = () => {
     
     profileDataToSave.university = profileData.university || null;
     profileDataToSave.show_university = profileData.showUniversity;
+    profileDataToSave.student_type = (profileData.university && profileData.studentType) ? profileData.studentType : null;
     
     if (avatar_url) {
       profileDataToSave.avatar_url = avatar_url;

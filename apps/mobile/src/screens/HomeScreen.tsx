@@ -880,7 +880,14 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
                       <View style={styles.profileInfoRow}>
                         <Ionicons name="school" size={20} color={palette.primary} />
                         <Text style={styles.profileInfoLabel}>University</Text>
-                        <Text style={styles.profileInfoValue}>{selectedRequest.profile.university}</Text>
+                        <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                          <Text style={styles.profileInfoValue}>{selectedRequest.profile.university}</Text>
+                          {selectedRequest.profile.studentType ? (
+                            <Text style={{ fontSize: 11, color: palette.primary, fontWeight: '600', marginTop: 2 }}>
+                              {selectedRequest.profile.studentType === 'hosteller' ? '\ud83c\udfe0 Hosteller' : '\ud83d\ude8c Day Scholar'}
+                            </Text>
+                          ) : null}
+                        </View>
                       </View>
                     )}
                   </View>

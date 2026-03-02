@@ -288,7 +288,14 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
                                 </Avatar>
                                 <h2 className="text-xl font-bold mt-2">{party.host_profile.nickname || party.host_profile.full_name || 'Anonymous Host'}</h2>
                                 {party.host_profile.university && (
-                                    <div className="text-sm text-muted-foreground">{party.host_profile.university}</div>
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <span>{party.host_profile.university}</span>
+                                        {party.host_profile.student_type && (
+                                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary capitalize">
+                                                {party.host_profile.student_type === 'hosteller' ? '🏠 Hosteller' : '🚌 Day Scholar'}
+                                            </span>
+                                        )}
+                                    </div>
                                 )}
                                 {party.host_profile.gender && (
                                     <div className="text-sm text-muted-foreground">Gender: {party.host_profile.gender}</div>
@@ -347,9 +354,16 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
                                     </div>
                                 )}
                                 {party.host_profile?.university && party.display_university && (
-                                    <div className="flex items-center gap-1 lg:justify-center">
-                                        <Star className="w-3 h-3 flex-shrink-0" />
-                                        <span className="text-xs truncate">{party.host_profile.university}</span>
+                                    <div className="flex flex-col items-center lg:items-center gap-0.5">
+                                        <div className="flex items-center gap-1 lg:justify-center">
+                                            <Star className="w-3 h-3 flex-shrink-0" />
+                                            <span className="text-xs truncate">{party.host_profile.university}</span>
+                                        </div>
+                                        {party.host_profile.student_type && (
+                                            <span className="text-[10px] font-semibold text-primary capitalize">
+                                                {party.host_profile.student_type === 'hosteller' ? '🏠 Hosteller' : '🚌 Day Scholar'}
+                                            </span>
+                                        )}
                                     </div>
                                 )}
                             </div>

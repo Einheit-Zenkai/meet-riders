@@ -16,6 +16,8 @@ interface BasicInfoSectionProps {
   setUniversity: (value: string) => void;
   showUniversity: boolean;
   setShowUniversity: (value: boolean) => void;
+  studentType: string;
+  setStudentType: (value: string) => void;
   punctuality: string;
   setPunctuality: (value: string) => void;
   idealLocation: string;
@@ -35,6 +37,8 @@ export const BasicInfoSection = ({
   setUniversity,
   showUniversity,
   setShowUniversity,
+  studentType,
+  setStudentType,
   punctuality,
   setPunctuality,
   idealLocation,
@@ -102,7 +106,10 @@ export const BasicInfoSection = ({
           id="university" 
           placeholder="e.g. NIT Surat" 
           value={university} 
-          onChange={(e) => setUniversity(e.target.value)} 
+          onChange={(e) => {
+            setUniversity(e.target.value);
+            if (!e.target.value) setStudentType('');
+          }} 
         />
         <label className="inline-flex items-center gap-2 text-sm mt-1">
           <input 
@@ -112,6 +119,25 @@ export const BasicInfoSection = ({
           />
           Display my university publicly
         </label>
+        {university.trim() && (
+          <div className="mt-3 space-y-1.5">
+            <Label className="text-sm">Are you a Hosteller or Day Scholar?</Label>
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              value={studentType}
+              className="flex justify-start"
+              onValueChange={(val) => { if (val) setStudentType(val); }}
+            >
+              <ToggleGroupItem value="hosteller" aria-label="Hosteller">
+                🏠 Hosteller
+              </ToggleGroupItem>
+              <ToggleGroupItem value="dayscholar" aria-label="Day Scholar">
+                🚌 Day Scholar
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">

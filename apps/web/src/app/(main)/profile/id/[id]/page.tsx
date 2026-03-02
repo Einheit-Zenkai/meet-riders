@@ -21,6 +21,7 @@ type Profile = {
   points: number | null;
   university?: string | null;
   show_university?: boolean | null;
+  student_type?: string | null;
   gender?: string | null;
 };
 
@@ -52,7 +53,7 @@ export default function PublicProfilePage() {
       // 1) Fetch the profile being viewed
       const { data: p, error: pErr } = await supabase
         .from("profiles")
-  .select("id, username, nickname, bio, avatar_url, points, university, show_university, gender")
+  .select("id, username, nickname, bio, avatar_url, points, university, show_university, student_type, gender")
         .eq("id", viewedId)
         .single();
 
@@ -348,6 +349,11 @@ export default function PublicProfilePage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-foreground">{profile.university}</p>
+                    {profile.student_type && (
+                      <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary capitalize">
+                        {profile.student_type === 'hosteller' ? '🏠 Hosteller' : '🚌 Day Scholar'}
+                      </span>
+                    )}
                   </CardContent>
                 </Card>
               )}

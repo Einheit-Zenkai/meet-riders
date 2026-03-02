@@ -11,6 +11,7 @@ export interface ProfileData {
   rideOptions: Record<string, number> | null;
   university: string | null;
   showUniversity: boolean;
+  studentType: string | null;
   phoneNumber: string | null;
   showPhone: boolean;
   avatarUrl: string | null;
@@ -34,7 +35,7 @@ export const fetchProfile = async (): Promise<ProfileData | null> => {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'username, nickname, bio, gender, punctuality, ideal_location, ideal_departure_time, university, show_university, phone_number, show_phone, avatar_url, "rideOptions"'
+      'username, nickname, bio, gender, punctuality, ideal_location, ideal_departure_time, university, show_university, student_type, phone_number, show_phone, avatar_url, "rideOptions"'
     )
     .eq('id', user.id)
     .maybeSingle();
@@ -51,6 +52,7 @@ export const fetchProfile = async (): Promise<ProfileData | null> => {
       rideOptions: null,
       university: null,
       showUniversity: false,
+      studentType: null,
       phoneNumber: null,
       showPhone: false,
       avatarUrl: null,
@@ -77,6 +79,7 @@ export const fetchProfile = async (): Promise<ProfileData | null> => {
     rideOptions: parsedRideOptions,
     university: data.university ?? null,
     showUniversity: typeof data.show_university === 'boolean' ? data.show_university : false,
+    studentType: data.student_type ?? null,
     phoneNumber: data.phone_number ?? null,
     showPhone: Boolean(data.show_phone),
     avatarUrl: data.avatar_url ?? null,
@@ -93,6 +96,7 @@ export interface SaveProfilePayload {
   idealDepartureTime: string;
   university: string;
   showUniversity: boolean;
+  studentType: string;
   phoneNumber: string;
   showPhone: boolean;
   rideOptions: Record<string, number>;
@@ -147,6 +151,7 @@ export const saveProfile = async (payload: SaveProfilePayload): Promise<void> =>
       ideal_departure_time: payload.idealDepartureTime,
       university: payload.university || null,
       show_university: payload.showUniversity,
+      student_type: (payload.university && payload.studentType) ? payload.studentType : null,
       phone_number: payload.phoneNumber || null,
       show_phone: payload.showPhone,
       rideOptions: JSON.stringify(payload.rideOptions),
@@ -171,7 +176,7 @@ export const fetchProfileById = async (userId: string): Promise<ProfileData | nu
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'username, nickname, bio, gender, punctuality, ideal_location, ideal_departure_time, university, show_university, phone_number, show_phone, avatar_url, "rideOptions"'
+      'username, nickname, bio, gender, punctuality, ideal_location, ideal_departure_time, university, show_university, student_type, phone_number, show_phone, avatar_url, "rideOptions"'
     )
     .eq('id', userId)
     .maybeSingle();
@@ -200,6 +205,7 @@ export const fetchProfileById = async (userId: string): Promise<ProfileData | nu
     rideOptions: parsedRideOptions,
     university: data.university ?? null,
     showUniversity: typeof data.show_university === 'boolean' ? data.show_university : false,
+    studentType: data.student_type ?? null,
     phoneNumber: data.phone_number ?? null,
     showPhone: Boolean(data.show_phone),
     avatarUrl: data.avatar_url ?? null,

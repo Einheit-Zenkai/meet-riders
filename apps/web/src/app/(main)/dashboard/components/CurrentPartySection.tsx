@@ -25,6 +25,7 @@ interface RequestRow {
     avatar_url: string | null;
     gender: string | null;
     university: string | null;
+    student_type: string | null;
   } | null;
 }
 
@@ -160,7 +161,14 @@ export default function CurrentPartySection() {
                         {profile?.nickname || profile?.full_name || "Rider"}
                       </div>
                       {profile?.university ? (
-                        <div className="text-xs text-muted-foreground">{profile.university}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {profile.university}
+                          {profile.student_type ? (
+                            <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary capitalize">
+                              {profile.student_type}
+                            </span>
+                          ) : null}
+                        </div>
                       ) : null}
                       <div className="text-xs text-muted-foreground flex items-center gap-2">
                         <MapPin className="h-3.5 w-3.5" /> {meetup}

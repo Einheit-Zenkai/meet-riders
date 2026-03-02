@@ -32,6 +32,8 @@ export const SettingsForm = ({ imageFile, setInitialImagePreview }: SettingsForm
     setUniversity,
     showUniversity,
     setShowUniversity,
+    studentType,
+    setStudentType,
     phone,
     setPhone,
     showPhone,
@@ -55,6 +57,7 @@ export const SettingsForm = ({ imageFile, setInitialImagePreview }: SettingsForm
         idealDepartureTime,
         university,
         showUniversity,
+        studentType,
         phone,
         showPhone,
         preferences,
@@ -90,6 +93,8 @@ export const SettingsForm = ({ imageFile, setInitialImagePreview }: SettingsForm
             setUniversity={setUniversity}
             showUniversity={showUniversity}
             setShowUniversity={setShowUniversity}
+            studentType={studentType}
+            setStudentType={setStudentType}
             punctuality={punctuality}
             setPunctuality={setPunctuality}
             idealLocation={idealLocation}

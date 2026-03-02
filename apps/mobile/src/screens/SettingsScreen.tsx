@@ -62,6 +62,7 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
   const [idealDepartureTime, setIdealDepartureTime] = useState('');
   const [university, setUniversity] = useState('');
   const [showUniversity, setShowUniversity] = useState(false);
+  const [studentType, setStudentType] = useState<'hosteller' | 'dayscholar' | ''>('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [showPhone, setShowPhone] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -94,6 +95,7 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
           setIdealDepartureTime(profile.idealDepartureTime ?? '');
           setUniversity(profile.university ?? '');
           setShowUniversity(profile.showUniversity);
+          setStudentType((profile.studentType as 'hosteller' | 'dayscholar' | '') ?? '');
           setPhoneNumber(profile.phoneNumber ?? '');
           setShowPhone(profile.showPhone);
           setAvatarUrl(profile.avatarUrl);
@@ -169,6 +171,7 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
         idealDepartureTime,
         university,
         showUniversity,
+        studentType,
         phoneNumber,
         showPhone,
         rideOptions: preferences,
@@ -335,7 +338,10 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
               <Text style={styles.label}>University (optional)</Text>
               <TextInput
                 value={university}
-                onChangeText={setUniversity}
+                onChangeText={(val) => {
+                  setUniversity(val);
+                  if (!val) setStudentType('');
+                }}
                 placeholder="e.g. NIT Surat"
                 placeholderTextColor={palette.textSecondary}
                 style={styles.input}
@@ -344,6 +350,45 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
                 <Switch value={showUniversity} onValueChange={setShowUniversity} />
                 <Text style={styles.switchLabel}>Display my university publicly</Text>
               </View>
+              {university.trim() ? (
+                <View style={{ marginTop: 12 }}>
+                  <Text style={[styles.label, { marginBottom: 8 }]}>Hosteller or Day Scholar?</Text>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity
+                      style={[
+                        styles.punctualityChip,
+                        studentType === 'hosteller' && styles.punctualityChipActive,
+                      ]}
+                      onPress={() => setStudentType(studentType === 'hosteller' ? '' : 'hosteller')}
+                    >
+                      <Text
+                        style={[
+                          styles.punctualityLabel,
+                          studentType === 'hosteller' && styles.punctualityLabelActive,
+                        ]}
+                      >
+                        🏠 Hosteller
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.punctualityChip,
+                        studentType === 'dayscholar' && styles.punctualityChipActive,
+                      ]}
+                      onPress={() => setStudentType(studentType === 'dayscholar' ? '' : 'dayscholar')}
+                    >
+                      <Text
+                        style={[
+                          styles.punctualityLabel,
+                          studentType === 'dayscholar' && styles.punctualityLabelActive,
+                        ]}
+                      >
+                        🚌 Day Scholar
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : null}
             </View>
 
             <View style={styles.formField}>

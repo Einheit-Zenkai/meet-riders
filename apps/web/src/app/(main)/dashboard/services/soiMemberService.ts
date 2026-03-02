@@ -58,7 +58,7 @@ export class SoiMemberService {
       let profile: Record<string, any> | null = null;
       const { data: profileRow } = await this.supabase
         .from('profiles')
-        .select('id, full_name, nickname, avatar_url, gender, points, university, show_university, created_at, updated_at, birth_date')
+        .select('id, full_name, nickname, avatar_url, gender, points, university, show_university, student_type, created_at, updated_at, birth_date')
         .eq('id', activeRow.user_id)
         .maybeSingle();
       if (profileRow) {

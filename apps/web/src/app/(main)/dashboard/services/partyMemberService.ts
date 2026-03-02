@@ -57,7 +57,7 @@ export class PartyMemberService {
       let profile: Record<string, any> | null = null;
       const { data: profileRow, error: profileError } = await this.supabase
         .from('profiles')
-        .select('id, full_name, nickname, avatar_url, gender, points, university, show_university, phone_number, show_phone, created_at, updated_at, birth_date')
+        .select('id, full_name, nickname, avatar_url, gender, points, university, show_university, student_type, phone_number, show_phone, created_at, updated_at, birth_date')
         .eq('id', memberRow.user_id)
         .single();
 
@@ -168,7 +168,7 @@ export class PartyMemberService {
       if (userIds.length > 0) {
         const { data: profiles, error: profileErr } = await this.supabase
     .from('profiles')
-    .select('id, full_name, nickname, avatar_url, gender, points, university, show_university, phone_number, show_phone, created_at, updated_at, birth_date')
+    .select('id, full_name, nickname, avatar_url, gender, points, university, show_university, student_type, phone_number, show_phone, created_at, updated_at, birth_date')
           .in('id', userIds);
 
         if (profileErr) {
@@ -420,7 +420,7 @@ export class PartyMemberService {
       if (userIds.length > 0) {
         const { data: profs } = await this.supabase
           .from('profiles')
-          .select('id, full_name, nickname, avatar_url, gender, university, show_university, points')
+          .select('id, full_name, nickname, avatar_url, gender, university, show_university, student_type, points')
           .in('id', userIds);
         (profs || []).forEach((p: any) => { profilesMap[p.id] = p; });
       }

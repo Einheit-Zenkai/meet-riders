@@ -22,6 +22,7 @@ type ProfileData = {
   points: number;
   university?: string;
   show_university?: boolean;
+  student_type?: string | null;
   gender?: string | null;
   major?: string | null;
   punctuality?: string | null;
@@ -83,6 +84,7 @@ export default function ProfilePage() {
           birth_date,
           phone_number,
           show_phone,
+          student_type,
           created_at
         `)
         .eq("id", user.id)
@@ -124,6 +126,7 @@ export default function ProfilePage() {
           birth_date: data.birth_date || null,
           phone_number: data.phone_number || null,
           show_phone: data.show_phone || false,
+          student_type: data.student_type ?? null,
           created_at: data.created_at || null,
         });
       }
@@ -263,6 +266,11 @@ export default function ProfilePage() {
                     <div className="p-4 bg-accent/30 rounded-lg border border-accent/50">
                       <label className="block text-sm font-medium text-foreground mb-1">University</label>
                       <p className="text-base font-semibold text-primary">{profileData.university}</p>
+                      {profileData.student_type && (
+                        <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/15 text-primary capitalize">
+                          {profileData.student_type === 'hosteller' ? '🏠 Hosteller' : '🚌 Day Scholar'}
+                        </span>
+                      )}
                       <p className="text-xs text-muted-foreground mt-1">Visible to other users</p>
                     </div>
                   )}

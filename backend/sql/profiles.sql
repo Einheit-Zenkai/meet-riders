@@ -21,6 +21,7 @@ create table public.profiles (
   "expiresIn" text null,
   phone_number text null,
   show_phone boolean null default false,
+  student_type text null,
   username text not null,
   constraint profiles_pkey primary key (id),
   constraint profiles_username_key unique (username),
