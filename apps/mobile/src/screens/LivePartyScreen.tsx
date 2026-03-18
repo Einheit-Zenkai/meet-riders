@@ -17,7 +17,18 @@ import { palette } from '../theme/colors';
 import { showAlert } from '../utils/alert';
 import { getSupabaseClient } from '../lib/supabase';
 import { mobileMenuItems } from '../constants/menuItems';
-import { fetchPartyMembers, leaveParty, PartyMember, markReachedStop, endPartyWithReason } from '../api/party';
+import {
+  fetchPartyMembers,
+  leaveParty,
+  PartyMember,
+  markReachedStop,
+  endPartyWithReason,
+  RouteStop,
+  fetchRouteStops,
+  refreshRouteStopsFromLive,
+  optimizeRouteStops,
+  saveRouteOrder,
+} from '../api/party';
 import { CrownBadge } from '../components/SharedComponents';
 import RatingModal from '../components/RatingModal';
 import { submitRating } from '../api/rating';
@@ -70,6 +81,11 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
   const [markReachedBusy, setMarkReachedBusy] = useState(false);
+  const [routeStops, setRouteStops] = useState<RouteStop[]>([]);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [routeRefreshing, setRouteRefreshing] = useState(false);
+  const [routeOptimizing, setRouteOptimizing] = useState(false);
+  const [routeSaving, setRouteSaving] = useState(false);
 
   const partyIdParam = route.params?.partyId;
 
@@ -231,6 +247,27 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
     loadMembers(party.id, party.host_id, party.expires_at);
   }, [party, loadMembers]);
 
+  const loadRouteStops = useCallback(async () => {
+    if (!party) return;
+    try {
+      setRouteLoading(true);
+      const stops = await fetchRouteStops(party.id);
+      setRouteStops(stops);
+    } catch (error: any) {
+      console.error('Failed to load route stops', error);
+    } finally {
+      setRouteLoading(false);
+    }
+  }, [party]);
+
+  useEffect(() => {
+    if (!party) {
+      setRouteStops([]);
+      return;
+    }
+    loadRouteStops();
+  }, [party, loadRouteStops]);
+
   const host = useMemo(() => members.find((m) => m.userId === party?.host_id) ?? null, [members, party?.host_id]);
   const nonHostMembers = useMemo(() => {
     if (!party) return [];
@@ -313,6 +350,62 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
   // Check if current user is not the host (can leave)
   const isHost = party && currentUserId && party.host_id === currentUserId;
   const canLeave = party && currentUserId && !isHost;
+
+  const handleRefreshRoute = async () => {
+    if (!party || !isHost) return;
+    try {
+      setRouteRefreshing(true);
+      const added = await refreshRouteStopsFromLive(party.id);
+      await loadRouteStops();
+      showAlert('Route', `Route stops refreshed (${added} updated).`);
+    } catch (error: any) {
+      showAlert('Route', error?.message || 'Failed to refresh route stops.');
+    } finally {
+      setRouteRefreshing(false);
+    }
+  };
+
+  const handleOptimizeRoute = async () => {
+    if (!party || !isHost) return;
+    try {
+      setRouteOptimizing(true);
+      const stops = await optimizeRouteStops(party.id);
+      setRouteStops(stops);
+      showAlert('Route', 'Optimized routing has been done.');
+    } catch (error: any) {
+      showAlert('Route', error?.message || 'Failed to optimize route.');
+    } finally {
+      setRouteOptimizing(false);
+    }
+  };
+
+  const moveRouteStop = (index: number, direction: -1 | 1) => {
+    setRouteStops((prev) => {
+      const sorted = [...prev].sort((a, b) => a.stopOrder - b.stopOrder);
+      const target = index + direction;
+      if (target < 0 || target >= sorted.length) return prev;
+      const copy = [...sorted];
+      const temp = copy[index];
+      copy[index] = copy[target];
+      copy[target] = temp;
+      return copy.map((stop, i) => ({ ...stop, stopOrder: i + 1 }));
+    });
+  };
+
+  const handleSaveRoute = async () => {
+    if (!party || !isHost || routeStops.length === 0) return;
+    try {
+      setRouteSaving(true);
+      const ordered = [...routeStops].sort((a, b) => a.stopOrder - b.stopOrder);
+      await saveRouteOrder(party.id, ordered.map((stop) => stop.id));
+      await loadRouteStops();
+      showAlert('Route', 'Route order saved.');
+    } catch (error: any) {
+      showAlert('Route', error?.message || 'Failed to save route order.');
+    } finally {
+      setRouteSaving(false);
+    }
+  };
 
   const handleLeaveParty = () => {
     if (!canLeave) return;
@@ -439,6 +532,76 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
                     {myReached ? 'Stop confirmed' : markReachedBusy ? 'Confirming...' : 'Mark my stop reached'}
                   </Text>
                 </TouchableOpacity>
+              </View>
+
+              <View style={styles.sectionBox}>
+                <Text style={styles.sectionLabel}>Route stops</Text>
+                {isHost ? (
+                  <View style={styles.routeActionRow}>
+                    <TouchableOpacity
+                      style={[styles.smallActionButton, (routeRefreshing || routeOptimizing || routeSaving) ? styles.smallActionButtonDisabled : undefined]}
+                      onPress={handleRefreshRoute}
+                      disabled={routeRefreshing || routeOptimizing || routeSaving}
+                    >
+                      <Text style={styles.smallActionText}>{routeRefreshing ? 'Refreshing...' : 'Refresh'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.smallActionButton, (routeRefreshing || routeOptimizing || routeSaving) ? styles.smallActionButtonDisabled : undefined]}
+                      onPress={handleOptimizeRoute}
+                      disabled={routeRefreshing || routeOptimizing || routeSaving}
+                    >
+                      <Text style={styles.smallActionText}>{routeOptimizing ? 'Optimizing...' : 'Optimize shortest route'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+
+                {routeLoading ? (
+                  <Text style={styles.sectionValue}>Loading route stops...</Text>
+                ) : routeStops.length === 0 ? (
+                  <Text style={styles.sectionValue}>No route stops yet. Host can refresh and optimize.</Text>
+                ) : (
+                  <View style={styles.routeList}>
+                    {[...routeStops].sort((a, b) => a.stopOrder - b.stopOrder).map((stop, index, arr) => (
+                      <View key={stop.id} style={styles.routeRow}>
+                        <View style={styles.routeRowLeft}>
+                          <Text style={styles.routeRowTitle} numberOfLines={1}>{index + 1}. {stop.stopLabel}</Text>
+                          <Text style={styles.routeRowMeta}>
+                            {stop.source === 'host_destination' ? 'Destination' : stop.userId ? 'Rider stop' : 'Manual stop'}
+                          </Text>
+                        </View>
+                        {isHost ? (
+                          <View style={styles.routeRowActions}>
+                            <TouchableOpacity
+                              style={styles.routeMoveButton}
+                              onPress={() => moveRouteStop(index, -1)}
+                              disabled={index === 0 || routeSaving || routeOptimizing || routeRefreshing}
+                            >
+                              <Ionicons name="arrow-up" size={14} color={palette.textPrimary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.routeMoveButton}
+                              onPress={() => moveRouteStop(index, 1)}
+                              disabled={index === arr.length - 1 || routeSaving || routeOptimizing || routeRefreshing}
+                            >
+                              <Ionicons name="arrow-down" size={14} color={palette.textPrimary} />
+                            </TouchableOpacity>
+                          </View>
+                        ) : null}
+                      </View>
+                    ))}
+
+                    {isHost ? (
+                      <TouchableOpacity
+                        style={[styles.mapButton, (routeSaving || routeOptimizing || routeRefreshing) ? styles.mapButtonDone : undefined]}
+                        onPress={handleSaveRoute}
+                        disabled={routeSaving || routeOptimizing || routeRefreshing || routeStops.length === 0}
+                      >
+                        <Ionicons name="save-outline" size={18} color={palette.textPrimary} />
+                        <Text style={styles.mapButtonText}>{routeSaving ? 'Saving...' : 'Save changes'}</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                )}
               </View>
 
               {isHost && (
@@ -924,6 +1087,69 @@ const styles = StyleSheet.create({
   sectionValue: {
     color: palette.textPrimary,
     fontWeight: '600',
+  },
+  routeActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  smallActionButton: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    backgroundColor: palette.surface,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  smallActionButtonDisabled: {
+    opacity: 0.65,
+  },
+  smallActionText: {
+    color: palette.textPrimary,
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  routeList: {
+    gap: 8,
+  },
+  routeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: palette.outline,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: palette.backgroundAlt,
+  },
+  routeRowLeft: {
+    flex: 1,
+    marginRight: 8,
+  },
+  routeRowTitle: {
+    color: palette.textPrimary,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  routeRowMeta: {
+    color: palette.textSecondary,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  routeRowActions: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  routeMoveButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.surface,
   },
   sectionTitle: {
     color: palette.textPrimary,

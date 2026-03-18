@@ -98,6 +98,16 @@ export interface PartyMember {
     participants: RideHistoryParticipant[];
   }
 
+export interface RouteStop {
+  id: string;
+  party_id: string;
+  user_id: string | null;
+  stop_label: string;
+  stop_coords: { lat: number; lng: number } | null;
+  source: 'member_live' | 'host_destination' | 'manual';
+  stop_order: number;
+}
+
 export interface Profile {
     id: string; // same as host_id in Party
     username: string;

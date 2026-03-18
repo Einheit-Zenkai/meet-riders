@@ -187,6 +187,16 @@ export type RideHistoryItem = {
   participants: RideHistoryParticipant[];
 };
 
+export type RouteStop = {
+  id: string;
+  partyId: string;
+  userId: string | null;
+  stopLabel: string;
+  stopOrder: number;
+  source: 'member_live' | 'host_destination' | 'manual';
+  stopCoords: { lat: number; lng: number } | null;
+};
+
 export const createParty = async (input: CreatePartyInput): Promise<CreatePartyResult> => {
   const supabase = getSupabaseClient();
   if (!supabase) {
@@ -512,6 +522,91 @@ export const fetchRideHistory = async (): Promise<RideHistoryItem[]> => {
     endReason: row.end_reason ?? null,
     participants: participantsByRide.get(row.id) ?? [],
   }));
+};
+
+export const deleteMyRideHistory = async (rideHistoryId?: string): Promise<number> => {
+  const { supabase } = await ensureUser();
+
+  const { data, error } = await supabase.rpc('delete_my_ride_history', {
+    p_ride_history_id: rideHistoryId ?? null,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return Number(data ?? 0);
+};
+
+export const fetchRouteStops = async (partyId: string): Promise<RouteStop[]> => {
+  const { supabase } = await ensureUser();
+
+  const { data, error } = await supabase
+    .from('party_route_stops')
+    .select('id, party_id, user_id, stop_label, stop_coords, source, stop_order')
+    .eq('party_id', partyId)
+    .order('stop_order', { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    partyId: row.party_id,
+    userId: row.user_id ?? null,
+    stopLabel: row.stop_label,
+    stopOrder: Number(row.stop_order ?? 0),
+    source: row.source,
+    stopCoords:
+      row.stop_coords && Number.isFinite(Number(row.stop_coords?.lat)) && Number.isFinite(Number(row.stop_coords?.lng))
+        ? { lat: Number(row.stop_coords.lat), lng: Number(row.stop_coords.lng) }
+        : null,
+  }));
+};
+
+export const refreshRouteStopsFromLive = async (partyId: string): Promise<number> => {
+  const { supabase } = await ensureUser();
+
+  const { data, error } = await supabase.rpc('refresh_party_route_stops_from_user_locations', {
+    p_party_id: partyId,
+    p_include_host_destination: true,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return Number(data ?? 0);
+};
+
+export const optimizeRouteStops = async (partyId: string): Promise<RouteStop[]> => {
+  const { supabase } = await ensureUser();
+
+  const { error } = await supabase.rpc('optimize_party_route', {
+    p_party_id: partyId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return fetchRouteStops(partyId);
+};
+
+export const saveRouteOrder = async (partyId: string, stopIdsInOrder: string[]): Promise<number> => {
+  const { supabase } = await ensureUser();
+
+  const { data, error } = await supabase.rpc('save_party_route_order', {
+    p_party_id: partyId,
+    p_stop_ids: stopIdsInOrder,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return Number(data ?? 0);
 };
 
 /**

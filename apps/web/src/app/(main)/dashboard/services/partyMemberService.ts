@@ -1,6 +1,6 @@
 // Service functions for party member operations
 import { createClient } from "@/utils/supabase/client";
-import type { PartyMember, RideHistoryItem, RideHistoryParticipant } from "../types";
+import type { PartyMember, RideHistoryItem, RideHistoryParticipant, RouteStop } from "../types";
 
 export class PartyMemberService {
   private supabase = createClient();
@@ -635,6 +635,113 @@ export class PartyMemberService {
       return { success: true, history: mapped };
     } catch (e: any) {
       return { success: false, error: e?.message || 'Failed to load ride history' };
+    }
+  }
+
+  /** Delete one history entry (or all entries) for the current user only. */
+  async deleteMyRideHistory(rideHistoryId?: string): Promise<{ success: boolean; deletedCount?: number; error?: string }> {
+    try {
+      const { data, error } = await this.supabase.rpc('delete_my_ride_history', {
+        p_ride_history_id: rideHistoryId ?? null,
+      });
+
+      if (error) {
+        return { success: false, error: error.message || 'Failed to delete ride history' };
+      }
+
+      return { success: true, deletedCount: Number(data ?? 0) };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Failed to delete ride history' };
+    }
+  }
+
+  /** Read persisted route stops for a party (host+members can view). */
+  async getRouteStops(partyId: string): Promise<{ success: boolean; stops?: RouteStop[]; error?: string }> {
+    try {
+      const { data, error } = await this.supabase
+        .from('party_route_stops')
+        .select('id, party_id, user_id, stop_label, stop_coords, source, stop_order')
+        .eq('party_id', partyId)
+        .order('stop_order', { ascending: true });
+
+      if (error) {
+        return { success: false, error: error.message || 'Failed to load route stops' };
+      }
+
+      const mapped: RouteStop[] = (data || []).map((row: any) => ({
+        id: row.id,
+        party_id: row.party_id,
+        user_id: row.user_id ?? null,
+        stop_label: row.stop_label,
+        stop_coords: row.stop_coords && Number.isFinite(Number(row.stop_coords?.lat)) && Number.isFinite(Number(row.stop_coords?.lng))
+          ? { lat: Number(row.stop_coords.lat), lng: Number(row.stop_coords.lng) }
+          : null,
+        source: row.source,
+        stop_order: Number(row.stop_order ?? 0),
+      }));
+
+      return { success: true, stops: mapped };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Failed to load route stops' };
+    }
+  }
+
+  /** Host action: refresh route stops from latest user_locations + destination. */
+  async refreshRouteStopsFromLive(partyId: string): Promise<{ success: boolean; added?: number; error?: string }> {
+    try {
+      const { data, error } = await this.supabase.rpc('refresh_party_route_stops_from_user_locations', {
+        p_party_id: partyId,
+        p_include_host_destination: true,
+      });
+
+      if (error) {
+        return { success: false, error: error.message || 'Failed to refresh route stops' };
+      }
+
+      return { success: true, added: Number(data ?? 0) };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Failed to refresh route stops' };
+    }
+  }
+
+  /** Host action: optimize route order by shortest next-stop heuristic. */
+  async optimizeRouteStops(partyId: string): Promise<{ success: boolean; stops?: RouteStop[]; error?: string }> {
+    try {
+      const { error } = await this.supabase.rpc('optimize_party_route', {
+        p_party_id: partyId,
+      });
+
+      if (error) {
+        return { success: false, error: error.message || 'Failed to optimize route' };
+      }
+
+      // RPC returns basic ordering fields; pull full rows so UI keeps source/coords metadata.
+      const full = await this.getRouteStops(partyId);
+      if (!full.success) {
+        return { success: true, stops: [] };
+      }
+
+      return { success: true, stops: full.stops };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Failed to optimize route' };
+    }
+  }
+
+  /** Host action: persist a custom route order from the UI. */
+  async saveRouteOrder(partyId: string, stopIdsInOrder: string[]): Promise<{ success: boolean; saved?: number; error?: string }> {
+    try {
+      const { data, error } = await this.supabase.rpc('save_party_route_order', {
+        p_party_id: partyId,
+        p_stop_ids: stopIdsInOrder,
+      });
+
+      if (error) {
+        return { success: false, error: error.message || 'Failed to save route order' };
+      }
+
+      return { success: true, saved: Number(data ?? 0) };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Failed to save route order' };
     }
   }
 }

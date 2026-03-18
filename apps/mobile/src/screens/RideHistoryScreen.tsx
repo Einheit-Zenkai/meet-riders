@@ -17,7 +17,7 @@ import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
 import { showAlert } from '../utils/alert';
 import { mobileMenuItems } from '../constants/menuItems';
-import { fetchRideHistory, RideHistoryItem } from '../api/party';
+import { fetchRideHistory, RideHistoryItem, deleteMyRideHistory } from '../api/party';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RideHistory'>;
 
@@ -35,6 +35,8 @@ const displayName = (item: RideHistoryItem['participants'][number]): string => {
 const RideHistoryScreen = ({ navigation }: Props): JSX.Element => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [items, setItems] = useState<RideHistoryItem[]>([]);
 
   const load = useCallback(async () => {
@@ -56,6 +58,48 @@ const RideHistoryScreen = ({ navigation }: Props): JSX.Element => {
     }, [load])
   );
 
+  const handleDeleteOne = (rideId: string) => {
+    showAlert('Delete history', 'Delete this ride history entry forever?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setDeletingId(rideId);
+            await deleteMyRideHistory(rideId);
+            setItems((prev) => prev.filter((item) => item.id !== rideId));
+          } catch (error: any) {
+            showAlert('Ride history', error?.message || 'Failed to delete ride history entry.');
+          } finally {
+            setDeletingId(null);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleDeleteAll = () => {
+    showAlert('Delete all history', 'Delete ALL your ride history forever? This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete all',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setDeletingAll(true);
+            await deleteMyRideHistory();
+            setItems([]);
+          } catch (error: any) {
+            showAlert('Ride history', error?.message || 'Failed to delete all ride history.');
+          } finally {
+            setDeletingAll(false);
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
@@ -71,6 +115,16 @@ const RideHistoryScreen = ({ navigation }: Props): JSX.Element => {
 
           <TouchableOpacity style={styles.badge} onPress={load}>
             <Text style={styles.badgeText}>R</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.actionsRow}>
+          <TouchableOpacity
+            style={[styles.deleteAllButton, (loading || deletingAll || items.length === 0) ? styles.deleteDisabled : undefined]}
+            onPress={handleDeleteAll}
+            disabled={loading || deletingAll || items.length === 0}
+          >
+            <Text style={styles.deleteAllText}>{deletingAll ? 'Deleting...' : 'Delete all my history'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -113,6 +167,14 @@ const RideHistoryScreen = ({ navigation }: Props): JSX.Element => {
                       </View>
                     ))}
                   </View>
+
+                  <TouchableOpacity
+                    style={[styles.deleteOneButton, deletingId === ride.id ? styles.deleteDisabled : undefined]}
+                    onPress={() => handleDeleteOne(ride.id)}
+                    disabled={deletingId === ride.id}
+                  >
+                    <Text style={styles.deleteOneText}>{deletingId === ride.id ? 'Deleting...' : 'Delete this entry'}</Text>
+                  </TouchableOpacity>
                 </View>
               ))}
             </View>
@@ -235,6 +297,23 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 20,
   },
+  actionsRow: {
+    alignItems: 'flex-end',
+    marginBottom: 12,
+  },
+  deleteAllButton: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#7f1d1d',
+    backgroundColor: '#450a0a',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  deleteAllText: {
+    color: '#fecaca',
+    fontWeight: '700',
+    fontSize: 12,
+  },
   badge: {
     width: 34,
     height: 34,
@@ -279,6 +358,24 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surface,
     padding: 16,
     gap: 8,
+  },
+  deleteOneButton: {
+    marginTop: 8,
+    alignSelf: 'flex-end',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#7f1d1d',
+    backgroundColor: '#450a0a',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  deleteOneText: {
+    color: '#fecaca',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  deleteDisabled: {
+    opacity: 0.6,
   },
   rowTop: {
     flexDirection: 'row',

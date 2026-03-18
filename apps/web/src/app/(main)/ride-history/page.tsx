@@ -29,6 +29,8 @@ const initials = (name?: string | null): string => {
 export default function RideHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [history, setHistory] = useState<RideHistoryItem[]>([]);
 
   const load = async (isRefresh = false) => {
@@ -52,6 +54,44 @@ export default function RideHistoryPage() {
     load();
   }, []);
 
+  const handleDeleteOne = async (rideId: string) => {
+    const shouldDelete = window.confirm("Delete this ride history entry forever from your account?");
+    if (!shouldDelete) return;
+
+    setDeletingId(rideId);
+    try {
+      const res = await partyMemberService.deleteMyRideHistory(rideId);
+      if (!res.success) {
+        toast.error(res.error || "Failed to delete ride history entry");
+        return;
+      }
+
+      setHistory((prev) => prev.filter((item) => item.id !== rideId));
+      toast.success("Ride history entry deleted");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    const shouldDelete = window.confirm("Delete ALL your ride history forever? This cannot be undone.");
+    if (!shouldDelete) return;
+
+    setDeletingAll(true);
+    try {
+      const res = await partyMemberService.deleteMyRideHistory();
+      if (!res.success) {
+        toast.error(res.error || "Failed to delete ride history");
+        return;
+      }
+
+      setHistory([]);
+      toast.success("All your ride history has been deleted");
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-4">
       <div className="flex items-center justify-between gap-2">
@@ -63,6 +103,12 @@ export default function RideHistoryPage() {
         </h1>
         <Button variant="secondary" onClick={() => load(true)} disabled={refreshing}>
           <RefreshCcw className="h-4 w-4 mr-1" /> {refreshing ? "Refreshing..." : "Refresh"}
+        </Button>
+      </div>
+
+      <div className="flex justify-end">
+        <Button variant="destructive" onClick={handleDeleteAll} disabled={deletingAll || loading || history.length === 0}>
+          {deletingAll ? "Deleting..." : "Delete all my history"}
         </Button>
       </div>
 
@@ -137,6 +183,17 @@ export default function RideHistoryPage() {
                       );
                     })}
                   </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleDeleteOne(ride.id)}
+                    disabled={deletingId === ride.id}
+                  >
+                    {deletingId === ride.id ? "Deleting..." : "Delete this entry"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

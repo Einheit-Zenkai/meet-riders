@@ -9,7 +9,7 @@ import type { Party, PartyMember, Profile } from "../dashboard/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MapPin, Phone, Users, ArrowLeft, Route as RouteIcon, Crown, Flag, Share2, CheckCircle2 } from "lucide-react";
+import { MapPin, Phone, Users, ArrowLeft, Route as RouteIcon, Crown, Flag, Share2, CheckCircle2, ArrowUp, ArrowDown, Save, WandSparkles, RefreshCcw } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
@@ -256,6 +256,18 @@ function LivePartyUI({
   const [localMembers, setLocalMembers] = useState<any[]>(members);
   const [markingReached, setMarkingReached] = useState(false);
   const [refreshingMembers, setRefreshingMembers] = useState(false);
+  const [routeStops, setRouteStops] = useState<Array<{
+    id: string;
+    user_id: string | null;
+    stop_label: string;
+    stop_order: number;
+    source: string;
+    stop_coords: { lat: number; lng: number } | null;
+  }>>([]);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [routeRefreshing, setRouteRefreshing] = useState(false);
+  const [routeOptimizing, setRouteOptimizing] = useState(false);
+  const [routeSaving, setRouteSaving] = useState(false);
 
   const initials = (name?: string | null) => {
     if (!name) return "U";
@@ -281,6 +293,30 @@ function LivePartyUI({
       setRefreshingMembers(false);
     }
   };
+
+  const loadRouteStops = async () => {
+    setRouteLoading(true);
+    try {
+      const res = await partyMemberService.getRouteStops(party.id);
+      if (res.success && res.stops) {
+        setRouteStops(res.stops.map((stop) => ({
+          id: stop.id,
+          user_id: stop.user_id,
+          stop_label: stop.stop_label,
+          stop_order: stop.stop_order,
+          source: stop.source,
+          stop_coords: stop.stop_coords,
+        })));
+      }
+    } finally {
+      setRouteLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRouteStops();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [party.id]);
 
   useEffect(() => {
     const timer = setInterval(async () => {
@@ -322,6 +358,7 @@ function LivePartyUI({
   const totalCount = participants.length;
   const myParticipant = participants.find((member) => member.user_id === user?.id);
   const myReached = Boolean(myParticipant?.reached_stop_at);
+  const isHost = user?.id === party.host_id;
 
   const handleMarkReached = async () => {
     if (!user?.id || !party?.id || markingReached || myReached) return;
@@ -344,6 +381,81 @@ function LivePartyUI({
       toast.success(`Stop confirmed (${res.reachedCount}/${res.totalCount})`);
     } finally {
       setMarkingReached(false);
+    }
+  };
+
+  const refreshRouteFromLive = async () => {
+    if (!isHost) return;
+    setRouteRefreshing(true);
+    try {
+      const res = await partyMemberService.refreshRouteStopsFromLive(party.id);
+      if (!res.success) {
+        toast.error(res.error || "Failed to refresh route stops");
+        return;
+      }
+      await loadRouteStops();
+      toast.success(`Route stops refreshed (${res.added ?? 0} updated)`);
+    } finally {
+      setRouteRefreshing(false);
+    }
+  };
+
+  const optimizeRoute = async () => {
+    if (!isHost) return;
+    setRouteOptimizing(true);
+    try {
+      const res = await partyMemberService.optimizeRouteStops(party.id);
+      if (!res.success) {
+        toast.error(res.error || "Failed to optimize route");
+        return;
+      }
+      if (res.stops) {
+        setRouteStops(res.stops.map((stop) => ({
+          id: stop.id,
+          user_id: stop.user_id,
+          stop_label: stop.stop_label,
+          stop_order: stop.stop_order,
+          source: stop.source,
+          stop_coords: stop.stop_coords,
+        })));
+      } else {
+        await loadRouteStops();
+      }
+      toast.success("Optimized routing has been done.");
+    } finally {
+      setRouteOptimizing(false);
+    }
+  };
+
+  const moveStop = (index: number, direction: -1 | 1) => {
+    setRouteStops((prev) => {
+      const next = [...prev].sort((a, b) => a.stop_order - b.stop_order);
+      const target = index + direction;
+      if (target < 0 || target >= next.length) return prev;
+      const temp = next[index];
+      next[index] = next[target];
+      next[target] = temp;
+      return next.map((stop, i) => ({ ...stop, stop_order: i + 1 }));
+    });
+  };
+
+  const saveRouteOrder = async () => {
+    if (!isHost) return;
+    setRouteSaving(true);
+    try {
+      const ordered = [...routeStops].sort((a, b) => a.stop_order - b.stop_order);
+      const res = await partyMemberService.saveRouteOrder(
+        party.id,
+        ordered.map((stop) => stop.id)
+      );
+      if (!res.success) {
+        toast.error(res.error || "Failed to save route order");
+        return;
+      }
+      toast.success("Route order saved");
+      await loadRouteStops();
+    } finally {
+      setRouteSaving(false);
     }
   };
 
@@ -402,7 +514,7 @@ function LivePartyUI({
         </Button>
         <h1 className="text-xl font-semibold">Live Party</h1>
         {/* Host-only End Party action */}
-        {user?.id === party.host_id ? (
+        {isHost ? (
           <Dialog open={endOpen} onOpenChange={setEndOpen}>
             <DialogTrigger asChild>
               <Button variant="destructive">End Party</Button>
@@ -576,6 +688,87 @@ function LivePartyUI({
                 {refreshingMembers ? "Refreshing..." : "Refresh"}
               </Button>
             </div>
+          </div>
+
+          <div className="rounded border p-3 bg-muted/20 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-sm font-medium flex items-center gap-2">
+                <RouteIcon className="h-4 w-4" /> Route stops
+              </div>
+              {isHost ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={refreshRouteFromLive}
+                    disabled={routeRefreshing || routeOptimizing || routeSaving}
+                  >
+                    <RefreshCcw className="h-4 w-4 mr-1" /> {routeRefreshing ? "Refreshing..." : "Refresh"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={optimizeRoute}
+                    disabled={routeRefreshing || routeOptimizing || routeSaving}
+                  >
+                    <WandSparkles className="h-4 w-4 mr-1" /> {routeOptimizing ? "Optimizing..." : "Optimize shortest route"}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+
+            {routeLoading ? (
+              <div className="text-sm text-muted-foreground">Loading route stops...</div>
+            ) : routeStops.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No route stops yet. Host can refresh and optimize stops.</div>
+            ) : (
+              <div className="space-y-2">
+                {[...routeStops].sort((a, b) => a.stop_order - b.stop_order).map((stop, index, arr) => (
+                  <div key={stop.id} className="flex items-center justify-between rounded border px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">
+                        {index + 1}. {stop.stop_label}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {stop.source === "host_destination" ? "Destination" : stop.user_id ? "Rider stop" : "Manual stop"}
+                      </div>
+                    </div>
+                    {isHost ? (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => moveStop(index, -1)}
+                          disabled={index === 0 || routeSaving || routeOptimizing || routeRefreshing}
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => moveStop(index, 1)}
+                          disabled={index === arr.length - 1 || routeSaving || routeOptimizing || routeRefreshing}
+                        >
+                          <ArrowDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+
+                {isHost ? (
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      onClick={saveRouteOrder}
+                      disabled={routeSaving || routeOptimizing || routeRefreshing || routeStops.length === 0}
+                    >
+                      <Save className="h-4 w-4 mr-1" /> {routeSaving ? "Saving..." : "Save changes"}
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            )}
           </div>
 
           {/* Contacts */}
