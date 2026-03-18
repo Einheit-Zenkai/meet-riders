@@ -13,6 +13,11 @@ export const useSettingsSave = () => {
   const [saveLoading, setSaveLoading] = useState(false);
   const [message, setMessage] = useState('');
 
+  const isMissingStudentTypeColumnError = (err: { message?: string } | null | undefined): boolean => {
+    const msg = String(err?.message || '').toLowerCase();
+    return msg.includes('student_type') && msg.includes('column');
+  };
+
   const saveSettings = async (
     profileData: {
       username: string;
@@ -122,10 +127,20 @@ export const useSettingsSave = () => {
     }
 
     // Update profile in database
-    const { error: updateError } = await supabase
+    let { error: updateError } = await supabase
       .from('profiles')
       .update(profileDataToSave)
       .eq('id', user.id);
+
+    // Backward compatibility: some Supabase instances may not have `student_type` yet.
+    if (isMissingStudentTypeColumnError(updateError)) {
+      const { student_type, ...safePayload } = profileDataToSave;
+      const retry = await supabase
+        .from('profiles')
+        .update(safePayload)
+        .eq('id', user.id);
+      updateError = retry.error;
+    }
 
     if (updateError) {
       // Handle specific error for username uniqueness constraint

@@ -164,8 +164,27 @@ export type PartyMemberProfile = {
 export type PartyMember = {
   userId: string;
   status: string;
+  reachedStopAt?: string | null;
   profile: PartyMemberProfile;
   isHost: boolean;
+};
+
+export type RideHistoryParticipant = {
+  userId: string;
+  role: 'host' | 'member';
+  reachedStopAt: string | null;
+  profile: PartyMemberProfile;
+};
+
+export type RideHistoryItem = {
+  id: string;
+  partyId: string;
+  hostId: string;
+  meetupPoint: string;
+  dropOff: string;
+  completedAt: string;
+  endReason: string | null;
+  participants: RideHistoryParticipant[];
 };
 
 export const createParty = async (input: CreatePartyInput): Promise<CreatePartyResult> => {
@@ -308,17 +327,18 @@ export const fetchMyActiveParties = async (): Promise<ActiveParty[]> => {
 export const fetchPartyMembers = async (partyId: string): Promise<PartyMember[]> => {
   const { supabase } = await ensureUser();
 
-  const partyRes = await supabase.from('parties').select('id, host_id').eq('id', partyId).maybeSingle();
+  const partyRes = await supabase.from('parties').select('id, host_id, host_reached_stop_at').eq('id', partyId).maybeSingle();
   if (partyRes.error) {
     throw partyRes.error;
   }
   const hostId: string | null = (partyRes.data as any)?.host_id ?? null;
+  const hostReachedStopAt: string | null = (partyRes.data as any)?.host_reached_stop_at ?? null;
 
   // Fetch member rows (no embedded profile join — party_members.user_id FK
   // points to auth.users, not profiles, so PostgREST can't resolve the join).
   const { data, error } = await supabase
     .from('party_members')
-    .select('user_id, status')
+    .select('user_id, status, reached_stop_at')
     .eq('party_id', partyId)
     .eq('status', 'joined');
 
@@ -352,6 +372,7 @@ export const fetchPartyMembers = async (partyId: string): Promise<PartyMember[]>
   const members: PartyMember[] = memberRows.map((row: any) => ({
     userId: row.user_id,
     status: row.status,
+    reachedStopAt: row.reached_stop_at ?? null,
     profile: mapProfileRow(profilesMap.get(row.user_id) ?? {}),
     isHost: Boolean(hostId && row.user_id === hostId),
   }));
@@ -363,6 +384,7 @@ export const fetchPartyMembers = async (partyId: string): Promise<PartyMember[]>
       members.unshift({
         userId: hostId,
         status: 'host',
+        reachedStopAt: hostReachedStopAt,
         profile: mapProfileRow(hostProfile),
         isHost: true,
       });
@@ -384,6 +406,112 @@ export const cancelParty = async (partyId: string): Promise<void> => {
   if (error) {
     throw error;
   }
+};
+
+export const markReachedStop = async (
+  partyId: string
+): Promise<{ rideCompleted: boolean; reachedCount: number; totalCount: number; historyId?: string | null }> => {
+  const { supabase } = await ensureUser();
+
+  const { data, error } = await supabase.rpc('mark_current_user_reached_stop', {
+    p_party_id: partyId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    rideCompleted: Boolean(row?.ride_completed),
+    reachedCount: Number(row?.reached_count ?? 0),
+    totalCount: Number(row?.total_count ?? 0),
+    historyId: row?.history_id ?? null,
+  };
+};
+
+export const endPartyWithReason = async (
+  partyId: string,
+  reason: 'host_connected' | 'host_difficulties'
+): Promise<{ historyId?: string }> => {
+  const { supabase } = await ensureUser();
+
+  const { data, error } = await supabase.rpc('end_party_with_reason', {
+    p_party_id: partyId,
+    p_reason: reason,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return { historyId: data ?? undefined };
+};
+
+export const fetchRideHistory = async (): Promise<RideHistoryItem[]> => {
+  const { supabase } = await ensureUser();
+
+  const { data: rides, error: ridesError } = await supabase
+    .from('ride_history')
+    .select('id, party_id, host_id, meetup_point, drop_off, completed_at, end_reason')
+    .order('completed_at', { ascending: false });
+
+  if (ridesError) {
+    throw ridesError;
+  }
+
+  const rideRows = (rides ?? []) as any[];
+  if (!rideRows.length) return [];
+
+  const rideIds = rideRows.map((r) => r.id);
+  const { data: participants, error: participantsError } = await supabase
+    .from('ride_history_participants')
+    .select('ride_history_id, user_id, role, reached_stop_at')
+    .in('ride_history_id', rideIds);
+
+  if (participantsError) {
+    throw participantsError;
+  }
+
+  const participantRows = (participants ?? []) as any[];
+  const userIds = Array.from(new Set(participantRows.map((p) => p.user_id).filter(Boolean)));
+
+  const profilesMap = new Map<string, any>();
+  if (userIds.length > 0) {
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, username, full_name, gender, avatar_url, phone_number, show_phone')
+      .in('id', userIds);
+
+    if (profilesError) {
+      throw profilesError;
+    }
+
+    (profiles ?? []).forEach((profile: any) => profilesMap.set(profile.id, profile));
+  }
+
+  const participantsByRide = new Map<string, RideHistoryParticipant[]>();
+  for (const row of participantRows) {
+    const list = participantsByRide.get(row.ride_history_id) ?? [];
+    list.push({
+      userId: row.user_id,
+      role: row.role,
+      reachedStopAt: row.reached_stop_at ?? null,
+      profile: mapProfileRow(profilesMap.get(row.user_id) ?? {}),
+    });
+    participantsByRide.set(row.ride_history_id, list);
+  }
+
+  return rideRows.map((row) => ({
+    id: row.id,
+    partyId: row.party_id,
+    hostId: row.host_id,
+    meetupPoint: row.meetup_point,
+    dropOff: row.drop_off,
+    completedAt: row.completed_at,
+    endReason: row.end_reason ?? null,
+    participants: participantsByRide.get(row.id) ?? [],
+  }));
 };
 
 /**

@@ -253,6 +253,9 @@ const ExpiredPartiesScreen = ({ navigation }: Props): JSX.Element => {
                     case 'Live Party':
                       navigation.navigate('LiveParty');
                       return;
+                    case 'Ride History':
+                      navigation.navigate('RideHistory');
+                      return;
                     case 'Show of Interest':
                       navigation.navigate('ShowInterest');
                       return;

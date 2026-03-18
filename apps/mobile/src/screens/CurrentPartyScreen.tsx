@@ -468,6 +468,10 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
                     navigation.navigate('LiveParty');
                     return;
                   }
+                  if (item.label === 'Ride History') {
+                    navigation.navigate('RideHistory');
+                    return;
+                  }
                   if (item.label === 'Show of Interest') {
                     navigation.navigate('ShowInterest');
                     return;

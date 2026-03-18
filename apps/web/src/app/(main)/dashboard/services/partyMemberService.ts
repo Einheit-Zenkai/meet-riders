@@ -1,6 +1,6 @@
 // Service functions for party member operations
 import { createClient } from "@/utils/supabase/client";
-import type { PartyMember } from "../types";
+import type { PartyMember, RideHistoryItem, RideHistoryParticipant } from "../types";
 
 export class PartyMemberService {
   private supabase = createClient();
@@ -73,6 +73,7 @@ export class PartyMemberService {
         ...memberRow,
         joined_at: new Date(memberRow.joined_at),
         left_at: memberRow.left_at ? new Date(memberRow.left_at) : undefined,
+        reached_stop_at: memberRow.reached_stop_at ? new Date(memberRow.reached_stop_at) : null,
         created_at: new Date(memberRow.created_at),
         updated_at: new Date(memberRow.updated_at),
         profile: profile
@@ -133,7 +134,7 @@ export class PartyMemberService {
     try {
       const { data: partyRow, error: partyError } = await this.supabase
         .from('parties')
-        .select('host_id, created_at')
+        .select('host_id, created_at, host_reached_stop_at')
         .eq('id', partyId)
         .maybeSingle();
 
@@ -142,6 +143,7 @@ export class PartyMemberService {
       }
       const hostId: string | null = partyRow?.host_id ?? null;
       const partyCreatedAt = partyRow?.created_at ? new Date(partyRow.created_at) : new Date();
+      const hostReachedStopAt = partyRow?.host_reached_stop_at ? new Date(partyRow.host_reached_stop_at) : null;
 
       // 1) Fetch raw members without cross-table joins to avoid RLS/relationship issues
       const { data: memberRows, error: memberErr } = await this.supabase
@@ -200,6 +202,7 @@ export class PartyMemberService {
           ...member,
           joined_at: new Date(member.joined_at),
           left_at: member.left_at ? new Date(member.left_at) : undefined,
+          reached_stop_at: member.reached_stop_at ? new Date(member.reached_stop_at) : null,
           created_at: new Date(member.created_at),
           updated_at: new Date(member.updated_at),
           profile: transformProfile(profile),
@@ -221,6 +224,7 @@ export class PartyMemberService {
             contact_shared: false,
             created_at: partyCreatedAt,
             updated_at: partyCreatedAt,
+            reached_stop_at: hostReachedStopAt,
             profile: hostProfile,
           });
         }
@@ -499,6 +503,138 @@ export class PartyMemberService {
       return { success: true };
     } catch (e: any) {
       return { success: false, error: e?.message || 'Decline failed' };
+    }
+  }
+
+  /** Mark the current user as having reached their stop in a live party. */
+  async markReachedStop(partyId: string): Promise<{
+    success: boolean;
+    rideCompleted?: boolean;
+    reachedCount?: number;
+    totalCount?: number;
+    historyId?: string | null;
+    error?: string;
+  }> {
+    try {
+      const { data, error } = await this.supabase.rpc('mark_current_user_reached_stop', {
+        p_party_id: partyId,
+      });
+
+      if (error) {
+        return { success: false, error: error.message || 'Failed to mark your stop' };
+      }
+
+      const row = Array.isArray(data) ? data[0] : data;
+      return {
+        success: true,
+        rideCompleted: Boolean(row?.ride_completed),
+        reachedCount: Number(row?.reached_count ?? 0),
+        totalCount: Number(row?.total_count ?? 0),
+        historyId: row?.history_id ?? null,
+      };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Failed to mark your stop' };
+    }
+  }
+
+  /** Host-only explicit end action for live party completion. */
+  async endPartyWithReason(partyId: string, reason: 'host_connected' | 'host_difficulties'): Promise<{
+    success: boolean;
+    historyId?: string;
+    error?: string;
+  }> {
+    try {
+      const { data, error } = await this.supabase.rpc('end_party_with_reason', {
+        p_party_id: partyId,
+        p_reason: reason,
+      });
+
+      if (error) {
+        return { success: false, error: error.message || 'Failed to end party' };
+      }
+
+      return { success: true, historyId: data || undefined };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Failed to end party' };
+    }
+  }
+
+  /** Fetch completed ride history for the current user. */
+  async getRideHistory(): Promise<{ success: boolean; history?: RideHistoryItem[]; error?: string }> {
+    try {
+      const { data: historyRows, error: historyErr } = await this.supabase
+        .from('ride_history')
+        .select('id, party_id, host_id, meetup_point, drop_off, completed_at, ended_by, end_reason')
+        .order('completed_at', { ascending: false });
+
+      if (historyErr) {
+        return { success: false, error: historyErr.message || 'Failed to load ride history' };
+      }
+
+      const history = historyRows || [];
+      if (history.length === 0) {
+        return { success: true, history: [] };
+      }
+
+      const rideIds = history.map((h: any) => h.id);
+      const { data: participantRows, error: participantErr } = await this.supabase
+        .from('ride_history_participants')
+        .select('ride_history_id, user_id, role, reached_stop_at')
+        .in('ride_history_id', rideIds);
+
+      if (participantErr) {
+        return { success: false, error: participantErr.message || 'Failed to load ride participants' };
+      }
+
+      const userIds = [...new Set((participantRows || []).map((p: any) => p.user_id))];
+      const profilesById: Record<string, any> = {};
+      if (userIds.length > 0) {
+        const { data: profiles, error: profilesErr } = await this.supabase
+          .from('profiles')
+          .select('id, username, full_name, nickname, avatar_url, gender, points, university, show_university, student_type, phone_number, show_phone, created_at, updated_at, birth_date, major, bio, ideal_departure_time, ideal_location, punctuality, location')
+          .in('id', userIds);
+        if (!profilesErr && profiles) {
+          for (const profile of profiles as any[]) {
+            profilesById[profile.id] = {
+              ...profile,
+              created_at: profile.created_at ? new Date(profile.created_at) : null,
+              updated_at: profile.updated_at ? new Date(profile.updated_at) : null,
+              birth_date: profile.birth_date ? new Date(profile.birth_date) : null,
+              isGenderOnly: null,
+              rideOptions: null,
+              expiresIn: null,
+            };
+          }
+        }
+      }
+
+      const participantsByRide = new Map<string, RideHistoryParticipant[]>();
+      for (const participant of (participantRows || []) as any[]) {
+        const list = participantsByRide.get(participant.ride_history_id) || [];
+        list.push({
+          user_id: participant.user_id,
+          role: participant.role,
+          reached_stop_at: participant.reached_stop_at ? new Date(participant.reached_stop_at) : null,
+          profile: profilesById[participant.user_id],
+        });
+        participantsByRide.set(participant.ride_history_id, list);
+      }
+
+      const mapped: RideHistoryItem[] = history.map((row: any) => ({
+        id: row.id,
+        party_id: row.party_id,
+        host_id: row.host_id,
+        meetup_point: row.meetup_point,
+        drop_off: row.drop_off,
+        completed_at: new Date(row.completed_at),
+        ended_by: row.ended_by ?? null,
+        end_reason: row.end_reason ?? null,
+        participants: participantsByRide.get(row.id) || [],
+      }));
+
+      return { success: true, history: mapped };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Failed to load ride history' };
     }
   }
 }

@@ -5,6 +5,7 @@ export const mobileMenuItems = [
   { label: 'Host Party', icon: 'add-circle' as const },
   { label: 'Current Party', icon: 'albums' as const },
   { label: 'Live Party', icon: 'radio' as const },
+  { label: 'Ride History', icon: 'time-outline' as const },
   { label: 'Show of Interest', icon: 'star' as const },
   { label: 'Connections', icon: 'people' as const },
   { label: 'Leaderboard', icon: 'trophy' as const },

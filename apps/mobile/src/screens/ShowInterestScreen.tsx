@@ -365,6 +365,9 @@ const ShowInterestScreen = ({ navigation }: ShowInterestScreenProps): JSX.Elemen
                     case 'Live Party':
                       navigation.navigate('LiveParty');
                       return;
+                    case 'Ride History':
+                      navigation.navigate('RideHistory');
+                      return;
                     case 'Show of Interest':
                       return;
                     case 'Connections':

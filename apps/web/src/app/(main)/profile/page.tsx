@@ -58,12 +58,21 @@ export default function ProfilePage() {
   }[]>([]);
   const connectionsCount = useMemo(() => connections.length, [connections]);
 
+  const isMissingStudentTypeColumnError = (err: { message?: string } | null | undefined): boolean => {
+    const msg = String(err?.message || '').toLowerCase();
+    return msg.includes('student_type') && msg.includes('column');
+  };
+
   // --- 1. RE-WIRED: Fetch data from the 'profiles' table ---
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return; // User guaranteed by middleware
       
       setLoading(true);
+
+      const fallbackUsername =
+        (user.user_metadata?.username as string | undefined)?.trim() ||
+        `user_${user.id.slice(0, 8)}`;
 
       let { data, error } = await supabase
         .from("profiles")
@@ -89,16 +98,71 @@ export default function ProfilePage() {
         `)
         .eq("id", user.id)
         .maybeSingle();
+
+      // Backward compatibility: DB may not yet have student_type.
+      if (isMissingStudentTypeColumnError(error)) {
+        const retry = await supabase
+          .from("profiles")
+          .select(`
+            username,
+            nickname,
+            full_name,
+            bio,
+            avatar_url,
+            points,
+            university,
+            show_university,
+            gender,
+            major,
+            punctuality,
+            ideal_location,
+            ideal_departure_time,
+            birth_date,
+            phone_number,
+            show_phone,
+            created_at
+          `)
+          .eq("id", user.id)
+          .maybeSingle();
+        data = retry.data as any;
+        error = retry.error as any;
+      }
       if (error) {
         console.error("Error fetching profile:", error);
       }
 
-      if (!data) {
+      if (!data && !error) {
         // Bootstrap a minimal profile row if missing (RLS must allow inserting own row)
         const insert = await supabase
           .from("profiles")
-          .insert({ id: user.id, nickname: null, bio: null, avatar_url: null })
-          .select("nickname, bio, avatar_url, points, university, show_university")
+          .upsert({
+            id: user.id,
+            username: fallbackUsername,
+            nickname: null,
+            full_name: null,
+            bio: null,
+            avatar_url: null,
+          })
+          .select(`
+            username,
+            nickname,
+            full_name,
+            bio,
+            avatar_url,
+            points,
+            university,
+            show_university,
+            gender,
+            major,
+            punctuality,
+            ideal_location,
+            ideal_departure_time,
+            birth_date,
+            phone_number,
+            show_phone,
+            student_type,
+            created_at
+          `)
           .single();
         if (insert.data) {
           data = insert.data as any;
@@ -126,8 +190,31 @@ export default function ProfilePage() {
           birth_date: data.birth_date || null,
           phone_number: data.phone_number || null,
           show_phone: data.show_phone || false,
-          student_type: data.student_type ?? null,
+          student_type: (data as any).student_type ?? null,
           created_at: data.created_at || null,
+        });
+      } else {
+        // Keep UI usable even if DB row creation is blocked by RLS/policy drift.
+        setProfileData({
+          username: fallbackUsername,
+          nickname: "",
+          full_name: null,
+          bio: "",
+          avatar_url: "",
+          email: user.email || "",
+          points: 0,
+          university: "",
+          show_university: true,
+          gender: null,
+          major: null,
+          punctuality: null,
+          ideal_location: null,
+          ideal_departure_time: null,
+          birth_date: null,
+          phone_number: null,
+          show_phone: false,
+          student_type: null,
+          created_at: null,
         });
       }
       setLoading(false);
@@ -166,13 +253,16 @@ export default function ProfilePage() {
   // --- YOUR ORIGINAL JSX (with data sources re-wired) ---
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto p-6 max-w-6xl">
+      <div className="container mx-auto p-8 max-w-7xl">
         {/* Header with glass effect */}
-        <div className="mb-6 flex items-center justify-between p-4 rounded-xl bg-card/60 backdrop-blur-[6.2px] border border-white/10 shadow-lg">
+        <div className="mb-8 flex items-center justify-between p-5 rounded-xl bg-card/60 backdrop-blur-[6.2px] border border-white/10 shadow-lg">
           <Button asChild variant="outline" className="glass-button">
             <Link href="/dashboard">← Back to Dashboard</Link>
           </Button>
           <div className="flex gap-2">
+            <Button asChild variant="secondary">
+              <Link href="/ride-history">Ride History</Link>
+            </Button>
             <Button asChild variant="default">
               <Link href="/settings">✏️ Edit Profile</Link>
             </Button>
@@ -183,15 +273,15 @@ export default function ProfilePage() {
         </div>
 
   {/* Main content with improved layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
           <Card className="lg:col-span-2 bg-card/60 backdrop-blur-[6.2px] border border-white/10 shadow-xl">
-            <CardContent className="p-8">
-              <div className="flex flex-col sm:flex-row items-start gap-6">
+            <CardContent className="p-10">
+              <div className="flex flex-col sm:flex-row items-start gap-8">
                 {/* Enhanced Avatar Section */}
                 <div className="relative group">
-                  <Avatar className="size-32 ring-4 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40">
+                  <Avatar className="size-36 ring-4 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40">
                     <AvatarImage src={profileData.avatar_url} alt={profileData.nickname} className="object-cover" />
-                    <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-primary/20 to-primary/10">
+                    <AvatarFallback className="text-4xl font-bold bg-gradient-to-br from-primary/20 to-primary/10">
                       {(profileData.nickname || "User").slice(0, 1).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -203,18 +293,18 @@ export default function ProfilePage() {
                 <div className="flex-1 space-y-6">
                   {/* Enhanced Name Section - READ ONLY */}
                   <div className="space-y-2">
-                    <h1 className="text-3xl font-bold">
+                    <h1 className="text-4xl font-bold">
                       {profileData.full_name || profileData.nickname || "Anonymous User"}
                     </h1>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm text-muted-foreground">@{profileData.username}</span>
+                    <div className="flex items-center gap-2 flex-wrap text-base">
+                      <span className="text-base text-muted-foreground">@{profileData.username}</span>
                       <span className="text-muted-foreground">•</span>
-                      <span className="text-muted-foreground">{profileData.email}</span>
+                      <span className="text-muted-foreground text-base">{profileData.email}</span>
                       {profileData.gender && <GenderBadge gender={profileData.gender} />}
                       {typeof profileData.points === 'number' && (
                         <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 rounded-full">
-                          <Star className="w-3 h-3 text-primary" />
-                          <span className="text-xs font-medium text-primary">{profileData.points} pts</span>
+                          <Star className="w-4 h-4 text-primary" />
+                          <span className="text-sm font-medium text-primary">{profileData.points} pts</span>
                         </div>
                       )}
                     </div>
@@ -223,8 +313,8 @@ export default function ProfilePage() {
                   {/* Bio Section - READ ONLY */}
                   {profileData.bio && (
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium text-foreground">About Me</label>
-                      <p className="text-muted-foreground whitespace-pre-wrap">
+                      <label className="block text-base font-medium text-foreground">About Me</label>
+                      <p className="text-base text-muted-foreground whitespace-pre-wrap">
                         {profileData.bio}
                       </p>
                     </div>
@@ -234,29 +324,29 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {profileData.major && (
                       <div className="space-y-1">
-                        <label className="block text-xs font-medium text-muted-foreground">Major</label>
-                        <p className="text-sm font-semibold">{profileData.major}</p>
+                        <label className="block text-sm font-medium text-muted-foreground">Major</label>
+                        <p className="text-base font-semibold">{profileData.major}</p>
                       </div>
                     )}
                     
                     {profileData.punctuality && (
                       <div className="space-y-1">
-                        <label className="block text-xs font-medium text-muted-foreground">Punctuality</label>
-                        <p className="text-sm font-semibold capitalize">{profileData.punctuality.replace('-', ' ')}</p>
+                        <label className="block text-sm font-medium text-muted-foreground">Punctuality</label>
+                        <p className="text-base font-semibold capitalize">{profileData.punctuality.replace('-', ' ')}</p>
                       </div>
                     )}
                     
                     {profileData.ideal_location && (
                       <div className="space-y-1">
-                        <label className="block text-xs font-medium text-muted-foreground">Ideal Pickup Location</label>
-                        <p className="text-sm font-semibold">{profileData.ideal_location}</p>
+                        <label className="block text-sm font-medium text-muted-foreground">Ideal Pickup Location</label>
+                        <p className="text-base font-semibold">{profileData.ideal_location}</p>
                       </div>
                     )}
                     
                     {profileData.ideal_departure_time && (
                       <div className="space-y-1">
-                        <label className="block text-xs font-medium text-muted-foreground">Ideal Departure Time</label>
-                        <p className="text-sm font-semibold">{profileData.ideal_departure_time}</p>
+                        <label className="block text-sm font-medium text-muted-foreground">Ideal Departure Time</label>
+                        <p className="text-base font-semibold">{profileData.ideal_departure_time}</p>
                       </div>
                     )}
                   </div>
@@ -264,21 +354,21 @@ export default function ProfilePage() {
                   {/* University Display - READ ONLY */}
                   {profileData.university && profileData.show_university && (
                     <div className="p-4 bg-accent/30 rounded-lg border border-accent/50">
-                      <label className="block text-sm font-medium text-foreground mb-1">University</label>
-                      <p className="text-base font-semibold text-primary">{profileData.university}</p>
+                      <label className="block text-base font-medium text-foreground mb-1">University</label>
+                      <p className="text-lg font-semibold text-primary">{profileData.university}</p>
                       {profileData.student_type && (
-                        <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/15 text-primary capitalize">
+                        <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-sm font-semibold bg-primary/15 text-primary capitalize">
                           {profileData.student_type === 'hosteller' ? '🏠 Hosteller' : '🚌 Day Scholar'}
                         </span>
                       )}
-                      <p className="text-xs text-muted-foreground mt-1">Visible to other users</p>
+                      <p className="text-sm text-muted-foreground mt-1">Visible to other users</p>
                     </div>
                   )}
                   
                   {/* Member Since */}
                   {profileData.created_at && (
                     <div className="pt-4 border-t border-border/50">
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-sm text-muted-foreground">
                         Member since {new Date(profileData.created_at).toLocaleDateString('en-US', { 
                           month: 'long', 
                           year: 'numeric' 
@@ -289,7 +379,7 @@ export default function ProfilePage() {
 
                   {/* Dummy Ratings */}
                   <div className="mt-6 p-4 bg-accent/30 rounded-lg border border-accent/50">
-                    <label className="block text-sm font-medium text-foreground mb-2">Ratings</label>
+                    <label className="block text-base font-medium text-foreground mb-2">Ratings</label>
                     {(() => {
                       const rating = 4.4; // placeholder avg rating
                       const total = 5;
@@ -303,11 +393,11 @@ export default function ProfilePage() {
                       return (
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1">{stars}</div>
-                          <span className="text-sm text-muted-foreground">{rating.toFixed(1)} / 5.0</span>
+                          <span className="text-base text-muted-foreground">{rating.toFixed(1)} / 5.0</span>
                         </div>
                       );
                     })()}
-                    <p className="text-xs text-muted-foreground mt-2">Placeholder ratings. Real feedback will arrive with ride history.</p>
+                    <p className="text-sm text-muted-foreground mt-2">Placeholder ratings. Real feedback will arrive with ride history.</p>
                   </div>
                 </div>
               </div>
@@ -317,7 +407,7 @@ export default function ProfilePage() {
           {/* Right column card: Connections */}
           <Card className="bg-card/60 backdrop-blur-[6.2px] border border-white/10 shadow-xl">
             <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-2xl">
                 👥 Connections{typeof connectionsCount === 'number' ? ` (${connectionsCount})` : ''}
               </CardTitle>
             </CardHeader>
@@ -327,8 +417,8 @@ export default function ProfilePage() {
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/30 flex items-center justify-center">
                     <span className="text-2xl">🤝</span>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-2">No connections yet</p>
-                  <p className="text-xs text-muted-foreground">Start connecting with fellow riders!</p>
+                  <p className="text-base text-muted-foreground mb-2">No connections yet</p>
+                  <p className="text-sm text-muted-foreground">Start connecting with fellow riders!</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -344,7 +434,7 @@ export default function ProfilePage() {
                           </Avatar>
                           <div className="leading-tight">
                             <div className="font-medium">{other.full_name || other.username}</div>
-                            <div className="text-xs text-muted-foreground">@{other.username}</div>
+                            <div className="text-sm text-muted-foreground">@{other.username}</div>
                           </div>
                         </div>
                         <Link href={`/profile/id/${other.id}`} className="text-xs text-primary hover:underline">View</Link>

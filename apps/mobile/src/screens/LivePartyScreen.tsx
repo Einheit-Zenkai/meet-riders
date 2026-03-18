@@ -17,7 +17,7 @@ import { palette } from '../theme/colors';
 import { showAlert } from '../utils/alert';
 import { getSupabaseClient } from '../lib/supabase';
 import { mobileMenuItems } from '../constants/menuItems';
-import { cancelParty, fetchPartyMembers, leaveParty, PartyMember } from '../api/party';
+import { fetchPartyMembers, leaveParty, PartyMember, markReachedStop, endPartyWithReason } from '../api/party';
 import { CrownBadge } from '../components/SharedComponents';
 import RatingModal from '../components/RatingModal';
 import { submitRating } from '../api/rating';
@@ -33,6 +33,7 @@ type PartyRow = {
   drop_off: string;
   host_comments: string | null;
   is_active: boolean;
+  host_reached_stop_at?: string | null;
 };
 
 const initials = (name?: string | null): string => {
@@ -68,6 +69,7 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
   // Cancel party state (for host)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
+  const [markReachedBusy, setMarkReachedBusy] = useState(false);
 
   const partyIdParam = route.params?.partyId;
 
@@ -96,7 +98,7 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
       return;
     }
 
-    const partyFields = 'id, host_id, party_size, expires_at, meetup_point, drop_off, host_comments, is_active';
+    const partyFields = 'id, host_id, party_size, expires_at, meetup_point, drop_off, host_comments, is_active, host_reached_stop_at';
     const nowIso = new Date().toISOString();
 
     let target: PartyRow | null = null;
@@ -234,6 +236,28 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
     if (!party) return [];
     return members.filter((m) => m.userId !== party.host_id);
   }, [members, party]);
+  const participants = useMemo(() => {
+    if (!party) return [];
+    const byUser = new Map<string, PartyMember>();
+    members.forEach((member) => byUser.set(member.userId, member));
+
+    if (!byUser.has(party.host_id) && host) {
+      byUser.set(party.host_id, {
+        ...host,
+        reachedStopAt: party.host_reached_stop_at ?? null,
+      });
+    }
+
+    return Array.from(byUser.values());
+  }, [members, party, host]);
+
+  const reachedCount = useMemo(
+    () => participants.filter((member) => Boolean(member.reachedStopAt)).length,
+    [participants]
+  );
+  const totalCount = participants.length;
+  const me = participants.find((member) => member.userId === currentUserId);
+  const myReached = Boolean(me?.reachedStopAt);
 
   // Rating handlers
   const openRatingModal = (member: PartyMember) => {
@@ -262,6 +286,29 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
   };
 
   const openMap = () => navigation.navigate('Map');
+
+  const handleMarkReached = async () => {
+    if (!party || !currentUserId || myReached || markReachedBusy) return;
+    try {
+      setMarkReachedBusy(true);
+      const result = await markReachedStop(party.id);
+      await loadMembers(party.id, party.host_id, party.expires_at);
+
+      if (result.rideCompleted) {
+        showAlert('Ride completed', 'All riders have confirmed their stops.', [
+          { text: 'OK', onPress: () => navigation.navigate('RideHistory') },
+        ]);
+        return;
+      }
+
+      showAlert('Stop confirmed', `${result.reachedCount}/${result.totalCount} riders confirmed.`);
+    } catch (error: any) {
+      console.error('Failed to mark stop reached', error);
+      showAlert('Live Party', error?.message || 'Failed to confirm your stop.');
+    } finally {
+      setMarkReachedBusy(false);
+    }
+  };
 
   // Check if current user is not the host (can leave)
   const isHost = party && currentUserId && party.host_id === currentUserId;
@@ -303,14 +350,14 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
     if (!party || cancelBusy) return;
     try {
       setCancelBusy(true);
-      await cancelParty(party.id);
+      await endPartyWithReason(party.id, 'host_connected');
       setCancelConfirmOpen(false);
-      showAlert('Party Canceled', 'Your party has been canceled.', [
-        { text: 'OK', onPress: () => navigation.navigate('Home', undefined) }
+      showAlert('Ride ended', 'Your ride has been completed and added to history.', [
+        { text: 'OK', onPress: () => navigation.navigate('RideHistory') }
       ]);
     } catch (error: any) {
       console.error('Failed to cancel party', error);
-      showAlert('Cancel Party', error?.message || 'Failed to cancel party.');
+      showAlert('End Ride', error?.message || 'Failed to end ride.');
     } finally {
       setCancelBusy(false);
     }
@@ -371,9 +418,32 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
                 <Text style={styles.mapButtonText}>Open map</Text>
               </Pressable>
 
+              <View style={styles.sectionBox}>
+                <Text style={styles.sectionLabel}>Stop confirmations</Text>
+                <Text style={styles.sectionValue}>{reachedCount}/{totalCount} reached</Text>
+                <View style={styles.progressTrack}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { width: `${totalCount > 0 ? (reachedCount / totalCount) * 100 : 0}%` },
+                    ]}
+                  />
+                </View>
+                <TouchableOpacity
+                  style={[styles.mapButton, myReached ? styles.mapButtonDone : undefined]}
+                  onPress={handleMarkReached}
+                  disabled={markReachedBusy || myReached}
+                >
+                  <Ionicons name={myReached ? 'checkmark-circle' : 'checkmark-circle-outline'} size={18} color={palette.textPrimary} />
+                  <Text style={styles.mapButtonText}>
+                    {myReached ? 'Stop confirmed' : markReachedBusy ? 'Confirming...' : 'Mark my stop reached'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
               {isHost && (
                 <Pressable style={styles.cancelButton} onPress={handleCancelParty}>
-                  <Text style={styles.cancelButtonText}>Cancel Party</Text>
+                  <Text style={styles.cancelButtonText}>End Ride</Text>
                 </Pressable>
               )}
 
@@ -409,6 +479,16 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
                     </Text>
                   </View>
                   <CrownBadge size={20} />
+                  <View style={host.reachedStopAt ? styles.reachedBadge : styles.pendingBadge}>
+                    <Ionicons
+                      name={host.reachedStopAt ? 'checkmark-circle' : 'ellipse-outline'}
+                      size={14}
+                      color={host.reachedStopAt ? palette.success : palette.textSecondary}
+                    />
+                    <Text style={host.reachedStopAt ? styles.reachedText : styles.pendingText}>
+                      {host.reachedStopAt ? 'Reached' : 'Pending'}
+                    </Text>
+                  </View>
                   {host.userId !== currentUserId && !ratedUserIds.has(host.userId) && (
                     <TouchableOpacity 
                       style={styles.rateButton}
@@ -466,6 +546,16 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
                               {m.profile.phoneNumber}
                             </Text>
                           ) : null}
+                        </View>
+                        <View style={m.reachedStopAt ? styles.reachedBadge : styles.pendingBadge}>
+                          <Ionicons
+                            name={m.reachedStopAt ? 'checkmark-circle' : 'ellipse-outline'}
+                            size={14}
+                            color={m.reachedStopAt ? palette.success : palette.textSecondary}
+                          />
+                          <Text style={m.reachedStopAt ? styles.reachedText : styles.pendingText}>
+                            {m.reachedStopAt ? 'Reached' : 'Pending'}
+                          </Text>
                         </View>
                         {canRate && !hasRated && (
                           <TouchableOpacity 
@@ -540,6 +630,10 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
                   }
                   if (item.label === 'Live Party') {
                     navigation.navigate('LiveParty');
+                    return;
+                  }
+                  if (item.label === 'Ride History') {
+                    navigation.navigate('RideHistory');
                     return;
                   }
                   if (item.label === 'Show of Interest') {
@@ -642,8 +736,8 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
             }}
           />
           <View style={styles.confirmCard}>
-            <Text style={styles.confirmTitle}>Cancel Party?</Text>
-            <Text style={styles.confirmText}>This will end your party immediately for everyone.</Text>
+            <Text style={styles.confirmTitle}>End Ride?</Text>
+            <Text style={styles.confirmText}>This will end the live ride for everyone and add it to ride history.</Text>
             <View style={styles.confirmActions}>
               <TouchableOpacity
                 style={[styles.confirmButton, styles.confirmButtonAlt]}
@@ -664,7 +758,7 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
                 {cancelBusy ? (
                   <ActivityIndicator size="small" color={palette.textPrimary} />
                 ) : (
-                  <Text style={styles.confirmButtonText}>Cancel</Text>
+                  <Text style={styles.confirmButtonText}>End ride</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -845,9 +939,26 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 12,
   },
+  mapButtonDone: {
+    opacity: 0.85,
+  },
   mapButtonText: {
     color: palette.textPrimary,
     fontWeight: '800',
+  },
+  progressTrack: {
+    width: '100%',
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: palette.surfaceAlt,
+    overflow: 'hidden',
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: palette.success,
   },
   cancelButton: {
     flexDirection: 'row',
@@ -957,6 +1068,34 @@ const styles = StyleSheet.create({
     color: palette.success,
     fontWeight: '700',
     fontSize: 12,
+  },
+  reachedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: palette.success + '20',
+  },
+  reachedText: {
+    color: palette.success,
+    fontWeight: '700',
+    fontSize: 11,
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: palette.surfaceAlt,
+  },
+  pendingText: {
+    color: palette.textSecondary,
+    fontWeight: '700',
+    fontSize: 11,
   },
   bottomBar: {
     position: 'absolute',

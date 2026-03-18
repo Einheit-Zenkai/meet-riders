@@ -16,6 +16,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
     "/live-party",
     "/hostparty",
     "/settings",
+    "/profile",
+    "/ride-history",
   ].some((p) => pathname?.startsWith(p));
 
   return (
@@ -25,7 +27,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <Sidebar />
       </div>
       {/* Main Content; add left padding equal to collapsed width to avoid content underlap */}
-      <main className="relative flex-1 md:pl-16 dashboard-gradient">
+      <main className="relative flex-1 md:pl-20 dashboard-gradient">
         <div className="h-full">
           {children}
         </div>

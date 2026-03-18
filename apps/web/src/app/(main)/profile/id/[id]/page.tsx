@@ -41,6 +41,11 @@ export default function PublicProfilePage() {
   const [acceptedConnId, setAcceptedConnId] = useState<number | null>(null);
   const viewedId = String(params?.id || "");
 
+  const isMissingStudentTypeColumnError = (err: { message?: string } | null | undefined): boolean => {
+    const msg = String(err?.message || '').toLowerCase();
+    return msg.includes('student_type') && msg.includes('column');
+  };
+
   const isOwnProfile = useMemo(() => !!me && me.id === viewedId, [me, viewedId]);
 
   useEffect(() => {
@@ -51,11 +56,21 @@ export default function PublicProfilePage() {
       // Allow viewing without forcing login; we will guard actions below
 
       // 1) Fetch the profile being viewed
-      const { data: p, error: pErr } = await supabase
+      let { data: p, error: pErr } = await supabase
         .from("profiles")
   .select("id, username, nickname, bio, avatar_url, points, university, show_university, student_type, gender")
         .eq("id", viewedId)
         .single();
+
+      if (isMissingStudentTypeColumnError(pErr)) {
+        const retry = await supabase
+          .from("profiles")
+          .select("id, username, nickname, bio, avatar_url, points, university, show_university, gender")
+          .eq("id", viewedId)
+          .single();
+        p = retry.data as any;
+        pErr = retry.error as any;
+      }
 
       if (pErr || !p) {
         setProfile(null);
@@ -250,7 +265,10 @@ export default function PublicProfilePage() {
       <div className="mb-4 flex items-center justify-between">
         <Button asChild variant="outline"><Link href="/dashboard">← Back</Link></Button>
         {isOwnProfile ? (
-          <Button asChild variant="secondary"><Link href="/profile">Edit profile</Link></Button>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="secondary"><Link href="/ride-history">Ride History</Link></Button>
+            <Button asChild variant="secondary"><Link href="/profile">Edit profile</Link></Button>
+          </div>
         ) : null}
       </div>
 

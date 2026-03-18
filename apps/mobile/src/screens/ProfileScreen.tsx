@@ -252,6 +252,9 @@ const ProfileScreen = ({ navigation, route }: ProfileScreenProps): JSX.Element =
         <View style={styles.headerActions}>
           {!isViewingOther ? (
             <>
+              <TouchableOpacity style={styles.secondaryActionButton} onPress={() => navigation.navigate('RideHistory')}>
+                <Text style={styles.secondaryActionText}>Ride History</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
                 <Text style={styles.editButtonText}>Edit Profile</Text>
               </TouchableOpacity>
@@ -464,6 +467,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     marginRight: 12,
+  },
+  secondaryActionButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    backgroundColor: palette.surface,
+    marginRight: 6,
+  },
+  secondaryActionText: {
+    color: palette.textPrimary,
+    fontWeight: '700',
+    fontSize: 12,
   },
   editButtonText: {
     color: palette.textPrimary,

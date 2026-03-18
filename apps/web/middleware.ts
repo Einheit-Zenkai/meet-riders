@@ -39,6 +39,11 @@ export async function middleware(request: NextRequest) {
     '/profile',
     '/settings',
     '/hostparty',
+    '/current-party',
+    '/live-party',
+    '/connections',
+    '/soi',
+    '/ride-history',
     '/user-create',
     '/leaderboard'
   ]

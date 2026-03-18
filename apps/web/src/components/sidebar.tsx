@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { User, Settings, Home, Users, Plus, Map as MapIcon, MapPin, LayoutGrid, Trophy, CalendarClock, Clock, Flag } from "lucide-react";
+import { User, Settings, Home, Users, Plus, Map as MapIcon, MapPin, LayoutGrid, Trophy, CalendarClock, Clock, Flag, History } from "lucide-react";
 
 export default function Sidebar() {
   const menuItems = [
@@ -12,6 +12,7 @@ export default function Sidebar() {
     { href: "/connections", icon: Users, label: "Connections" },
     // { href: "/party", icon: Users, label: "Party Hub" },
     { href: "/leaderboard", icon: Trophy, label: "Leaderboard" },
+    { href: "/ride-history", icon: History, label: "Ride History" },
     // { href: "/map", icon: MapIcon, label: "Map" },
     // { href: "/report", icon: Flag, label: "Report" },
     { href: "/expired-parties", icon: Clock, label: "Expired" },
@@ -19,19 +20,19 @@ export default function Sidebar() {
 
   return (
     <div
-      className="fixed left-0 top-0 h-full bg-[rgba(255,255,255,0.75)] dark:bg-[rgba(15,15,15,0.68)] text-foreground flex flex-col py-4 shadow-[0_4px_30px_rgba(0,0,0,0.1)] group group/sidebar transition-all duration-200 w-16 hover:w-48 z-[70] pointer-events-auto backdrop-blur-[8px] rounded-r-[16px]"
+      className="fixed left-0 top-0 h-full bg-[rgba(255,255,255,0.75)] dark:bg-[rgba(15,15,15,0.68)] text-foreground flex flex-col py-5 shadow-[0_4px_30px_rgba(0,0,0,0.1)] group group/sidebar transition-all duration-200 w-20 hover:w-56 z-[70] pointer-events-auto backdrop-blur-[8px] rounded-r-[16px]"
       style={{ WebkitBackdropFilter: "blur(8px)" }}
     >
-      <nav className="flex-1 flex flex-col gap-2 px-2">
+      <nav className="flex-1 flex flex-col gap-2 px-2.5">
         {menuItems.map(({ href, icon: Icon, label }) => (
           <Link
             key={href}
             href={href}
-            className="flex items-center gap-3 p-3 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+            className="flex items-center gap-3 p-3.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
             title={label}
           >
-            <Icon size={22} className="shrink-0" />
-            <span className="ml-1 text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 group-hover/sidebar:opacity-100 transition-opacity duration-200">
+            <Icon size={24} className="shrink-0" />
+            <span className="ml-1 text-base whitespace-nowrap opacity-0 group-hover:opacity-100 group-hover/sidebar:opacity-100 transition-opacity duration-200">
               {label}
             </span>
           </Link>
@@ -40,11 +41,11 @@ export default function Sidebar() {
       <div className="mt-auto px-2 pb-4">
         <Link
           href="/settings"
-          className="flex items-center gap-3 p-3 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+          className="flex items-center gap-3 p-3.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
           title="Settings"
         >
-          <Settings size={22} className="shrink-0" />
-          <span className="ml-1 text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 group-hover/sidebar:opacity-100 transition-opacity duration-200">Settings</span>
+          <Settings size={24} className="shrink-0" />
+          <span className="ml-1 text-base whitespace-nowrap opacity-0 group-hover:opacity-100 group-hover/sidebar:opacity-100 transition-opacity duration-200">Settings</span>
         </Link>
       </div>
     </div>

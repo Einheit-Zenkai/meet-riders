@@ -45,6 +45,11 @@ export interface Party {
   host_university: string | null;
   display_university: boolean;
   is_active: boolean;
+  ended_at?: Date | null;
+  ended_by?: string | null;
+  end_reason?: string | null;
+  ride_completed?: boolean;
+  host_reached_stop_at?: Date | null;
   // Host comments for joined users
   host_comments?: string;
   // Map coordinates for start and destination
@@ -69,9 +74,29 @@ export interface PartyMember {
     contact_shared: boolean;
     created_at: Date;
     updated_at: Date;
+    reached_stop_at?: Date | null;
     // Profile information (joined from profiles table)
     profile?: Profile;
 }
+
+  export interface RideHistoryParticipant {
+    user_id: string;
+    role: 'host' | 'member';
+    reached_stop_at: Date | null;
+    profile?: Profile;
+  }
+
+  export interface RideHistoryItem {
+    id: string;
+    party_id: string;
+    host_id: string;
+    meetup_point: string;
+    drop_off: string;
+    completed_at: Date;
+    ended_by: string | null;
+    end_reason: string | null;
+    participants: RideHistoryParticipant[];
+  }
 
 export interface Profile {
     id: string; // same as host_id in Party

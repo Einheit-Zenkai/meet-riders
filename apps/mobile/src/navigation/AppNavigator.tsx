@@ -18,6 +18,7 @@ import CurrentPartyScreen from '../screens/CurrentPartyScreen';
 import LivePartyScreen from '../screens/LivePartyScreen';
 import ExpiredPartiesScreen from '../screens/ExpiredPartiesScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
+import RideHistoryScreen from '../screens/RideHistoryScreen';
 import { palette } from '../theme/colors';
 import { getSupabaseClient } from '../lib/supabase';
 
@@ -40,6 +41,7 @@ export type RootStackParamList = {
     | undefined;
   CurrentParty: undefined;
   LiveParty: { partyId?: string } | undefined;
+  RideHistory: undefined;
   Leaderboard: undefined;
   Expired: undefined;
 };
@@ -126,6 +128,7 @@ const AppNavigator = (): JSX.Element => {
         <Stack.Screen name="Map" component={MapScreen} />
         <Stack.Screen name="CurrentParty" component={CurrentPartyScreen} />
         <Stack.Screen name="LiveParty" component={LivePartyScreen} />
+        <Stack.Screen name="RideHistory" component={RideHistoryScreen} />
         <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
         <Stack.Screen name="Expired" component={ExpiredPartiesScreen} />
       </Stack.Navigator>

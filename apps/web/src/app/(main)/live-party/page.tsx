@@ -9,7 +9,7 @@ import type { Party, PartyMember, Profile } from "../dashboard/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MapPin, Phone, Users, ArrowLeft, Route as RouteIcon, Crown, Flag, Share2 } from "lucide-react";
+import { MapPin, Phone, Users, ArrowLeft, Route as RouteIcon, Crown, Flag, Share2, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
@@ -35,7 +35,7 @@ function LivePartyInner() {
   const [members, setMembers] = useState<PartyMember[]>([]);
   const [hostProfile, setHostProfile] = useState<Profile | null>(null);
   const [endOpen, setEndOpen] = useState(false);
-  const [endReason, setEndReason] = useState<"connected" | "difficulties" | null>(null);
+  const [endReason, setEndReason] = useState<"host_connected" | "host_difficulties" | null>(null);
   const [ending, setEnding] = useState(false);
   const [shareOn, setShareOn] = useState(false);
 
@@ -51,7 +51,7 @@ function LivePartyInner() {
   const idParam = params?.get?.("id");
 
         // Fetch the target party
-        const partyFields = `id, created_at, updated_at, host_id, party_size, duration_minutes, expires_at, meetup_point, drop_off, is_friends_only, is_gender_only, ride_options, host_comments, host_university, display_university, is_active, start_coords, dest_coords`;
+        const partyFields = `id, created_at, updated_at, host_id, party_size, duration_minutes, expires_at, meetup_point, drop_off, is_friends_only, is_gender_only, ride_options, host_comments, host_university, display_university, is_active, start_coords, dest_coords, ended_at, ended_by, end_reason, ride_completed, host_reached_stop_at`;
 
         let target: any | null = null;
         if (idParam) {
@@ -113,6 +113,11 @@ function LivePartyInner() {
           ride_options: Array.isArray(target.ride_options) ? target.ride_options : [],
           duration_minutes: typeof target.duration_minutes === "number" ? target.duration_minutes : 0,
           is_active: Boolean(target.is_active),
+          ended_at: target.ended_at ? new Date(target.ended_at) : null,
+          ended_by: target.ended_by || null,
+          end_reason: target.end_reason || null,
+          ride_completed: Boolean(target.ride_completed),
+          host_reached_stop_at: target.host_reached_stop_at ? new Date(target.host_reached_stop_at) : null,
         };
         setParty(normalized);
 
@@ -233,8 +238,8 @@ function LivePartyUI({
   setShareOn: (v: boolean) => void;
   endOpen: boolean;
   setEndOpen: (v: boolean) => void;
-  endReason: "connected" | "difficulties" | null;
-  setEndReason: (v: "connected" | "difficulties" | null) => void;
+  endReason: "host_connected" | "host_difficulties" | null;
+  setEndReason: (v: "host_connected" | "host_difficulties" | null) => void;
   ending: boolean;
   setEnding: (v: boolean) => void;
 }) {
@@ -248,6 +253,9 @@ function LivePartyUI({
   const [reportReason, setReportReason] = useState<string>("");
   const [reportText, setReportText] = useState<string>("");
   const [reporting, setReporting] = useState(false);
+  const [localMembers, setLocalMembers] = useState<any[]>(members);
+  const [markingReached, setMarkingReached] = useState(false);
+  const [refreshingMembers, setRefreshingMembers] = useState(false);
 
   const initials = (name?: string | null) => {
     if (!name) return "U";
@@ -256,6 +264,87 @@ function LivePartyUI({
       .map((w) => w[0]?.toUpperCase())
       .slice(0, 2)
       .join("");
+  };
+
+  useEffect(() => {
+    setLocalMembers(members);
+  }, [members]);
+
+  const refreshPartyMembers = async () => {
+    try {
+      setRefreshingMembers(true);
+      const res = await partyMemberService.getPartyMembers(party.id);
+      if (res.success && res.members) {
+        setLocalMembers(res.members);
+      }
+    } finally {
+      setRefreshingMembers(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      const { data, error } = await supabase
+        .from("parties")
+        .select("is_active, ride_completed")
+        .eq("id", party.id)
+        .maybeSingle();
+
+      if (!error && data && data.is_active === false && data.ride_completed === true) {
+        toast.success("Ride completed. Check your ride history.");
+        router.replace("/ride-history");
+      }
+    }, 10000);
+
+    return () => clearInterval(timer);
+  }, [party.id, router, supabase]);
+
+  const participants = useMemo(() => {
+    const byUser = new Map<string, any>();
+    for (const member of localMembers) {
+      byUser.set(member.user_id, member);
+    }
+
+    if (!byUser.has(hostId) && hostProfile) {
+      byUser.set(hostId, {
+        id: `host-${party.id}`,
+        user_id: hostId,
+        status: "joined",
+        reached_stop_at: party.host_reached_stop_at || null,
+        profile: hostProfile,
+      });
+    }
+
+    return Array.from(byUser.values());
+  }, [localMembers, hostId, hostProfile, party.id, party.host_reached_stop_at]);
+
+  const reachedCount = participants.filter((member) => member.reached_stop_at).length;
+  const totalCount = participants.length;
+  const myParticipant = participants.find((member) => member.user_id === user?.id);
+  const myReached = Boolean(myParticipant?.reached_stop_at);
+
+  const handleMarkReached = async () => {
+    if (!user?.id || !party?.id || markingReached || myReached) return;
+    setMarkingReached(true);
+    try {
+      const res = await partyMemberService.markReachedStop(party.id);
+      if (!res.success) {
+        toast.error(res.error || "Failed to confirm your stop");
+        return;
+      }
+
+      await refreshPartyMembers();
+
+      if (res.rideCompleted) {
+        toast.success("All riders confirmed. Ride ended.");
+        router.replace("/ride-history");
+        return;
+      }
+
+      toast.success(`Stop confirmed (${res.reachedCount}/${res.totalCount})`);
+    } finally {
+      setMarkingReached(false);
+    }
   };
 
   // Start/stop location sharing
@@ -331,8 +420,8 @@ function LivePartyUI({
                     type="radio"
                     name="end-reason"
                     className="h-4 w-4"
-                    checked={endReason === "connected"}
-                    onChange={() => setEndReason("connected")}
+                    checked={endReason === "host_connected"}
+                    onChange={() => setEndReason("host_connected")}
                   />
                   <span className="text-sm">Successfully connected</span>
                 </label>
@@ -341,8 +430,8 @@ function LivePartyUI({
                     type="radio"
                     name="end-reason"
                     className="h-4 w-4"
-                    checked={endReason === "difficulties"}
-                    onChange={() => setEndReason("difficulties")}
+                    checked={endReason === "host_difficulties"}
+                    onChange={() => setEndReason("host_difficulties")}
                   />
                   <span className="text-sm">Faced difficulties</span>
                 </label>
@@ -353,42 +442,18 @@ function LivePartyUI({
                   variant="destructive"
                   disabled={ending || !endReason}
                   onClick={async () => {
-                    if (!party || !user) return;
+                    if (!party || !user || !endReason) return;
                     setEnding(true);
                     try {
-                      // Deactivate the party (host-only)
-                      const { error } = await supabase
-                        .from("parties")
-                        .update({ is_active: false })
-                        .eq("id", party.id)
-                        .eq("host_id", user.id);
-                      if (error) {
-                        toast.error("Failed to end party");
-                      } else {
-                        // Optional: award points if successfully connected (gamification)
-                        if (endReason === "connected") {
-                          try {
-                            // This RPC should be created in Supabase (see SQL in chat)
-                            const { error: rpcErr } = await supabase.rpc("award_points_for_party", {
-                              p_party_id: party.id,
-                              p_reason: "connected",
-                            });
-                            if (rpcErr) {
-                              console.info("award_points_for_party not configured", rpcErr);
-                              toast.message("Party ended. Points will be enabled once gamification is configured.");
-                            } else {
-                              toast.success("Party ended and points awarded");
-                            }
-                          } catch (e) {
-                            console.info("award_points_for_party missing", e);
-                            toast.message("Party ended. Gamification pending setup.");
-                          }
-                        }
-                        toast.success("Party ended");
-                        setEndOpen(false);
-                        // Optional: you can persist endReason somewhere later
-                        router.replace("/dashboard");
+                      const res = await partyMemberService.endPartyWithReason(party.id, endReason);
+                      if (!res.success) {
+                        toast.error(res.error || "Failed to end party");
+                        return;
                       }
+
+                      toast.success("Party ended and saved to ride history");
+                      setEndOpen(false);
+                      router.replace("/ride-history");
                     } finally {
                       setEnding(false);
                     }
@@ -492,6 +557,27 @@ function LivePartyUI({
             ))}
           </div>
 
+          <div className="rounded border p-3 bg-muted/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-medium">Stop confirmations</div>
+              <div className="text-xs text-muted-foreground">{reachedCount}/{totalCount} reached</div>
+            </div>
+            <div className="w-full h-2 rounded bg-muted overflow-hidden">
+              <div
+                className="h-full bg-green-500 transition-all"
+                style={{ width: `${totalCount > 0 ? (reachedCount / totalCount) * 100 : 0}%` }}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={handleMarkReached} disabled={markingReached || myReached}>
+                {myReached ? "Stop confirmed" : markingReached ? "Confirming..." : "Mark my stop reached"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={refreshPartyMembers} disabled={refreshingMembers}>
+                {refreshingMembers ? "Refreshing..." : "Refresh"}
+              </Button>
+            </div>
+          </div>
+
           {/* Contacts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Host */}
@@ -519,6 +605,10 @@ function LivePartyUI({
                       {statusLabel(statuses?.[hostId]?.status)}
                     </div>
                   )}
+                  <div className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <CheckCircle2 className={`h-4 w-4 ${participants.find((p) => p.user_id === hostId)?.reached_stop_at ? "text-green-500" : "text-muted-foreground"}`} />
+                    <span>{participants.find((p) => p.user_id === hostId)?.reached_stop_at ? "Host reached" : "Host pending"}</span>
+                  </div>
                   {hostProfile?.show_university && hostProfile.university && (
                     <div className="text-xs text-muted-foreground">{hostProfile.university}</div>
                   )}
@@ -539,7 +629,7 @@ function LivePartyUI({
             <div className="p-3 rounded border">
               <div className="text-sm font-medium mb-2 flex items-center gap-2"><Users className="h-4 w-4" /> Members</div>
               <div className="flex flex-col divide-y">
-                {members.map((m) => (
+                {participants.map((m) => (
                   <div key={m.id} className="flex items-center justify-between py-2">
                     <div className="flex items-center gap-3">
                       <Link href={`/profile/id/${m.user_id}`} className="flex items-center">
@@ -567,6 +657,10 @@ function LivePartyUI({
                           <div className="text-xs text-muted-foreground">{m.profile.university}</div>
                         )}
                       </div>
+                      <div className="ml-2 flex items-center gap-1 text-xs text-muted-foreground">
+                        <CheckCircle2 className={`h-4 w-4 ${m.reached_stop_at ? "text-green-500" : "text-muted-foreground"}`} />
+                        <span>{m.reached_stop_at ? "Reached" : "Pending"}</span>
+                      </div>
                     </div>
                     {m.profile?.show_phone && m.profile.phone_number && (
                       <div className="flex items-center gap-1 text-sm"><Phone className="h-4 w-4" /> <span className="font-medium">{m.profile.phone_number}</span></div>
@@ -578,7 +672,7 @@ function LivePartyUI({
                     )}
                   </div>
                 ))}
-                {members.length === 0 && (
+                {participants.length === 0 && (
                   <div className="text-sm text-muted-foreground py-2">No members joined.</div>
                 )}
               </div>
