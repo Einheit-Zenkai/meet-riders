@@ -785,3 +785,45 @@ GRANT INSERT, UPDATE, DELETE ON public.party_route_stops TO authenticated;
 GRANT EXECUTE ON FUNCTION public.refresh_party_route_stops_from_user_locations(uuid, boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.optimize_party_route(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.save_party_route_order(uuid, uuid[]) TO authenticated;
+
+-- 8) Host-only cancel with full data wipe for the party.
+DROP FUNCTION IF EXISTS public.cancel_party_and_clear_data(uuid);
+CREATE OR REPLACE FUNCTION public.cancel_party_and_clear_data(
+  p_party_id uuid
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_uid uuid;
+  v_host_id uuid;
+BEGIN
+  v_uid := auth.uid();
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  SELECT host_id INTO v_host_id
+  FROM public.parties
+  WHERE id = p_party_id;
+
+  IF v_host_id IS NULL THEN
+    RAISE EXCEPTION 'Party not found';
+  END IF;
+
+  IF v_host_id <> v_uid THEN
+    RAISE EXCEPTION 'Only the host can cancel this party';
+  END IF;
+
+  -- Deleting the party cascades to: party_members, ride_history(+participants), party_requests, party_route_stops.
+  DELETE FROM public.parties
+  WHERE id = p_party_id
+    AND host_id = v_uid;
+
+  RETURN FOUND;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.cancel_party_and_clear_data(uuid) TO authenticated;

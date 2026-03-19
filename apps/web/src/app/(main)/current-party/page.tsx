@@ -217,15 +217,13 @@ export default function CurrentPartyPage() {
 
   const handleCancel = async () => {
     if (!selectedParty || !isHost) return;
-    if (!confirm('Cancel this party for everyone?')) return;
+    if (!confirm('Cancel this party for everyone and permanently clear its ride data?')) return;
     setBusy(true);
-    const { error } = await supabase
-      .from('parties')
-      .update({ is_active: false })
-      .eq('id', selectedParty.id)
-      .eq('host_id', user!.id);
-    if (error) toast.error('Failed to cancel'); else {
-      toast.success('Party canceled');
+    const { error } = await supabase.rpc('cancel_party_and_clear_data', {
+      p_party_id: selectedParty.id,
+    });
+    if (error) toast.error('Failed to cancel and clear data'); else {
+      toast.success('Party canceled and data cleared');
       setParties(prev => prev.filter(p => p.id !== selectedParty.id));
       setSelectedId(null);
     }

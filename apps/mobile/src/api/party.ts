@@ -406,12 +406,9 @@ export const fetchPartyMembers = async (partyId: string): Promise<PartyMember[]>
 
 export const cancelParty = async (partyId: string): Promise<void> => {
   const { supabase, user } = await ensureUser();
-  const { error } = await supabase
-    .from('parties')
-    // Match the web app behavior: only flip is_active.
-    .update({ is_active: false } as never)
-    .eq('id', partyId)
-    .eq('host_id', user.id);
+  const { error } = await supabase.rpc('cancel_party_and_clear_data', {
+    p_party_id: partyId,
+  });
 
   if (error) {
     throw error;

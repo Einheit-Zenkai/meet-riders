@@ -198,26 +198,24 @@ export default function DashboardPartyCard({ party }: DashboardPartyCardProps) {
     const handleCancelParty = async () => {
         if (!user || !isHost) return;
 
-        const confirmed = confirm('Are you sure you want to cancel this party?');
+        const confirmed = confirm('Are you sure you want to cancel this party and permanently clear its ride data?');
         if (!confirmed) return;
 
         try {
-            const { error } = await supabaseClient
-                .from('parties')
-                .update({ is_active: false })
-                .eq('id', party.id)
-                .eq('host_id', user.id);
+            const { error } = await supabaseClient.rpc('cancel_party_and_clear_data', {
+                p_party_id: party.id,
+            });
 
             if (error) {
                 console.error('Error canceling party:', error);
-                toast.error('Failed to cancel party');
+                toast.error('Failed to cancel and clear data');
             } else {
-                toast.success('Party canceled');
+                toast.success('Party canceled and data cleared');
                 await refreshParties();
             }
         } catch (error) {
             console.error('Error canceling party:', error);
-            toast.error('Failed to cancel party');
+            toast.error('Failed to cancel and clear data');
         }
     };
 
