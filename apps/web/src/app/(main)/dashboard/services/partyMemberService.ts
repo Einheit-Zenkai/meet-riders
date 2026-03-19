@@ -744,6 +744,37 @@ export class PartyMemberService {
       return { success: false, error: e?.message || 'Failed to save route order' };
     }
   }
+
+  /** Read computed route savings summary for a party. */
+  async getPartyRouteSavings(partyId: string): Promise<{
+    success: boolean;
+    distanceSavedKm?: number;
+    timeSavedMinutes?: number;
+    baselineKm?: number;
+    optimizedKm?: number;
+    error?: string;
+  }> {
+    try {
+      const { data, error } = await this.supabase.rpc('get_party_route_savings', {
+        p_party_id: partyId,
+      });
+
+      if (error) {
+        return { success: false, error: error.message || 'Failed to load route savings' };
+      }
+
+      const row = Array.isArray(data) ? data[0] : data;
+      return {
+        success: true,
+        distanceSavedKm: Number(row?.distance_saved_km ?? 0),
+        timeSavedMinutes: Number(row?.time_saved_minutes ?? 0),
+        baselineKm: Number(row?.baseline_km ?? 0),
+        optimizedKm: Number(row?.optimized_km ?? 0),
+      };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Failed to load route savings' };
+    }
+  }
 }
 
 // Export a singleton instance

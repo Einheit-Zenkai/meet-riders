@@ -28,6 +28,7 @@ import {
   refreshRouteStopsFromLive,
   optimizeRouteStops,
   saveRouteOrder,
+  getPartyRouteSavings,
 } from '../api/party';
 import { CrownBadge } from '../components/SharedComponents';
 import RatingModal from '../components/RatingModal';
@@ -324,6 +325,20 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
 
   const openMap = () => navigation.navigate('Map');
 
+  const buildSavingsMessage = async (): Promise<string | null> => {
+    if (!party) return null;
+    try {
+      const savings = await getPartyRouteSavings(party.id);
+      const bits: string[] = [];
+      if (savings.distanceSavedKm > 0) bits.push(`${savings.distanceSavedKm.toFixed(2)} km distance saved`);
+      if (savings.timeSavedMinutes > 0) bits.push(`${savings.timeSavedMinutes.toFixed(1)} min time saved`);
+      if (bits.length === 0) return null;
+      return bits.join(' and ');
+    } catch {
+      return null;
+    }
+  };
+
   const handleMarkReached = async () => {
     if (!party || !currentUserId || myReached || markReachedBusy) return;
     try {
@@ -332,7 +347,11 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
       await loadMembers(party.id, party.host_id, party.expires_at);
 
       if (result.rideCompleted) {
-        showAlert('Ride completed', 'All riders have confirmed their stops.', [
+        const savingsMessage = await buildSavingsMessage();
+        const body = savingsMessage
+          ? `All riders have confirmed their stops. ${savingsMessage}.`
+          : 'All riders have confirmed their stops.';
+        showAlert('Ride completed', body, [
           { text: 'OK', onPress: () => navigation.navigate('RideHistory') },
         ]);
         return;
@@ -444,8 +463,12 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
     try {
       setCancelBusy(true);
       await endPartyWithReason(party.id, 'host_connected');
+      const savingsMessage = await buildSavingsMessage();
       setCancelConfirmOpen(false);
-      showAlert('Ride ended', 'Your ride has been completed and added to history.', [
+      const body = savingsMessage
+        ? `Your ride has been completed and added to history. ${savingsMessage}.`
+        : 'Your ride has been completed and added to history.';
+      showAlert('Ride ended', body, [
         { text: 'OK', onPress: () => navigation.navigate('RideHistory') }
       ]);
     } catch (error: any) {

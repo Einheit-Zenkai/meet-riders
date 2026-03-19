@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   View,
@@ -35,6 +35,8 @@ import {
 import { fetchConnectionsBundle } from '../api/connections';
 import { CrownBadge, RatingStars } from '../components/SharedComponents';
 import { SoiParty, fetchActiveSoiFeed, cancelSoi, joinSoi } from '../api/soi';
+import { fetchMutualActivityNotifications, MutualActivityNotification } from '../api/notifications';
+import { getExternalNotificationsEnabled } from '../utils/notificationPreferences';
 
 const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Home'>): JSX.Element => {
   const [email, setEmail] = useState(route.params?.email ?? '');
@@ -55,11 +57,14 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
   // Notification/Join Requests state
   const [joinRequests, setJoinRequests] = useState<PartyJoinRequest[]>([]);
   const [friendRequestCount, setFriendRequestCount] = useState(0);
+  const [mutualActivityNotifications, setMutualActivityNotifications] = useState<MutualActivityNotification[]>([]);
+  const [externalAlertsEnabled, setExternalAlertsEnabled] = useState(true);
   const [showJoinDropdown, setShowJoinDropdown] = useState(false);
   const [notificationModalOpen, setNotificationModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<PartyJoinRequest | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [requestActionBusy, setRequestActionBusy] = useState(false);
+  const seenMutualNotificationIds = useRef<Set<string>>(new Set());
 
   // SOI (Show of Interest) state
   const [soiFeed, setSoiFeed] = useState<SoiParty[]>([]);
@@ -116,16 +121,47 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
   // Load join requests (for hosts) and friend requests
   const loadNotifications = useCallback(async () => {
     try {
-      // Load party join requests if user is a host
-      const requests = await fetchMyPartyJoinRequests();
+      const [requests, connectionsBundle, mutualActivity] = await Promise.all([
+        fetchMyPartyJoinRequests(),
+        fetchConnectionsBundle(),
+        fetchMutualActivityNotifications(),
+      ]);
+
       setJoinRequests(requests);
-      
-      // Load friend request count
-      const connectionsBundle = await fetchConnectionsBundle();
       setFriendRequestCount(connectionsBundle.incomingRequests.length);
+      setMutualActivityNotifications(mutualActivity);
+
+      const newlySeen = mutualActivity.filter((item) => !seenMutualNotificationIds.current.has(item.id));
+      mutualActivity.forEach((item) => seenMutualNotificationIds.current.add(item.id));
+
+      if (externalAlertsEnabled && newlySeen.length > 0) {
+        const leadMessage = newlySeen[0].message;
+        const extra = newlySeen.length > 1 ? ` (+${newlySeen.length - 1} more)` : '';
+        showAlert('Mutual activity', `${leadMessage}${extra}`);
+      }
     } catch (error) {
       console.error('Failed to load notifications', error);
     }
+  }, [externalAlertsEnabled]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadNotificationPreference = async (): Promise<void> => {
+      try {
+        const enabled = await getExternalNotificationsEnabled();
+        if (active) {
+          setExternalAlertsEnabled(enabled);
+        }
+      } catch (error) {
+        console.error('Failed to load notification preference', error);
+      }
+    };
+
+    loadNotificationPreference();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -135,7 +171,7 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
     return () => clearInterval(interval);
   }, [loadNotifications]);
 
-  const totalNotifications = joinRequests.length + friendRequestCount;
+  const totalNotifications = joinRequests.length + friendRequestCount + mutualActivityNotifications.length;
 
   const showInlineNotice = useCallback((message: string) => {
     setInlineNotice(message);
@@ -804,6 +840,36 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
                         </TouchableOpacity>
                       </View>
                     </Pressable>
+                  ))}
+                </View>
+              )}
+
+              {/* Mutual Activity Section */}
+              {mutualActivityNotifications.length > 0 && (
+                <View style={styles.notificationSection}>
+                  <View style={styles.notificationSectionHeader}>
+                    <Ionicons name="sparkles" size={20} color={palette.accent} />
+                    <Text style={styles.notificationSectionTitle}>Mutual Activity</Text>
+                    <View style={styles.notificationCountBadge}>
+                      <Text style={styles.notificationCountText}>{mutualActivityNotifications.length}</Text>
+                    </View>
+                  </View>
+                  {mutualActivityNotifications.slice(0, 8).map((item) => (
+                    <View key={item.id} style={styles.mutualActivityItem}>
+                      <View style={styles.mutualActivityIconWrap}>
+                        <Ionicons
+                          name={item.type === 'mutual_online' ? 'radio' : 'car'}
+                          size={16}
+                          color={palette.textPrimary}
+                        />
+                      </View>
+                      <View style={styles.notificationRequestInfo}>
+                        <Text style={styles.notificationSubtextStrong}>{item.message}</Text>
+                        <Text style={styles.notificationSubtext}>
+                          {new Date(item.occurredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                      </View>
+                    </View>
                   ))}
                 </View>
               )}
@@ -1654,6 +1720,28 @@ const styles = StyleSheet.create({
     color: palette.textSecondary,
     fontSize: 13,
     marginTop: 2,
+  },
+  notificationSubtextStrong: {
+    color: palette.textPrimary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  mutualActivityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: palette.surfaceAlt,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  mutualActivityIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: palette.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   notificationRequestActions: {
     flexDirection: 'row',

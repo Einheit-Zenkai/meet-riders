@@ -327,7 +327,7 @@ function LivePartyUI({
         .maybeSingle();
 
       if (!error && data && data.is_active === false && data.ride_completed === true) {
-        toast.success("Ride completed. Check your ride history.");
+        await showSavingsIfPositive("Ride completed. Check your ride history.");
         router.replace("/ride-history");
       }
     }, 10000);
@@ -360,6 +360,20 @@ function LivePartyUI({
   const myReached = Boolean(myParticipant?.reached_stop_at);
   const isHost = user?.id === party.host_id;
 
+  const showSavingsIfPositive = async (fallback: string) => {
+    const savings = await partyMemberService.getPartyRouteSavings(party.id);
+    const distanceSaved = savings.success ? (savings.distanceSavedKm || 0) : 0;
+    const timeSaved = savings.success ? (savings.timeSavedMinutes || 0) : 0;
+    if (distanceSaved > 0 || timeSaved > 0) {
+      const bits: string[] = [];
+      if (distanceSaved > 0) bits.push(`${distanceSaved.toFixed(2)} km distance saved`);
+      if (timeSaved > 0) bits.push(`${timeSaved.toFixed(1)} min time saved`);
+      toast.success(`Ride completed. ${bits.join(" and ")}.`);
+      return;
+    }
+    toast.success(fallback);
+  };
+
   const handleMarkReached = async () => {
     if (!user?.id || !party?.id || markingReached || myReached) return;
     setMarkingReached(true);
@@ -373,7 +387,7 @@ function LivePartyUI({
       await refreshPartyMembers();
 
       if (res.rideCompleted) {
-        toast.success("All riders confirmed. Ride ended.");
+        await showSavingsIfPositive("All riders confirmed. Ride ended.");
         router.replace("/ride-history");
         return;
       }
@@ -563,7 +577,7 @@ function LivePartyUI({
                         return;
                       }
 
-                      toast.success("Party ended and saved to ride history");
+                      await showSavingsIfPositive("Party ended and saved to ride history");
                       setEndOpen(false);
                       router.replace("/ride-history");
                     } finally {

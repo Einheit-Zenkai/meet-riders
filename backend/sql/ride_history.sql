@@ -7,7 +7,13 @@ ALTER TABLE public.parties
   ADD COLUMN IF NOT EXISTS ended_by uuid,
   ADD COLUMN IF NOT EXISTS end_reason text,
   ADD COLUMN IF NOT EXISTS ride_completed boolean NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS host_reached_stop_at timestamptz;
+  ADD COLUMN IF NOT EXISTS host_reached_stop_at timestamptz,
+  ADD COLUMN IF NOT EXISTS route_baseline_km double precision,
+  ADD COLUMN IF NOT EXISTS route_optimized_km double precision,
+  ADD COLUMN IF NOT EXISTS route_distance_saved_km double precision,
+  ADD COLUMN IF NOT EXISTS route_baseline_minutes double precision,
+  ADD COLUMN IF NOT EXISTS route_optimized_minutes double precision,
+  ADD COLUMN IF NOT EXISTS route_time_saved_minutes double precision;
 
 ALTER TABLE public.party_members
   ADD COLUMN IF NOT EXISTS reached_stop_at timestamptz;
@@ -429,6 +435,93 @@ CREATE TRIGGER trigger_update_party_route_stops_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION public.update_party_route_stops_updated_at();
 
+DROP FUNCTION IF EXISTS public.calculate_party_route_distance(uuid, jsonb);
+CREATE OR REPLACE FUNCTION public.calculate_party_route_distance(
+  p_party_id uuid,
+  p_start_coords jsonb
+)
+RETURNS double precision
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_prev_lat double precision;
+  v_prev_lng double precision;
+  v_curr_lat double precision;
+  v_curr_lng double precision;
+  v_total double precision := 0;
+  v_row RECORD;
+BEGIN
+  v_prev_lat := NULLIF((p_start_coords ->> 'lat'), '')::double precision;
+  v_prev_lng := NULLIF((p_start_coords ->> 'lng'), '')::double precision;
+
+  FOR v_row IN
+    SELECT stop_coords
+    FROM public.party_route_stops
+    WHERE party_id = p_party_id
+    ORDER BY stop_order ASC, created_at ASC
+  LOOP
+    IF v_row.stop_coords IS NULL THEN
+      CONTINUE;
+    END IF;
+
+    v_curr_lat := NULLIF((v_row.stop_coords ->> 'lat'), '')::double precision;
+    v_curr_lng := NULLIF((v_row.stop_coords ->> 'lng'), '')::double precision;
+    IF v_curr_lat IS NULL OR v_curr_lng IS NULL THEN
+      CONTINUE;
+    END IF;
+
+    IF v_prev_lat IS NOT NULL AND v_prev_lng IS NOT NULL THEN
+      v_total := v_total + (
+        6371 * acos(
+          LEAST(1.0, GREATEST(-1.0,
+            cos(radians(v_prev_lat)) * cos(radians(v_curr_lat)) * cos(radians(v_curr_lng) - radians(v_prev_lng)) +
+            sin(radians(v_prev_lat)) * sin(radians(v_curr_lat))
+          ))
+        )
+      );
+    END IF;
+
+    v_prev_lat := v_curr_lat;
+    v_prev_lng := v_curr_lng;
+  END LOOP;
+
+  RETURN COALESCE(v_total, 0);
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.get_party_route_savings(uuid);
+CREATE OR REPLACE FUNCTION public.get_party_route_savings(
+  p_party_id uuid
+)
+RETURNS TABLE (
+  distance_saved_km double precision,
+  time_saved_minutes double precision,
+  baseline_km double precision,
+  optimized_km double precision,
+  baseline_minutes double precision,
+  optimized_minutes double precision
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    p.route_distance_saved_km,
+    p.route_time_saved_minutes,
+    p.route_baseline_km,
+    p.route_optimized_km,
+    p.route_baseline_minutes,
+    p.route_optimized_minutes
+  FROM public.parties p
+  WHERE p.id = p_party_id
+    AND public.can_user_view_party_members(p.id);
+END;
+$$;
+
 DROP FUNCTION IF EXISTS public.refresh_party_route_stops_from_user_locations(uuid, boolean);
 CREATE OR REPLACE FUNCTION public.refresh_party_route_stops_from_user_locations(
   p_party_id uuid,
@@ -619,6 +712,13 @@ DECLARE
   v_cur_lng double precision;
   v_next RECORD;
   v_order integer := 1;
+  v_baseline_km double precision := 0;
+  v_optimized_km double precision := 0;
+  v_saved_km double precision := 0;
+  v_avg_kmph double precision := 24;
+  v_baseline_minutes double precision := 0;
+  v_optimized_minutes double precision := 0;
+  v_saved_minutes double precision := 0;
 BEGIN
   v_uid := auth.uid();
   IF v_uid IS NULL THEN
@@ -639,6 +739,9 @@ BEGIN
 
   -- Keep source data up to date before optimization.
   PERFORM public.refresh_party_route_stops_from_user_locations(p_party_id, TRUE);
+
+  -- Baseline route is the current persisted order before optimization.
+  v_baseline_km := public.calculate_party_route_distance(p_party_id, v_party.start_coords);
 
   v_cur_lat := NULLIF((v_party.start_coords ->> 'lat'), '')::double precision;
   v_cur_lng := NULLIF((v_party.start_coords ->> 'lng'), '')::double precision;
@@ -677,6 +780,16 @@ BEGIN
     FROM public.party_route_stops prs
     WHERE prs.party_id = p_party_id
     ORDER BY prs.stop_order ASC, prs.created_at ASC;
+
+    UPDATE public.parties
+    SET route_baseline_km = v_baseline_km,
+      route_optimized_km = v_baseline_km,
+      route_distance_saved_km = 0,
+      route_baseline_minutes = CASE WHEN v_avg_kmph > 0 THEN (v_baseline_km / v_avg_kmph) * 60 ELSE 0 END,
+      route_optimized_minutes = CASE WHEN v_avg_kmph > 0 THEN (v_baseline_km / v_avg_kmph) * 60 ELSE 0 END,
+      route_time_saved_minutes = 0,
+      updated_at = NOW()
+    WHERE id = p_party_id;
     RETURN;
   END IF;
 
@@ -724,6 +837,22 @@ BEGIN
       updated_at = NOW()
   FROM tmp_route_stops t
   WHERE prs.id = t.id;
+
+    v_optimized_km := public.calculate_party_route_distance(p_party_id, v_party.start_coords);
+    v_saved_km := COALESCE(v_baseline_km, 0) - COALESCE(v_optimized_km, 0);
+    v_baseline_minutes := CASE WHEN v_avg_kmph > 0 THEN (COALESCE(v_baseline_km, 0) / v_avg_kmph) * 60 ELSE 0 END;
+    v_optimized_minutes := CASE WHEN v_avg_kmph > 0 THEN (COALESCE(v_optimized_km, 0) / v_avg_kmph) * 60 ELSE 0 END;
+    v_saved_minutes := v_baseline_minutes - v_optimized_minutes;
+
+    UPDATE public.parties
+    SET route_baseline_km = v_baseline_km,
+      route_optimized_km = v_optimized_km,
+      route_distance_saved_km = v_saved_km,
+      route_baseline_minutes = v_baseline_minutes,
+      route_optimized_minutes = v_optimized_minutes,
+      route_time_saved_minutes = v_saved_minutes,
+      updated_at = NOW()
+    WHERE id = p_party_id;
 
   RETURN QUERY
   SELECT prs.id, prs.stop_order, prs.stop_label, prs.user_id
@@ -782,6 +911,8 @@ $$;
 
 GRANT SELECT ON public.party_route_stops TO authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.party_route_stops TO authenticated;
+GRANT EXECUTE ON FUNCTION public.calculate_party_route_distance(uuid, jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_party_route_savings(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.refresh_party_route_stops_from_user_locations(uuid, boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.optimize_party_route(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.save_party_route_order(uuid, uuid[]) TO authenticated;

@@ -18,6 +18,10 @@ import { palette } from '../theme/colors';
 import { showAlert } from '../utils/alert';
 import { fetchProfile, saveProfile } from '../api/profile';
 import { getSupabaseClient } from '../lib/supabase';
+import {
+  getExternalNotificationsEnabled,
+  setExternalNotificationsEnabled,
+} from '../utils/notificationPreferences';
 
 const transportModes = [
   { id: 'walking', label: 'Walking', icon: 'walk-outline' as const },
@@ -66,6 +70,7 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [showPhone, setShowPhone] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [externalNotificationsEnabled, setExternalNotificationsEnabledState] = useState(true);
 
   const supabaseAvailable = useMemo(() => Boolean(getSupabaseClient()), []);
 
@@ -80,6 +85,12 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
       }
 
       try {
+        const notificationPreference = await getExternalNotificationsEnabled();
+        if (!active) {
+          return;
+        }
+        setExternalNotificationsEnabledState(notificationPreference);
+
         const profile = await fetchProfile();
         if (!active) {
           return;
@@ -176,6 +187,8 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
         showPhone,
         rideOptions: preferences,
       });
+
+      await setExternalNotificationsEnabled(externalNotificationsEnabled);
 
       showAlert('Settings saved', 'Your preferences have been updated.', [
         {
@@ -461,6 +474,20 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
               <View style={styles.switchRow}>
                 <Switch value={showPhone} onValueChange={setShowPhone} />
                 <Text style={styles.switchLabel}>Show my contact to people who join my ride</Text>
+              </View>
+            </View>
+
+            <View style={styles.formField}>
+              <Text style={styles.label}>External Notifications</Text>
+              <Text style={styles.helperTextSmall}>
+                Control non-feed alert pings for mutual activity. In-app notifications stay available in the bell.
+              </Text>
+              <View style={styles.switchRow}>
+                <Switch
+                  value={externalNotificationsEnabled}
+                  onValueChange={setExternalNotificationsEnabledState}
+                />
+                <Text style={styles.switchLabel}>Allow external alert pings on this device</Text>
               </View>
             </View>
           </View>

@@ -606,6 +606,28 @@ export const saveRouteOrder = async (partyId: string, stopIdsInOrder: string[]):
   return Number(data ?? 0);
 };
 
+export const getPartyRouteSavings = async (
+  partyId: string
+): Promise<{ distanceSavedKm: number; timeSavedMinutes: number; baselineKm: number; optimizedKm: number }> => {
+  const { supabase } = await ensureUser();
+
+  const { data, error } = await supabase.rpc('get_party_route_savings', {
+    p_party_id: partyId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    distanceSavedKm: Number(row?.distance_saved_km ?? 0),
+    timeSavedMinutes: Number(row?.time_saved_minutes ?? 0),
+    baselineKm: Number(row?.baseline_km ?? 0),
+    optimizedKm: Number(row?.optimized_km ?? 0),
+  };
+};
+
 /**
  * Leave a party as the current user (non-host member)
  */
