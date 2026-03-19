@@ -479,6 +479,10 @@ const ConnectionsScreen = ({ navigation }: NativeStackScreenProps<RootStackParam
                     navigation.navigate('Map');
                     return;
                   }
+                  if (item.label === 'Schedule With Friends') {
+                    navigation.navigate('ScheduleWithFriends');
+                    return;
+                  }
                   if (item.label === 'Leaderboard') {
                     navigation.navigate('Leaderboard');
                     return;

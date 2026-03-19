@@ -72,7 +72,7 @@ export default function NotificationsDropdown() {
       };
 
       // Channel for party_requests changes
-      const channel = supabase
+      const partyChannel = supabase
         .channel('party-requests-notifs')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'party_requests' }, async (payload) => {
           // New request created; if I'm the host of that party, notify me
@@ -125,9 +125,46 @@ export default function NotificationsDropdown() {
         })
         .subscribe();
 
+      // Channel for friend schedule requests and updates
+      const scheduleChannel = supabase
+        .channel('friend-schedules-notifs')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'friend_schedules' }, async (payload) => {
+          const rec: any = payload.new;
+          if (String(rec.invitee_id) !== currentUser.id) return;
+          const requesterName = await getDisplayName(String(rec.requester_id));
+          addNotification({
+            id: `schedule-request:${rec.id}`,
+            message: `${requesterName} sent you a schedule request`,
+            timestamp: new Date(),
+            read: false,
+            type: 'info',
+            href: '/schedule-with-friends',
+            meta: { scheduleId: rec.id },
+          });
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'friend_schedules' }, async (payload) => {
+          const rec: any = payload.new;
+          if (String(rec.requester_id) !== currentUser.id) return;
+          if (rec.status !== 'accepted' && rec.status !== 'declined') return;
+          const inviteeName = await getDisplayName(String(rec.invitee_id));
+          addNotification({
+            id: `schedule-update:${rec.id}:${rec.status}`,
+            message: rec.status === 'accepted'
+              ? `${inviteeName} accepted your schedule request`
+              : `${inviteeName} declined your schedule request`,
+            timestamp: new Date(),
+            read: false,
+            type: rec.status === 'accepted' ? 'success' : 'error',
+            href: '/schedule-with-friends',
+            meta: { scheduleId: rec.id },
+          });
+        })
+        .subscribe();
+
       return () => {
         isMounted = false;
-        supabase.removeChannel(channel);
+        supabase.removeChannel(partyChannel);
+        supabase.removeChannel(scheduleChannel);
       };
     })();
   }, [supabase, addNotification]);

@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, Users } from "lucide-react";
+import { CalendarCheck, ChevronLeft, Users } from "lucide-react";
 
 type MiniProfile = {
   id: string;
@@ -128,6 +128,14 @@ export default function MutualsDrawer() {
                 </div>
               ))
             )}
+          </div>
+          <div className="border-t p-3">
+            <Button asChild className="w-full">
+              <Link href="/schedule-with-friends" className="flex items-center justify-center gap-2">
+                <CalendarCheck className="h-4 w-4" />
+                Schedule With Friends
+              </Link>
+            </Button>
           </div>
         </div>
       </aside>

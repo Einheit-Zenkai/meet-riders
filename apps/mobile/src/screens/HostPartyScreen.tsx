@@ -532,6 +532,9 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
                     case 'Connections':
                       navigation.navigate('Connections');
                       return;
+                    case 'Schedule With Friends':
+                      navigation.navigate('ScheduleWithFriends');
+                      return;
                     case 'Leaderboard':
                       navigation.navigate('Leaderboard');
                       return;

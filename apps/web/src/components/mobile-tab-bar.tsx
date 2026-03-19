@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Home, Users, Plus, Map as MapIcon, Trophy, Clock, User, CalendarClock, Menu, Settings, MapPin, LayoutGrid, History } from "lucide-react";
+import { Home, Users, Plus, Map as MapIcon, Trophy, Clock, User, CalendarClock, Menu, Settings, MapPin, LayoutGrid, History, CalendarCheck } from "lucide-react";
 
 const tabs = [
   { href: "/dashboard", icon: Home, label: "Home" },
@@ -21,6 +21,7 @@ const allOptions = [
   { href: "/live-party", icon: MapPin, label: "Live Party" },
   { href: "/soi", icon: CalendarClock, label: "Show of Interest" },
   { href: "/connections", icon: Users, label: "Connections" },
+  { href: "/schedule-with-friends", icon: CalendarCheck, label: "Schedule" },
   { href: "/leaderboard", icon: Trophy, label: "Leaderboard" },
   { href: "/ride-history", icon: History, label: "Ride History" },
   { href: "/map", icon: MapIcon, label: "Map" },

@@ -19,6 +19,7 @@ import LivePartyScreen from '../screens/LivePartyScreen';
 import ExpiredPartiesScreen from '../screens/ExpiredPartiesScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import RideHistoryScreen from '../screens/RideHistoryScreen';
+import ScheduleWithFriendsScreen from '../screens/ScheduleWithFriendsScreen';
 import { palette } from '../theme/colors';
 import { getSupabaseClient } from '../lib/supabase';
 
@@ -44,6 +45,7 @@ export type RootStackParamList = {
   RideHistory: undefined;
   Leaderboard: undefined;
   Expired: undefined;
+  ScheduleWithFriends: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -131,6 +133,7 @@ const AppNavigator = (): JSX.Element => {
         <Stack.Screen name="RideHistory" component={RideHistoryScreen} />
         <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
         <Stack.Screen name="Expired" component={ExpiredPartiesScreen} />
+        <Stack.Screen name="ScheduleWithFriends" component={ScheduleWithFriendsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

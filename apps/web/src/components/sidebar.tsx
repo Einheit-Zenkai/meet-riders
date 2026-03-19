@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { User, Settings, Home, Users, Plus, Map as MapIcon, MapPin, LayoutGrid, Trophy, CalendarClock, Clock, Flag, History } from "lucide-react";
+import { User, Settings, Home, Users, Plus, Map as MapIcon, MapPin, LayoutGrid, Trophy, CalendarClock, Clock, Flag, History, CalendarCheck } from "lucide-react";
 
 export default function Sidebar() {
   const menuItems = [
@@ -10,6 +10,7 @@ export default function Sidebar() {
     { href: "/live-party", icon: MapPin, label: "Live Party" },
     { href: "/soi", icon: CalendarClock, label: "Show of Interest" },
     { href: "/connections", icon: Users, label: "Connections" },
+    { href: "/schedule-with-friends", icon: CalendarCheck, label: "Schedule" },
     // { href: "/party", icon: Users, label: "Party Hub" },
     { href: "/leaderboard", icon: Trophy, label: "Leaderboard" },
     { href: "/ride-history", icon: History, label: "Ride History" },

@@ -373,6 +373,9 @@ const ShowInterestScreen = ({ navigation }: ShowInterestScreenProps): JSX.Elemen
                     case 'Connections':
                       navigation.navigate('Connections');
                       return;
+                    case 'Schedule With Friends':
+                      navigation.navigate('ScheduleWithFriends');
+                      return;
                     case 'Leaderboard':
                       navigation.navigate('Leaderboard');
                       return;

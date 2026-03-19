@@ -98,6 +98,9 @@ const LeaderboardScreen = ({ navigation }: Props): JSX.Element => {
                     case 'Connections':
                       navigation.navigate('Connections');
                       return;
+                    case 'Schedule With Friends':
+                      navigation.navigate('ScheduleWithFriends');
+                      return;
                     case 'Leaderboard':
                       return;
                     case 'Expired':

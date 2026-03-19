@@ -37,6 +37,7 @@ import { CrownBadge, RatingStars } from '../components/SharedComponents';
 import { SoiParty, fetchActiveSoiFeed, cancelSoi, joinSoi } from '../api/soi';
 import { fetchMutualActivityNotifications, MutualActivityNotification } from '../api/notifications';
 import { getExternalNotificationsEnabled } from '../utils/notificationPreferences';
+import { fetchScheduleNotifications, ScheduleNotificationItem } from '../api/schedules';
 
 const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Home'>): JSX.Element => {
   const [email, setEmail] = useState(route.params?.email ?? '');
@@ -58,6 +59,7 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
   const [joinRequests, setJoinRequests] = useState<PartyJoinRequest[]>([]);
   const [friendRequestCount, setFriendRequestCount] = useState(0);
   const [mutualActivityNotifications, setMutualActivityNotifications] = useState<MutualActivityNotification[]>([]);
+  const [scheduleNotifications, setScheduleNotifications] = useState<ScheduleNotificationItem[]>([]);
   const [externalAlertsEnabled, setExternalAlertsEnabled] = useState(true);
   const [showJoinDropdown, setShowJoinDropdown] = useState(false);
   const [notificationModalOpen, setNotificationModalOpen] = useState(false);
@@ -121,15 +123,17 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
   // Load join requests (for hosts) and friend requests
   const loadNotifications = useCallback(async () => {
     try {
-      const [requests, connectionsBundle, mutualActivity] = await Promise.all([
+      const [requests, connectionsBundle, mutualActivity, scheduleItems] = await Promise.all([
         fetchMyPartyJoinRequests(),
         fetchConnectionsBundle(),
         fetchMutualActivityNotifications(),
+        fetchScheduleNotifications(),
       ]);
 
       setJoinRequests(requests);
       setFriendRequestCount(connectionsBundle.incomingRequests.length);
       setMutualActivityNotifications(mutualActivity);
+      setScheduleNotifications(scheduleItems);
 
       const newlySeen = mutualActivity.filter((item) => !seenMutualNotificationIds.current.has(item.id));
       mutualActivity.forEach((item) => seenMutualNotificationIds.current.add(item.id));
@@ -171,7 +175,7 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
     return () => clearInterval(interval);
   }, [loadNotifications]);
 
-  const totalNotifications = joinRequests.length + friendRequestCount + mutualActivityNotifications.length;
+  const totalNotifications = joinRequests.length + friendRequestCount + mutualActivityNotifications.length + scheduleNotifications.length;
 
   const showInlineNotice = useCallback((message: string) => {
     setInlineNotice(message);
@@ -458,6 +462,12 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
               onPress={() => navigation.navigate('HostParty')}
             >
               <Text style={styles.hostButtonText}>Host a Ride</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.scheduleButton}
+              onPress={() => navigation.navigate('ScheduleWithFriends')}
+            >
+              <Text style={styles.hostButtonText}>Schedule With Friends</Text>
             </TouchableOpacity>
           </View>
 
@@ -874,6 +884,36 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
                 </View>
               )}
 
+              {/* Schedule Updates Section */}
+              {scheduleNotifications.length > 0 && (
+                <View style={styles.notificationSection}>
+                  <View style={styles.notificationSectionHeader}>
+                    <Ionicons name="calendar" size={20} color={palette.primary} />
+                    <Text style={styles.notificationSectionTitle}>Schedule Updates</Text>
+                    <View style={styles.notificationCountBadge}>
+                      <Text style={styles.notificationCountText}>{scheduleNotifications.length}</Text>
+                    </View>
+                  </View>
+                  {scheduleNotifications.slice(0, 8).map((item) => (
+                    <View key={item.id} style={styles.mutualActivityItem}>
+                      <View style={styles.mutualActivityIconWrap}>
+                        <Ionicons
+                          name={item.kind === 'request_declined' ? 'close' : item.kind === 'request_accepted' ? 'checkmark' : 'mail'}
+                          size={16}
+                          color={palette.textPrimary}
+                        />
+                      </View>
+                      <View style={styles.notificationRequestInfo}>
+                        <Text style={styles.notificationSubtextStrong}>{item.message}</Text>
+                        <Text style={styles.notificationSubtext}>
+                          {new Date(item.occurredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
               {totalNotifications === 0 && (
                 <View style={styles.emptyNotifications}>
                   <Ionicons name="notifications-off" size={48} color={palette.textSecondary} />
@@ -1079,6 +1119,10 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
                     navigation.navigate('Connections');
                     return;
                   }
+                  if (item.label === 'Schedule With Friends') {
+                    navigation.navigate('ScheduleWithFriends');
+                    return;
+                  }
                   if (item.label === 'Settings') {
                     navigation.navigate('Settings');
                     return;
@@ -1199,6 +1243,16 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  scheduleButton: {
+    marginTop: 10,
+    backgroundColor: '#0f766e',
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#0d9488',
   },
   hostButtonText: {
     color: palette.textPrimary,

@@ -8,6 +8,7 @@ export const mobileMenuItems = [
   { label: 'Ride History', icon: 'time-outline' as const },
   { label: 'Show of Interest', icon: 'star' as const },
   { label: 'Connections', icon: 'people' as const },
+  { label: 'Schedule With Friends', icon: 'calendar' as const },
   { label: 'Leaderboard', icon: 'trophy' as const },
   { label: 'Expired', icon: 'time' as const },
   { label: 'Settings', icon: 'settings' as const },

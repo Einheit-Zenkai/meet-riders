@@ -488,6 +488,10 @@ const CurrentPartyScreen = ({ navigation }: Props): JSX.Element => {
                     navigation.navigate('Map');
                     return;
                   }
+                  if (item.label === 'Schedule With Friends') {
+                    navigation.navigate('ScheduleWithFriends');
+                    return;
+                  }
                   if (item.label === 'Leaderboard') {
                     navigation.navigate('Leaderboard');
                     return;

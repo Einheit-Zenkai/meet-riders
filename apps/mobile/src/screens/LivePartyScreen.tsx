@@ -838,6 +838,10 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
                     navigation.navigate('Profile');
                     return;
                   }
+                  if (item.label === 'Schedule With Friends') {
+                    navigation.navigate('ScheduleWithFriends');
+                    return;
+                  }
                   if (item.label === 'Leaderboard') {
                     navigation.navigate('Leaderboard');
                     return;
