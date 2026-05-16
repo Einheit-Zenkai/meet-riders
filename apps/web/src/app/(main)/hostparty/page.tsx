@@ -49,7 +49,7 @@ export default function HostPartyPage() {
   const [isFriendsOnly, setIsFriendsOnly] = useState(false);
   const [displayUniversity, setDisplayUniversity] = useState(false);
   const [myUniversity, setMyUniversity] = useState<string>("");
-  // Removed gender-only option for safety
+  const [isGenderOnly, setIsGenderOnly] = useState(false);
   const [selectedRides, setSelectedRides] = useState<string[]>([]);
   const [durationMinutes, setDurationMinutes] = useState(10);
   const [hostComments, setHostComments] = useState("");
@@ -139,7 +139,7 @@ export default function HostPartyPage() {
       meetup_point: meetupPoint,
       drop_off: dropOff,
       is_friends_only: isFriendsOnly,
-      is_gender_only: false, // enforced disabled by design
+      is_gender_only: isGenderOnly,
       ride_options: selectedRides,
       duration_minutes: durationMinutes,
       is_active: true,
@@ -174,12 +174,12 @@ export default function HostPartyPage() {
     } else {
       // Also add to local context so it appears immediately
       const durationLabel = DURATION_OPTIONS.find((option) => option.minutes === durationMinutes)?.label ?? `${durationMinutes} min`;
-      addParty({
+        addParty({
         partySize,
         meetupPoint,
         dropOff,
         isFriendsOnly,
-        isGenderOnly: false,
+        isGenderOnly,
         rideOptions: selectedRides,
         expiresIn: durationLabel,
         displayUniversity: payload.display_university,
@@ -271,6 +271,15 @@ export default function HostPartyPage() {
                   onChange={(e) => setIsFriendsOnly(e.target.checked)}
                 />
                 <span className="text-foreground">Connections only (Private Party)</span>
+              </label>
+              <label className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 rounded text-primary focus:ring-ring"
+                  checked={isGenderOnly}
+                  onChange={(e) => setIsGenderOnly(e.target.checked)}
+                />
+                <span className="text-foreground">Women only (Same Gender)</span>
               </label>
               <label className="flex items-center space-x-3 cursor-pointer">
                 <input

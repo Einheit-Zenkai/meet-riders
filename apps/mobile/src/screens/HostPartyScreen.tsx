@@ -55,6 +55,7 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
   const [meetupPoint, setMeetupPoint] = useState('');
   const [destination, setDestination] = useState('');
   const [connectionsOnly, setConnectionsOnly] = useState(false);
+  const [genderOnly, setGenderOnly] = useState(false);
   const [displayUniversity, setDisplayUniversity] = useState(false);
   const [maxPartySize, setMaxPartySize] = useState(2);
   const [comments, setComments] = useState('');
@@ -218,6 +219,7 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
           rideOptions: selectedRides,
           durationMinutes: expiry,
           isFriendsOnly: connectionsOnly,
+          isGenderOnly: genderOnly,
           displayUniversity: displayUniversity && Boolean(hostUniversity),
           hostUniversity,
           hostComments: comments.trim() || undefined,
@@ -382,6 +384,15 @@ const HostPartyScreen = ({ navigation }: HostPartyScreenProps): JSX.Element => {
                   thumbColor={palette.textPrimary}
                 />
                 <Text style={styles.toggleLabel}>Connections only (Private Party)</Text>
+              </View>
+              <View style={styles.toggleRow}>
+                <Switch
+                  value={genderOnly}
+                  onValueChange={setGenderOnly}
+                  trackColor={{ false: palette.surfaceAlt, true: palette.primary }}
+                  thumbColor={palette.textPrimary}
+                />
+                <Text style={styles.toggleLabel}>Women only (Same Gender)</Text>
               </View>
               <View style={styles.toggleRow}>
                 <Switch

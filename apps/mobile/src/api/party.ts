@@ -122,6 +122,7 @@ export interface CreatePartyInput {
   rideOptions: string[];
   durationMinutes: number;
   isFriendsOnly: boolean;
+  isGenderOnly: boolean;
   displayUniversity: boolean;
   hostUniversity?: string | null;
   hostComments?: string;
@@ -211,7 +212,7 @@ export const createParty = async (input: CreatePartyInput): Promise<CreatePartyR
     ride_options: input.rideOptions,
     duration_minutes: input.durationMinutes,
     is_friends_only: input.isFriendsOnly,
-    is_gender_only: false,
+    is_gender_only: input.isGenderOnly,
     host_comments: input.hostComments ?? null,
     display_university: input.displayUniversity,
     host_university: input.displayUniversity ? input.hostUniversity ?? null : null,
