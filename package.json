@@ -7,5 +7,9 @@
     "dev:mobile": "pnpm --filter mobile start",
     "lint:web": "pnpm --filter web lint",
     "lint:mobile": "pnpm --filter mobile lint"
-  }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }

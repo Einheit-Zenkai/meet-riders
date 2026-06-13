@@ -7,3 +7,4 @@ export { default as LogoutButton } from './LogoutButton';
 export { default as RidesList } from './RidesList';
 export { default as LoadingScreen } from './LoadingScreen';
 export { default as DashboardPartyCard } from './DashboardPartyCard';
+export { default as PurposeParallax } from './PurposeParallax';
