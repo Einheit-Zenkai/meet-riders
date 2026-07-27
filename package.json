@@ -5,6 +5,7 @@
   "scripts": {
     "dev:web": "pnpm --filter web dev",
     "dev:mobile": "pnpm --filter mobile start",
+    "dev:mobile:web": "pnpm --filter mobile web",
     "lint:web": "pnpm --filter web lint",
     "lint:mobile": "pnpm --filter mobile lint"
   },

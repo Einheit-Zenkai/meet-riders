@@ -4,7 +4,8 @@ import * as WebBrowser from 'expo-web-browser';
 
 import { apiClient } from './client';
 import { getSupabaseClient } from '../lib/supabase';
-import { hasEnvVar, getEnvVar } from '../lib/env';
+
+const hasRemoteApi = typeof process !== 'undefined' && Boolean(process.env.EXPO_PUBLIC_API_URL);
 
 // Ensure web browser redirect is handled properly
 WebBrowser.maybeCompleteAuthSession();
@@ -42,7 +43,6 @@ const buildAuthResponse = (session: Session | null, user: User | null, fallbackE
 
 export const login = async (payload: LoginPayload): Promise<AuthResponse> => {
   const supabase = getSupabaseClient();
-  const hasRemoteApi = hasEnvVar('EXPO_PUBLIC_API_URL');
 
   if (!supabase) {
     if (!hasRemoteApi) {
@@ -73,7 +73,6 @@ export const login = async (payload: LoginPayload): Promise<AuthResponse> => {
 
 export const signup = async (payload: SignupPayload): Promise<SignupResponse> => {
   const supabase = getSupabaseClient();
-  const hasRemoteApi = hasEnvVar('EXPO_PUBLIC_API_URL');
 
   if (!supabase) {
     if (!hasRemoteApi) {

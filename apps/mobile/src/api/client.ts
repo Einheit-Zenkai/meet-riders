@@ -1,6 +1,4 @@
-import { getEnvVar } from '../lib/env';
-
-const baseURL = getEnvVar('EXPO_PUBLIC_API_URL') ?? 'https://api.meetriders.example.com';
+const baseURL = process.env.EXPO_PUBLIC_API_URL ?? 'https://api.meetriders.example.com';
 
 let authToken: string | undefined;
 
