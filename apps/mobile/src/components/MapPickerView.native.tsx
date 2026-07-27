@@ -1,5 +1,5 @@
 import React, { useRef, useImperativeHandle, forwardRef } from 'react';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import { palette } from '../theme/colors';
 
 export interface MapPickerRef {
@@ -40,14 +40,14 @@ const MapPickerView = forwardRef<MapPickerRef, MapPickerViewProps>(
       <MapView
         ref={mapRef}
         style={style}
-        provider={PROVIDER_GOOGLE}
+        provider={undefined}
         initialRegion={{
           latitude: currentLocation.latitude,
           longitude: currentLocation.longitude,
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         }}
-        onLongPress={(e) => {
+        onLongPress={(e: any) => {
           const coord = e.nativeEvent.coordinate;
           if (coord) {
             onLongPress({ latitude: coord.latitude, longitude: coord.longitude });

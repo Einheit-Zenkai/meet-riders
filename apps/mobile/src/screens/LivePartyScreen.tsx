@@ -872,8 +872,16 @@ const LivePartyScreen = ({ navigation, route }: Props): JSX.Element => {
           setRatingModalOpen(false);
           setMemberToRate(null);
         }}
-        onSubmit={handleRatingSubmit}
-        userName={memberToRate ? displayName(memberToRate) : ''}
+        ratedUserId={memberToRate?.userId ?? ''}
+        ratedUserName={memberToRate ? displayName(memberToRate) : ''}
+        partyId={party?.id ?? ''}
+        onRatingSubmitted={() => {
+          if (memberToRate) {
+            setRatedUserIds(prev => new Set(prev).add(memberToRate.userId));
+          }
+          setRatingModalOpen(false);
+          setMemberToRate(null);
+        }}
       />
 
       {/* Leave Party Confirmation Modal */}

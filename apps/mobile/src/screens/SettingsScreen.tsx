@@ -9,9 +9,12 @@ import {
   Switch,
   ActivityIndicator,
   StatusBar,
+  Image,
+  Alert,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { palette } from '../theme/colors';
@@ -73,6 +76,145 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
   const [externalNotificationsEnabled, setExternalNotificationsEnabledState] = useState(true);
 
   const supabaseAvailable = useMemo(() => Boolean(getSupabaseClient()), []);
+
+  // Password change state
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
+  // Account deletion state
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const handleAvatarUpload = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      showAlert('Permission needed', 'Please grant photo library access to upload an avatar.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const asset = result.assets[0];
+      const fileExt = asset.uri.split('.').pop() || 'jpg';
+      const filePath = `avatars/${user.id}.${fileExt}`;
+
+      const response = await fetch(asset.uri);
+      const blob = await response.blob();
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, blob, { contentType: `image/${fileExt}`, upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const avatarUrl = urlData.publicUrl;
+
+      await supabase.from('profiles').update({ avatar_url: avatarUrl } as never).eq('id', user.id);
+      setAvatarUrl(avatarUrl);
+      showAlert('Avatar updated', 'Your profile picture has been updated.');
+    } catch (error: any) {
+      console.error('Avatar upload failed:', error);
+      showAlert('Upload failed', error?.message || 'Could not upload avatar.');
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (!oldPassword || !newPassword) {
+      showAlert('Missing info', 'Please enter your current and new password.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showAlert('Mismatch', 'New password and confirmation do not match.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      showAlert('Too short', 'Password must be at least 6 characters.');
+      return;
+    }
+
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    setPasswordLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowPasswordSection(false);
+      showAlert('Password updated', 'Your password has been changed successfully.');
+    } catch (error: any) {
+      showAlert('Failed', error?.message || 'Could not update password. Make sure your current password is correct.');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account?',
+      'This action cannot be undone. All your data will be permanently deleted.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            const supabase = getSupabaseClient();
+            if (!supabase) return;
+
+            setDeleteLoading(true);
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              const { data: { user } } = await supabase.auth.getUser();
+              if (!user || !session?.access_token) throw new Error('Not authenticated');
+
+              const supabaseUrl = 'https://hpzuzgccyusizsgvfhmr.supabase.co';
+              const response = await fetch(`${supabaseUrl}/functions/v1/delete-account`, {
+                method: 'DELETE',
+                headers: {
+                  'Authorization': `Bearer ${session.access_token}`,
+                  'Content-Type': 'application/json',
+                  'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwenV6Z2NjeXVzaXpzZ3ZmaG1yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUzMzkyMzksImV4cCI6MjA3MDkxNTIzOX0.TvsPMgI-wwTIIix-EuxIJ_f2SJ2Z2PHpvR7C-gEBgOc',
+                },
+              });
+
+              if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error || 'Failed to delete account');
+              }
+
+              await supabase.auth.signOut();
+              showAlert('Account deleted', 'Your account has been permanently deleted.');
+              navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+            } catch (error: any) {
+              showAlert('Failed', error?.message || 'Could not delete account. Try from the web dashboard.');
+            } finally {
+              setDeleteLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   useEffect(() => {
     let active = true;
@@ -292,17 +434,16 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
           ) : null}
 
           <View style={styles.sectionCard}>
-            <View style={styles.avatarCircle}>
-              <Ionicons name="person" size={48} color={palette.textSecondary} />
-            </View>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.avatarCircle}>
+                <Ionicons name="person" size={48} color={palette.textSecondary} />
+              </View>
+            )}
             <Text style={styles.sectionTitle}>Profile Picture</Text>
-            <Text style={styles.sectionSubtitle}>Avatar upload from mobile will arrive soon.</Text>
-            {avatarUrl ? <Text style={styles.avatarHint}>Current avatar: {avatarUrl}</Text> : null}
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => showAlert('Coming soon', 'Avatar upload is not available in the mobile preview yet.')}
-            >
-              <Text style={styles.secondaryButtonText}>Select Image</Text>
+            <TouchableOpacity style={styles.secondaryButton} onPress={handleAvatarUpload}>
+              <Text style={styles.secondaryButtonText}>{avatarUrl ? 'Change Avatar' : 'Upload Avatar'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -496,20 +637,73 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
             <Text style={styles.sectionTitle}>Security</Text>
             <TouchableOpacity
               style={styles.secondaryButton}
-              onPress={() => navigation.navigate('ForgotPassword')}
+              onPress={() => setShowPasswordSection(!showPasswordSection)}
             >
-              <Text style={styles.secondaryButtonText}>Change Password</Text>
+              <Text style={styles.secondaryButtonText}>{showPasswordSection ? 'Cancel' : 'Change Password'}</Text>
             </TouchableOpacity>
+            {showPasswordSection && (
+              <View style={{ marginTop: 14 }}>
+                <View style={styles.formField}>
+                  <Text style={styles.label}>Current Password</Text>
+                  <TextInput
+                    value={oldPassword}
+                    onChangeText={setOldPassword}
+                    placeholder="Enter current password"
+                    placeholderTextColor={palette.textSecondary}
+                    style={styles.input}
+                    secureTextEntry
+                  />
+                </View>
+                <View style={styles.formField}>
+                  <Text style={styles.label}>New Password</Text>
+                  <TextInput
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder="Enter new password"
+                    placeholderTextColor={palette.textSecondary}
+                    style={styles.input}
+                    secureTextEntry
+                  />
+                </View>
+                <View style={styles.formField}>
+                  <Text style={styles.label}>Confirm New Password</Text>
+                  <TextInput
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Re-enter new password"
+                    placeholderTextColor={palette.textSecondary}
+                    style={styles.input}
+                    secureTextEntry
+                  />
+                </View>
+                <TouchableOpacity
+                  style={[styles.primaryButton, passwordLoading && styles.primaryButtonDisabled]}
+                  onPress={handlePasswordChange}
+                  disabled={passwordLoading}
+                >
+                  {passwordLoading ? (
+                    <ActivityIndicator color={palette.textPrimary} />
+                  ) : (
+                    <Text style={styles.primaryLabel}>Update Password</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Danger Zone</Text>
-            <Text style={styles.helperTextSmall}>Deleting your account is permanent. This action is disabled in the preview build.</Text>
+            <Text style={styles.helperTextSmall}>Deleting your account is permanent. This action cannot be undone.</Text>
             <TouchableOpacity
-              style={styles.dangerButton}
-              onPress={() => showAlert('Unavailable', 'Account deletion is handled from the web dashboard.')}
+              style={[styles.dangerButton, deleteLoading && { opacity: 0.6 }]}
+              onPress={handleDeleteAccount}
+              disabled={deleteLoading}
             >
-              <Text style={styles.dangerButtonText}>Delete Account</Text>
+              {deleteLoading ? (
+                <ActivityIndicator color={palette.textPrimary} />
+              ) : (
+                <Text style={styles.dangerButtonText}>Delete Account</Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -620,6 +814,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignSelf: 'center',
     marginBottom: 16,
+  },
+  avatarImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    alignSelf: 'center',
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: palette.outline,
   },
   avatarHint: {
     color: palette.textSecondary,

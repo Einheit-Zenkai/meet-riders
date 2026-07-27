@@ -10,8 +10,7 @@ import {
   StatusBar,
   Keyboard,
 } from 'react-native';
-import MapView, { type LongPressEvent, Marker, PROVIDER_GOOGLE
-} from 'react-native-maps';
+import MapView, { type LongPressEvent, Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -222,7 +221,7 @@ const MapScreen = ({ navigation, route }: MapScreenProps): JSX.Element => {
         <MapView
           ref={mapRef}
           style={StyleSheet.absoluteFillObject}
-          provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+          provider={undefined}
           initialRegion={region}
           onLongPress={handleLongPress}
           showsUserLocation

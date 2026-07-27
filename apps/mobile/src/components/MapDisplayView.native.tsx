@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import { palette } from '../theme/colors';
 
 interface Coordinate {
@@ -34,7 +34,7 @@ const MapDisplayView: React.FC<MapDisplayViewProps> = ({
   return (
     <MapView
       style={[styles.map, style]}
-      provider={PROVIDER_GOOGLE}
+      provider={undefined}
       initialRegion={{
         latitude: meetupCoordinate.latitude,
         longitude: meetupCoordinate.longitude,

@@ -1,21 +1,8 @@
-type ProcessEnvRecord = Record<string, string | undefined>;
-
-type MaybeProcess = {
-  env?: ProcessEnvRecord;
-} | undefined;
-
-const readProcessEnv = (): ProcessEnvRecord | undefined => {
-  if (typeof globalThis === 'undefined') {
-    return undefined;
-  }
-
-  const maybeProcess = (globalThis as Record<string, unknown>).process as MaybeProcess;
-  return maybeProcess?.env;
-};
+declare const process: { env: Record<string, string | undefined> };
 
 export const getEnvVar = (key: string): string | undefined => {
   try {
-    return readProcessEnv()?.[key];
+    return process.env[key];
   } catch {
     return undefined;
   }

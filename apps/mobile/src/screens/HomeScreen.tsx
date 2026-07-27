@@ -46,6 +46,13 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  // Filter state (matching web dashboard filters)
+  const [showFilters, setShowFilters] = useState(false);
+  const [timeWindowMins, setTimeWindowMins] = useState<string>('any');
+  const [showFriendsOnly, setShowFriendsOnly] = useState(false);
+  const [showMyUniversityOnly, setShowMyUniversityOnly] = useState(false);
+  const [myUniversity, setMyUniversity] = useState<string | null>(null);
+
   const [feedLoading, setFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [feed, setFeed] = useState<FeedParty[]>([]);
@@ -107,6 +114,9 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
           const profile = await fetchProfile();
           if (profile?.nickname) {
             setNickname(profile.nickname);
+          }
+          if (profile?.university) {
+            setMyUniversity(profile.university);
           }
         } catch (error) {
           console.error('Failed to load profile info', error);
@@ -370,6 +380,13 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
             placeholderTextColor={palette.textSecondary}
             style={styles.searchBar}
           />
+          {/* Filter Button */}
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setShowFilters(!showFilters)}
+          >
+            <Ionicons name="filter" size={20} color={(timeWindowMins !== 'any' || showFriendsOnly || showMyUniversityOnly) ? palette.primary : palette.textPrimary} />
+          </TouchableOpacity>
           {/* Notification Bell */}
           <TouchableOpacity
             style={styles.notificationBell}
@@ -385,6 +402,51 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
             )}
           </TouchableOpacity>
         </View>
+
+        {/* Filter Dropdown Panel */}
+        {showFilters && (
+          <View style={styles.filterPanel}>
+            <Text style={styles.filterPanelTitle}>Filters</Text>
+            <View style={styles.filterField}>
+              <Text style={styles.filterLabel}>Expiring within</Text>
+              <View style={styles.filterChipRow}>
+                {[
+                  { value: 'any', label: 'Any time' },
+                  { value: '10', label: '10 min' },
+                  { value: '15', label: '15 min' },
+                  { value: '30', label: '30 min' },
+                  { value: '60', label: '1 hour' },
+                ].map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[styles.filterChip, timeWindowMins === opt.value && styles.filterChipActive]}
+                    onPress={() => setTimeWindowMins(opt.value)}
+                  >
+                    <Text style={[styles.filterChipText, timeWindowMins === opt.value && styles.filterChipTextActive]}>{opt.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.filterToggle}
+              onPress={() => setShowFriendsOnly(!showFriendsOnly)}
+            >
+              <View style={[styles.filterCheckbox, showFriendsOnly && styles.filterCheckboxChecked]}>
+                {showFriendsOnly && <Ionicons name="checkmark" size={14} color={palette.textPrimary} />}
+              </View>
+              <Text style={styles.filterToggleLabel}>Connections' Parties only</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.filterToggle}
+              onPress={() => setShowMyUniversityOnly(!showMyUniversityOnly)}
+            >
+              <View style={[styles.filterCheckbox, showMyUniversityOnly && styles.filterCheckboxChecked]}>
+                {showMyUniversityOnly && <Ionicons name="checkmark" size={14} color={palette.textPrimary} />}
+              </View>
+              <Text style={styles.filterToggleLabel}>My University only</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Join Requests Dropdown (shown below header for hosts) */}
         {joinRequests.length > 0 && (
@@ -498,11 +560,20 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
                 {feed
                   .filter((p) => {
                     const query = searchQuery.trim().toLowerCase();
-                    if (!query) return true;
-                    return (
-                      p.dropOff.toLowerCase().includes(query) ||
-                      p.meetupPoint.toLowerCase().includes(query)
-                    );
+                    if (query) {
+                      const matchesSearch = p.dropOff.toLowerCase().includes(query) || p.meetupPoint.toLowerCase().includes(query);
+                      if (!matchesSearch) return false;
+                    }
+                    if (timeWindowMins !== 'any') {
+                      const mins = parseInt(timeWindowMins, 10);
+                      const expiresAt = new Date(p.expiresAt).getTime();
+                      const now = Date.now();
+                      const remaining = (expiresAt - now) / 60000;
+                      if (remaining < 0 || remaining > mins) return false;
+                    }
+                    if (showFriendsOnly && !p.isFriendsOnly) return false;
+                    if (showMyUniversityOnly && myUniversity && p.hostProfile?.university !== myUniversity) return false;
+                    return true;
                   })
                   .map((party) => (
                     <View key={party.id} style={styles.feedCard}>
@@ -1207,6 +1278,89 @@ const styles = StyleSheet.create({
     borderColor: palette.outline,
     flex: 1,
     marginLeft: 12,
+  },
+  filterButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: palette.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: palette.outline,
+    marginLeft: 8,
+  },
+  filterPanel: {
+    backgroundColor: palette.surface,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: palette.outline,
+    marginBottom: 12,
+  },
+  filterPanelTitle: {
+    color: palette.textPrimary,
+    fontWeight: '700',
+    fontSize: 15,
+    marginBottom: 12,
+  },
+  filterField: {
+    marginBottom: 12,
+  },
+  filterLabel: {
+    color: palette.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  filterChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterChip: {
+    backgroundColor: palette.surfaceAlt,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: palette.outline,
+  },
+  filterChipActive: {
+    backgroundColor: palette.primary,
+    borderColor: palette.primary,
+  },
+  filterChipText: {
+    color: palette.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  filterChipTextActive: {
+    color: palette.textPrimary,
+  },
+  filterToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    gap: 10,
+  },
+  filterCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: palette.outline,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterCheckboxChecked: {
+    backgroundColor: palette.primary,
+    borderColor: palette.primary,
+  },
+  filterToggleLabel: {
+    color: palette.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
   },
   scrollArea: {
     paddingBottom: 160,
