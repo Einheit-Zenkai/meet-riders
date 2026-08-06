@@ -2,7 +2,6 @@
 
 import HostButton from "@/components/ui/hostbutton";
 import DashboardHeader from "./components/DashboardHeader";
-import PurposeParallax from "./components/PurposeParallax";
 import RidesList from "./components/RidesList";
 import LoadingScreen from "./components/LoadingScreen";
 import SoiList from "./components/SoiList";
@@ -23,8 +22,6 @@ export default function HomePage() {
       <DashboardHeader
         welcomeName={welcomeName}
       />
-
-      <PurposeParallax />
 
       <div className="mt-6 space-y-10">
         <CurrentPartySection />
