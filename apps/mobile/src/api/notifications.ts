@@ -86,7 +86,8 @@ export const fetchMutualActivityNotifications = async (): Promise<MutualActivity
   ]);
 
   if (onlineRes.error) {
-    if (onlineRes.error.code !== '42P01') {
+    const code = onlineRes.error.code ?? '';
+    if (code !== '42P01' && !String(code).toLowerCase().includes('pgrst205') && !String(onlineRes.error.message ?? '').toLowerCase().includes('schema cache')) {
       throw onlineRes.error;
     }
   }

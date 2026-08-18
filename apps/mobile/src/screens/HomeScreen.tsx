@@ -14,6 +14,7 @@ import {
   Animated,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import type { RootStackParamList } from '../navigation/AppNavigator';
@@ -133,17 +134,23 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
   // Load join requests (for hosts) and friend requests
   const loadNotifications = useCallback(async () => {
     try {
-      const [requests, connectionsBundle, mutualActivity, scheduleItems] = await Promise.all([
+      const [requests, connectionsBundle, scheduleItems] = await Promise.all([
         fetchMyPartyJoinRequests(),
         fetchConnectionsBundle(),
-        fetchMutualActivityNotifications(),
         fetchScheduleNotifications(),
       ]);
 
       setJoinRequests(requests);
       setFriendRequestCount(connectionsBundle.incomingRequests.length);
-      setMutualActivityNotifications(mutualActivity);
       setScheduleNotifications(scheduleItems);
+
+      let mutualActivity: MutualActivityNotification[] = [];
+      try {
+        mutualActivity = await fetchMutualActivityNotifications();
+      } catch (error) {
+        console.error('Failed to load mutual activity notifications', error);
+      }
+      setMutualActivityNotifications(mutualActivity);
 
       const newlySeen = mutualActivity.filter((item) => !seenMutualNotificationIds.current.has(item.id));
       mutualActivity.forEach((item) => seenMutualNotificationIds.current.add(item.id));
@@ -333,13 +340,17 @@ const HomeScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParam
     }
   }, [cancelBusy, cancelTarget, loadFeed, showInlineNotice]);
 
-  useEffect(() => {
-    void loadFeed();
-  }, [loadFeed]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadFeed();
+    }, [loadFeed])
+  );
 
-  useEffect(() => {
-    void loadSoiFeed();
-  }, [loadSoiFeed]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadSoiFeed();
+    }, [loadSoiFeed])
+  );
 
   const formatExpiry = (iso: string): string => {
     const date = new Date(iso);

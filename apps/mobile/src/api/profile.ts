@@ -17,6 +17,52 @@ export interface ProfileData {
   avatarUrl: string | null;
 }
 
+const PROFILE_SELECT = [
+  'username',
+  'nickname',
+  'bio',
+  'gender',
+  'punctuality',
+  'ideal_location',
+  'ideal_departure_time',
+  'university',
+  'show_university',
+  'phone_number',
+  'show_phone',
+  'avatar_url',
+  '"rideOptions"',
+] as const;
+
+const PROFILE_SELECT_WITH_STUDENT_TYPE = [...PROFILE_SELECT, 'student_type'] as const;
+
+/**
+ * A column referenced in the select list does not exist (e.g. DB not migrated).
+ * Fall back to the base column set so the app still works.
+ */
+const isMissingColumnError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object' || !('code' in error)) return false;
+  const code = (error as { code?: string }).code;
+  return code === '42703' || code === 'PGRST204';
+};
+
+const selectProfileForUser = async (supabase: any, userId: string) => {
+  let result = await supabase
+    .from('profiles')
+    .select(PROFILE_SELECT_WITH_STUDENT_TYPE.join(', '))
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (isMissingColumnError(result.error)) {
+    result = await supabase
+      .from('profiles')
+      .select(PROFILE_SELECT.join(', '))
+      .eq('id', userId)
+      .maybeSingle();
+  }
+
+  return result;
+};
+
 export const fetchProfile = async (): Promise<ProfileData | null> => {
   const supabase = getSupabaseClient();
   if (!supabase) {
@@ -32,13 +78,7 @@ export const fetchProfile = async (): Promise<ProfileData | null> => {
     return null;
   }
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select(
-      'username, nickname, bio, gender, punctuality, ideal_location, ideal_departure_time, university, show_university, student_type, phone_number, show_phone, avatar_url, "rideOptions"'
-    )
-    .eq('id', user.id)
-    .maybeSingle();
+  const { data, error } = await selectProfileForUser(supabase, user.id);
 
   if (error || !data) {
     return {
@@ -139,28 +179,36 @@ export const saveProfile = async (payload: SaveProfilePayload): Promise<void> =>
     throw duplicationError;
   }
 
-  const { error } = await supabase
+  const baseUpdate = {
+    username: trimmedUsername,
+    nickname: payload.nickname,
+    bio: payload.bio,
+    gender: payload.gender,
+    punctuality: payload.punctuality,
+    ideal_location: payload.idealLocation,
+    ideal_departure_time: payload.idealDepartureTime,
+    university: payload.university || null,
+    show_university: payload.showUniversity,
+    phone_number: payload.phoneNumber || null,
+    show_phone: payload.showPhone,
+    rideOptions: JSON.stringify(payload.rideOptions),
+    updated_at: new Date().toISOString(),
+  };
+
+  let result = await supabase
     .from('profiles')
     .update({
-      username: trimmedUsername,
-      nickname: payload.nickname,
-      bio: payload.bio,
-      gender: payload.gender,
-      punctuality: payload.punctuality,
-      ideal_location: payload.idealLocation,
-      ideal_departure_time: payload.idealDepartureTime,
-      university: payload.university || null,
-      show_university: payload.showUniversity,
+      ...baseUpdate,
       student_type: (payload.university && payload.studentType) ? payload.studentType : null,
-      phone_number: payload.phoneNumber || null,
-      show_phone: payload.showPhone,
-      rideOptions: JSON.stringify(payload.rideOptions),
-      updated_at: new Date().toISOString(),
-    })
+    } as never)
     .eq('id', user.id);
 
-  if (error) {
-    throw error;
+  if (isMissingColumnError(result.error)) {
+    result = await supabase.from('profiles').update(baseUpdate as never).eq('id', user.id);
+  }
+
+  if (result.error) {
+    throw result.error;
   }
 };
 
@@ -173,13 +221,7 @@ export const fetchProfileById = async (userId: string): Promise<ProfileData | nu
     return null;
   }
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select(
-      'username, nickname, bio, gender, punctuality, ideal_location, ideal_departure_time, university, show_university, student_type, phone_number, show_phone, avatar_url, "rideOptions"'
-    )
-    .eq('id', userId)
-    .maybeSingle();
+  const { data, error } = await selectProfileForUser(supabase, userId);
 
   if (error || !data) {
     return null;

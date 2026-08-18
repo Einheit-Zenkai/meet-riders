@@ -50,35 +50,39 @@ CREATE INDEX IF NOT EXISTS ix_ride_history_participants_ride_id ON public.ride_h
 ALTER TABLE public.ride_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ride_history_participants ENABLE ROW LEVEL SECURITY;
 
+-- Helper that bypasses RLS to check participation without recursive policy lookups.
+CREATE OR REPLACE FUNCTION public.is_ride_history_participant(p_history_id uuid, p_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.ride_history_participants
+    WHERE ride_history_id = p_history_id
+      AND user_id = p_user_id
+  );
+$$;
+
 -- Authenticated users can only see history rows where they participated.
 DROP POLICY IF EXISTS "Users can view their ride history" ON public.ride_history;
 CREATE POLICY "Users can view their ride history" ON public.ride_history
   FOR SELECT TO authenticated
   USING (
-    EXISTS (
-      SELECT 1
-      FROM public.ride_history_participants rhp
-      WHERE rhp.ride_history_id = ride_history.id
-        AND rhp.user_id = auth.uid()
-    )
+    public.is_ride_history_participant(ride_history.id, auth.uid())
   );
 
 DROP POLICY IF EXISTS "Users can view history participants" ON public.ride_history_participants;
 CREATE POLICY "Users can view history participants" ON public.ride_history_participants
   FOR SELECT TO authenticated
   USING (
-    EXISTS (
-      SELECT 1
-      FROM public.ride_history rh
-      WHERE rh.id = ride_history_participants.ride_history_id
-        AND EXISTS (
-          SELECT 1
-          FROM public.ride_history_participants mine
-          WHERE mine.ride_history_id = rh.id
-            AND mine.user_id = auth.uid()
-        )
-    )
+    user_id = auth.uid()
+    OR public.is_ride_history_participant(ride_history_participants.ride_history_id, auth.uid())
   );
+
+GRANT EXECUTE ON FUNCTION public.is_ride_history_participant(uuid, uuid) TO authenticated;
 
 -- 3) Internal finalization helper (idempotent)
 DROP FUNCTION IF EXISTS public.finalize_party_and_record_history(uuid, uuid, text, boolean);

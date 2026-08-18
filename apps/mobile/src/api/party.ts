@@ -913,14 +913,27 @@ export const fetchMyPartyJoinRequests = async (): Promise<PartyJoinRequest[]> =>
   const userIds = Array.from(new Set(requestRows.map((r) => r.user_id)));
 
   // Fetch profiles
-  const { data: profiles, error: profilesError } = await supabase
+  let profilesSelect =
+    'id, username, full_name, avatar_url, gender, university, show_university, student_type';
+  let profilesResult = await supabase
     .from('profiles')
-    .select('id, username, full_name, avatar_url, gender, university, show_university, student_type')
+    .select(profilesSelect)
     .in('id', userIds);
 
-  if (profilesError) throw profilesError;
+  if (profilesResult.error && (profilesResult.error.code === '42703' || profilesResult.error.code === 'PGRST204')) {
+    profilesSelect =
+      'id, username, full_name, avatar_url, gender, university, show_university';
+    profilesResult = await supabase
+      .from('profiles')
+      .select(profilesSelect)
+      .in('id', userIds);
+  }
 
-  const profilesMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+  if (profilesResult.error) throw profilesResult.error;
+
+  const profilesMap = new Map(
+    (profilesResult.data ?? []).map((p: any) => [p.id, p])
+  );
 
   // Fetch ratings for all users
   const ratingsMap = new Map<string, { averageRating: number; totalRatings: number }>();

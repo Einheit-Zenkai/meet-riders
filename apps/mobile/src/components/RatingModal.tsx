@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from '../theme/colors';
 import { BottomSheet, RatingStars } from './SharedComponents';
 import { submitRating } from '../api/rating';
+import { showAlert } from '../utils/alert';
 
 interface RatingModalProps {
   visible: boolean;
@@ -38,7 +38,7 @@ export const RatingModal = ({
 
   const handleSubmit = async () => {
     if (rating === 0) {
-      Alert.alert('Select a rating', 'Please tap the stars to rate your experience.');
+      showAlert('Select a rating', 'Please tap the stars to rate your experience.');
       return;
     }
 
@@ -53,22 +53,16 @@ export const RatingModal = ({
       });
 
       if (result.error) {
-        Alert.alert('Rating Failed', result.error.message || 'Unable to submit rating. Please try again.');
+        showAlert('Rating Failed', result.error.message || 'Unable to submit rating. Please try again.');
         setSubmitting(false);
         return;
       }
 
-      Alert.alert('Thank You!', `Your rating for ${ratedUserName} has been submitted.`, [
-        {
-          text: 'OK',
-          onPress: () => {
-            handleClose();
-            onRatingSubmitted?.();
-          },
-        },
-      ]);
+      showAlert('Thank You!', `Your rating for ${ratedUserName} has been submitted.`);
+      handleClose();
+      onRatingSubmitted?.();
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+      showAlert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setSubmitting(false);
     }
