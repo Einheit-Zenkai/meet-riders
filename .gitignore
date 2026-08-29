@@ -10,6 +10,13 @@ apps/mobile/.env.*
 node_modules/
 package-lock.json
 docs/sql/
+apps/mobile/builds/
+**/*.aab
+**/*.apk
+meet-riders.apk
+google-key.json
+**/google-key.json
+**/service-account.json
 
 
 .next/trace

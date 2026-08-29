@@ -2,7 +2,7 @@
   "expo": {
     "name": "MeetRiders Mobile",
     "slug": "meet-riders-mobile",
-    "version": "0.1.0",
+    "version": "0.1.5",
     "orientation": "portrait",
     "scheme": "meetriders",
     "userInterfaceStyle": "automatic",
@@ -11,12 +11,32 @@
       "ios",
       "web"
     ],
+    "icon": "./assets/icon.png",
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0"
+          }
+        }
+      ],
+      "expo-web-browser"
+    ],
     "splash": {
       "backgroundColor": "#0f172a",
-      "resizeMode": "contain"
+      "resizeMode": "contain",
+      "image": "./assets/splash-icon.png"
     },
     "android": {
       "package": "com.meetriders.app",
+      "versionCode": 6,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f172a"
+      },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
