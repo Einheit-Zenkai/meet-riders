@@ -11,6 +11,7 @@ import {
   StatusBar,
   Image,
   Alert,
+  Linking,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -689,6 +690,23 @@ const SettingsScreen = ({ navigation }: SettingsScreenProps): JSX.Element => {
                 </TouchableOpacity>
               </View>
             )}
+          </View>
+
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Legal</Text>
+            <Text style={styles.helperTextSmall}>Read how we handle your data.</Text>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => Linking.openURL('https://meet-riders.vercel.app/privacy')}
+            >
+              <Text style={styles.secondaryButtonText}>Privacy Policy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.secondaryButton, { marginTop: 10 }]}
+              onPress={() => Linking.openURL('https://meet-riders.vercel.app/privacy-policy')}
+            >
+              <Text style={styles.secondaryButtonText}>Privacy Policy (Alternative)</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.sectionCard}>

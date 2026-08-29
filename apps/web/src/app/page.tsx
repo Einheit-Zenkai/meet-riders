@@ -84,6 +84,15 @@ export default function HomePage() {
                     </Button>
                 </div>
             </section>
+
+            <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
+                <div className="flex justify-center gap-6">
+                    <Link href="/privacy" className="hover:text-primary hover:underline">Privacy Policy</Link>
+                    <Link href="/privacy-policy" className="hover:text-primary hover:underline">Privacy</Link>
+                    <a href="mailto:patarylohitaksha06@gmail.com" className="hover:text-primary hover:underline">Contact</a>
+                </div>
+                <p className="mt-2">© 2026 MeetRiders - com.meetriders.app</p>
+            </footer>
         </div>
     );
 }
