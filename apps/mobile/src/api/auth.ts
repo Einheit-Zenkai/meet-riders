@@ -30,6 +30,8 @@ export interface SignupPayload {
 }
 
 export interface SignupResponse extends AuthResponse {
+  // Kept for backwards compatibility. Email confirmation is disabled,
+  // so this is always false — sign-up signs the user straight in.
   confirmationRequired: boolean;
 }
 
@@ -120,9 +122,28 @@ export const signup = async (payload: SignupPayload): Promise<SignupResponse> =>
     throw error;
   }
 
+  // Email confirmation is disabled, so sign-up returns a session immediately.
+  // If no session came back (e.g. confirmation got re-enabled), sign in
+  // directly with the same credentials.
+  if (!data.session) {
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: payload.email,
+      password: payload.password,
+    });
+
+    if (signInError) {
+      throw signInError;
+    }
+
+    return {
+      ...buildAuthResponse(signInData.session, signInData.user, payload.email),
+      confirmationRequired: false,
+    };
+  }
+
   return {
     ...buildAuthResponse(data.session, data.user, payload.email),
-    confirmationRequired: !data.user?.email_confirmed_at,
+    confirmationRequired: false,
   };
 };
 

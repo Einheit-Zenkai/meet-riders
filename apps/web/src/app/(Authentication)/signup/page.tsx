@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -39,6 +40,7 @@ type SignupFormData = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
   const supabase = createClient();
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Initialize React Hook Form with Zod validation
@@ -135,20 +137,38 @@ export default function SignupPage() {
 
 
       // Profile is now created by the trigger, so we can remove the manual insert.
-      // We just need to check for the user object.
+      // Email confirmation is disabled — sign-up returns a session immediately.
       if (signUpData.user) {
-        // Success!
+        // If for some reason no session was returned (e.g. confirmation got
+        // re-enabled), try a direct sign-in with the same credentials.
+        if (!signUpData.session) {
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: data.email,
+            password: data.password,
+          });
+          if (signInError) {
+            toast.success('Account Created Successfully!', {
+              description: 'You can now log in with your email and password.',
+            });
+            form.reset();
+            router.push('/login');
+            return;
+          }
+        }
+        // Success — user is signed in, dashboard forwards to onboarding if needed.
         toast.success('Account Created Successfully!', {
-          description: 'Please check your email for a verification link before logging in.',
+          description: "You're signed in. Let's set up your profile.",
         });
         form.reset(); // Clear the form on success
+        router.push('/dashboard');
+        router.refresh();
       } else if (!signUpError) {
-        // Handle case where user is not null, but also no error.
-        // This can happen with email confirmation enabled.
-        toast.info('Please check your email', {
-          description: 'A confirmation link has been sent to your email address.',
+        // Fallback — should not normally happen with confirmation disabled.
+        toast.success('Account Created Successfully!', {
+          description: 'You can now log in with your email and password.',
         });
         form.reset();
+        router.push('/login');
       }
     } catch (err) {
       console.error('Signup error:', err);

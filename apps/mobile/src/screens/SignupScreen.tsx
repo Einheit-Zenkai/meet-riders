@@ -67,12 +67,7 @@ const SignupScreen = ({ navigation }: NativeStackScreenProps<RootStackParamList,
       const response = await signup({ username, email: normalizedEmail, password });
       setLoading(false);
 
-      if (response.confirmationRequired) {
-        showAlert('Verify your email', 'Check your inbox for the confirmation link before logging in.');
-        navigation.goBack();
-        return;
-      }
-
+      // Email confirmation is disabled — new accounts are signed in immediately.
       showAlert('Account created', `Signed in as ${response.user.email}`);
       navigation.reset({
         index: 0,
